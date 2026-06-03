@@ -1,13 +1,14 @@
 # Job Application Assistant | İş Başvuru Asistanı
 
-An advanced AI assistant designed to optimize CVs, analyze job compatibility, compute ATS scores, and generate interview preparation materials.
+An advanced AI assistant designed to optimize CVs, analyze job compatibility, compute ATS scores, and generate interview preparation materials. Now supports PDF exports and a bilingual user interface.
 
-CV dosyaları ve iş ilanları üzerinden uyum analizi, ATS puanlaması, kapak yazısı, başvuru e-postaları ve kişiselleştirilmiş mülakat hazırlığı yapan yapay zeka destekli başvuru asistanı.
+CV dosyaları ve iş ilanları üzerinden uyum analizi, ATS puanlaması, kapak yazısı, başvuru e-postaları ve kişiselleştirilmiş mülakat hazırlığı yapan yapay zeka destekli başvuru asistanı. Artık PDF rapor çıktısı almayı ve çift dilli arayüzü desteklemektedir.
 
 ---
 
 ## 🚀 Features | Özellikler
 
+- **PDF, TXT, & JSON Exports**: Download all reports and documents as JSON, TXT, and PDF / Tüm rapor ve taslakları JSON, TXT ve PDF formatında indirme.
 - **URL Extractor**: Scrape job description from public URLs / URL üzerinden iş ilanı metni ayıklama.
 - **ATS Compatibilty**: Compute score, format warnings & keyword gaps / ATS uyumluluk puanı ve eksik anahtar kelimeler.
 - **CV Optimization**: Rewrite sections and draft tailored CV improvements / CV iyileştirme önerileri ve bölüm bazlı yeniden yazma.
