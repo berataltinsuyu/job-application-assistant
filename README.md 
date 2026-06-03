@@ -1,0 +1,70 @@
+# Job Application Assistant
+
+AI-powered job application assistant that analyzes a CV file and job description, then generates CV-job match analysis, cover letters, and interview preparation questions.
+
+## Features
+
+- PDF/DOCX CV upload
+- CV text extraction
+- CV and job description analysis
+- Match score generation
+- Strengths and weaknesses detection
+- Turkish/English cover letter generation
+- Turkish/English interview preparation
+- SQLite history records
+- Streamlit web interface
+
+## Tech Stack
+
+Python, FastAPI, Streamlit, SQLite, SQLAlchemy, Gemini API, pypdf, python-docx
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/analyze` | Analyze CV and job description |
+| POST | `/cover-letter` | Generate cover letter |
+| POST | `/interview-prep` | Generate interview questions |
+| GET | `/history` | List previous results |
+
+## Setup
+
+```bash
+git clone https://github.com/berataltinsuyu/job-application-assistant.git
+cd job-application-assistant
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Create a `.env` file:
+
+```env
+GEMINI_API_KEY=your_api_key_here
+```
+
+Run backend:
+
+```bash
+uvicorn main:app --reload
+```
+
+Run frontend:
+
+```bash
+streamlit run streamlit_app.py
+```
+
+## Türkçe Özet
+
+Bu proje, CV dosyası ve iş ilanı metni üzerinden yapay zeka destekli başvuru analizi yapan bir uygulamadır. Kullanıcı CV yükleyebilir, iş ilanını girebilir ve sistem CV uyum analizi, kapak yazısı ve mülakat hazırlığı oluşturur.
+
+## Future Improvements
+
+- Generate tailored CV based on job description
+- ATS compatibility score
+- Export cover letter as PDF
+- OCR support for scanned CVs
+- LinkedIn profile analysis
+- Docker and deployment support
+
