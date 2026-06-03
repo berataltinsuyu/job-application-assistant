@@ -28,7 +28,6 @@ def analyze_cv_for_job(cv_text: str, job_text: str) -> dict:
         )
 
         raw_result = response.text
-
         cleaned_result = clean_json_response(raw_result)
         parsed_result = json.loads(cleaned_result)
 
@@ -99,14 +98,47 @@ def generate_cover_letter(
         )
 
 
-def generate_interview_questions(job_text: str) -> str:
-    return f"""
-Mülakat hazırlık isteği başarıyla alındı.
+def generate_interview_questions(job_text: str, language: str) -> dict:
+    prompt = build_interview_prompt(
+        job_text=job_text,
+        language=language
+    )
 
-İş ilanı uzunluğu: {len(job_text)} karakter
+    try:
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=prompt
+        )
 
-Bu endpoint Gemini entegrasyonuna daha sonra bağlanacak.
-"""
+        raw_result = response.text
+        cleaned_result = clean_json_response(raw_result)
+        parsed_result = json.loads(cleaned_result)
+
+        return parsed_result
+
+    except errors.ServerError:
+        raise HTTPException(
+            status_code=503,
+            detail="Gemini modeli şu anda yoğun veya geçici olarak kullanılamıyor. Lütfen biraz sonra tekrar deneyin."
+        )
+
+    except errors.ClientError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Gemini isteği geçersiz. Model adı, API key veya istek formatı hatalı olabilir. Detay: {str(error)}"
+        )
+
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=500,
+            detail="Gemini cevap verdi fakat geçerli JSON formatında cevap üretmedi."
+        )
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Mülakat hazırlığı oluşturulurken beklenmeyen bir hata oluştu: {str(error)}"
+        )
 
 
 def build_analysis_prompt(cv_text: str, job_text: str) -> str:
@@ -178,6 +210,66 @@ Kapak yazısı kuralları:
 8. Eğer dil English ise "Dear Hiring Manager," ile başla.
 9. Son paragrafta görüşme isteğini kibarca belirt.
 10. Sadece kapak yazısını döndür, ekstra açıklama yazma.
+"""
+
+
+def build_interview_prompt(job_text: str, language: str) -> str:
+    return f"""
+Aşağıdaki iş ilanına göre mülakat hazırlık soruları üret.
+
+İŞ İLANI:
+{job_text}
+
+CEVAP DİLİ:
+{language}
+
+Kurallar:
+1. Soruları ve ipuçlarını belirtilen dilde üret: {language}.
+2. Junior / intern seviyesine uygun sorular hazırla.
+3. Teknik sorular, insan kaynakları soruları ve zorlayıcı sorular ayrı listelensin.
+4. Her soru için kısa cevap ipucu ekle.
+5. Çok uzun açıklama yapma.
+6. Sadece geçerli JSON döndür.
+7. JSON dışında açıklama, markdown veya kod bloğu yazma.
+
+JSON formatı şu şekilde olsun:
+
+{{
+  "technical_questions": [
+    {{
+      "question": "Teknik soru 1",
+      "answer_hint": "Kısa cevap ipucu"
+    }},
+    {{
+      "question": "Teknik soru 2",
+      "answer_hint": "Kısa cevap ipucu"
+    }}
+  ],
+  "hr_questions": [
+    {{
+      "question": "HR soru 1",
+      "answer_hint": "Kısa cevap ipucu"
+    }},
+    {{
+      "question": "HR soru 2",
+      "answer_hint": "Kısa cevap ipucu"
+    }}
+  ],
+  "challenging_questions": [
+    {{
+      "question": "Zorlayıcı soru 1",
+      "answer_hint": "Kısa cevap ipucu"
+    }},
+    {{
+      "question": "Zorlayıcı soru 2",
+      "answer_hint": "Kısa cevap ipucu"
+    }}
+  ],
+  "preparation_tips": [
+    "Hazırlık önerisi 1",
+    "Hazırlık önerisi 2"
+  ]
+}}
 """
 
 

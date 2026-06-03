@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, Form
 from sqlalchemy.orm import Session
 
@@ -14,15 +16,19 @@ router = APIRouter(
 @router.post("")
 def create_interview_prep(
     job_text: str = Form(...),
+    language: str = Form("Turkish"),
     db: Session = Depends(get_db)
 ):
-    result = generate_interview_questions(job_text=job_text)
+    result = generate_interview_questions(
+        job_text=job_text,
+        language=language
+    )
 
     history = ApplicationHistory(
         request_type="interview",
         cv_filename=None,
         job_text=job_text,
-        result=result
+        result=json.dumps(result, ensure_ascii=False)
     )
 
     db.add(history)
@@ -31,6 +37,7 @@ def create_interview_prep(
 
     return {
         "id": history.id,
+        "language": language,
         "job_text_length": len(job_text),
         "result": result
     }
