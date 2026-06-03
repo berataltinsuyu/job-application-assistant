@@ -1,6 +1,19 @@
 from fastapi import FastAPI
 
-from routers import analyze, cover_letter, interview, history
+from routers import (
+    analyze,
+    cover_letter,
+    interview,
+    history,
+    job_description,
+    ats,
+    job_keywords,
+    cv_improvement,
+    tailored_cv,
+    cv_rewrite,
+    application_email,
+    personalized_interview
+)
 from database import Base, engine
 
 Base.metadata.create_all(bind=engine)
@@ -15,6 +28,14 @@ app.include_router(analyze.router)
 app.include_router(cover_letter.router)
 app.include_router(interview.router)
 app.include_router(history.router)
+app.include_router(job_description.router)
+app.include_router(ats.router)
+app.include_router(job_keywords.router)
+app.include_router(cv_improvement.router)
+app.include_router(tailored_cv.router)
+app.include_router(cv_rewrite.router)
+app.include_router(application_email.router)
+app.include_router(personalized_interview.router)
 
 
 @app.get("/")
