@@ -17,6 +17,7 @@ async def create_cover_letter(
     cv_file: UploadFile = File(...),
     job_text: str = Form(...),
     tone: str = Form("professional"),
+    language: str = Form("Turkish"),
     db: Session = Depends(get_db)
 ):
     cv_text = await extract_text_from_cv(cv_file)
@@ -24,7 +25,8 @@ async def create_cover_letter(
     result = generate_cover_letter(
         cv_text=cv_text,
         job_text=job_text,
-        tone=tone
+        tone=tone,
+        language=language
     )
 
     history = ApplicationHistory(
@@ -42,5 +44,6 @@ async def create_cover_letter(
         "id": history.id,
         "cv_filename": cv_file.filename,
         "tone": tone,
+        "language": language,
         "result": result
     }

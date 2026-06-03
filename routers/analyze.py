@@ -1,3 +1,5 @@
+import json
+
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy.orm import Session
 
@@ -29,7 +31,7 @@ async def analyze_application(
         request_type="analyze",
         cv_filename=cv_file.filename,
         job_text=job_text,
-        result=result
+        result=json.dumps(result, ensure_ascii=False)
     )
 
     db.add(history)
