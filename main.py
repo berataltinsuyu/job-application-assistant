@@ -12,7 +12,9 @@ from routers import (
     tailored_cv,
     cv_rewrite,
     application_email,
-    personalized_interview
+    personalized_interview,
+    job_recommendations,
+    ats_cv_builder
 )
 from database import Base, engine
 
@@ -36,6 +38,8 @@ app.include_router(tailored_cv.router)
 app.include_router(cv_rewrite.router)
 app.include_router(application_email.router)
 app.include_router(personalized_interview.router)
+app.include_router(job_recommendations.router)
+app.include_router(ats_cv_builder.router, prefix="/ats-cv", tags=["ATS CV Builder"])
 
 
 @app.get("/")

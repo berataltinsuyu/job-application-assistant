@@ -3,13 +3,25 @@ from bs4 import BeautifulSoup
 import trafilatura
 from urllib.parse import urlparse
 
-def extract_job_description_from_url(job_url: str) -> dict:
+def extract_job_description_from_url(job_url: str, language: str = "English") -> dict:
+    is_tr = language.lower() == "turkish"
+    generic_err_msg = (
+        "Bu URL'den iş ilanı çıkarılamadı. Lütfen iş ilanı metnini manuel olarak yapıştırın."
+        if is_tr else
+        "Could not extract job description from this URL. Please paste the job description manually."
+    )
+    linkedin_err_msg = (
+        "LinkedIn giriş gerektirebilir veya otomatik erişimi engelleyebilir. Lütfen iş ilanı metnini manuel olarak yapıştırın."
+        if is_tr else
+        "LinkedIn may require login or block automated access. Please paste the job description manually."
+    )
+
     if not job_url or not job_url.strip().startswith(("http://", "https://")):
         return {
             "success": False,
             "source_url": job_url,
             "extracted_text": "",
-            "message": "Could not extract job description from this URL. Please paste the job description manually."
+            "message": generic_err_msg
         }
 
     job_url = job_url.strip()
@@ -69,7 +81,7 @@ def extract_job_description_from_url(job_url: str) -> dict:
                 "success": False,
                 "source_url": job_url,
                 "extracted_text": "",
-                "message": "Could not extract job description from this URL. Please paste the job description manually."
+                "message": linkedin_err_msg
             }
 
         # For non-LinkedIn URLs, try trafilatura first as it removes boilerplates nicely
@@ -116,7 +128,7 @@ def extract_job_description_from_url(job_url: str) -> dict:
             "success": False,
             "source_url": job_url,
             "extracted_text": "",
-            "message": "Could not extract job description from this URL. Please paste the job description manually."
+            "message": generic_err_msg
         }
 
     except Exception:
