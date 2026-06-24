@@ -1,16 +1,28 @@
-# Future DOCX Template Compatibility
+# DOCX Templates and Visual Styles
 
-This folder is reserved for future template-based DOCX rendering.
+This directory acts as the reference boundary and local storage for built-in DOCX template files.
 
-No external DOCX templates, downloaded assets, or font files are included in Phase 4A. Current CV exports still use the existing programmatic rendering pipeline.
+No external templates, downloaded font files, or binary packaging dependencies are required. All template rendering is compiled dynamically on-the-fly via the local `python-docx` service foundation.
 
-Phase 4B-1 adds a small service foundation in `services/docx_template_service.py`.
-The service provides two experimental built-in renderers, `ats_classic_docx` and `ats_modern_docx`, generated locally with `python-docx`.
-These are not integrated into Streamlit, Job Workspace, or ATS CV Builder yet.
+## Built-In Templates
 
-Future template-based rendering may use placeholder replacement with a library such as `docxtpl`.
+### 1. ATS Classic DOCX (`ats_classic_docx`)
+*   **Aesthetic:** Compact, traditional, conservative layout. Left-aligned header.
+*   **ATS Safety:** Maximum safety level. Single-column, strict section boundaries, clear text separators.
+*   **Best For:** Banking, corporate IT, finance, operations, backend development, and traditional enterprise submissions.
+*   **Visual Style:** Strict text-first layout, conventional Pt sizing (Pt 16 for name, Pt 10.5 for target title, Pt 9 for contact details, and Pt 10 body text), thin custom separators.
 
-Planned placeholders:
+### 2. ATS Modern DOCX (`ats_modern_docx`)
+*   **Aesthetic:** Modern, centered, elegant layout with improved whitespace distribution.
+*   **ATS Safety:** High safety level. Single-column flow, native paragraph borders, clean bullet dividers (` • `).
+*   **Best For:** Startups, software engineering, machine learning/AI roles, data science, product design, and creative tech submissions.
+*   **Visual Style:** Balanced spacing (Pt 20 name, Pt 11 target title, Pt 9 contact details, and Pt 10 body text), thin light-gray separators, and centered contact coordinates.
+
+---
+
+## Technical Configuration
+
+Placeholder rendering coordinates map directly to standard JSON keys parsed by the service:
 
 ```text
 {{FULL_NAME}}
@@ -30,9 +42,4 @@ Planned placeholders:
 {{LANGUAGES}}
 ```
 
-Future templates should remain ATS-aware:
-
-- Prefer one-column layouts.
-- Avoid icons, embedded text boxes, images, and decorative tables for core CV content.
-- Keep section labels readable and conventional.
-- Preserve contact fields exactly as provided by the CV parsing and locked-field flow.
+All templates are restricted to single-column, table-free core content layouts to ensure flawless parsing by automated talent acquisition systems.

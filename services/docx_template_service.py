@@ -5,6 +5,8 @@ from typing import Any
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Inches, Pt
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 
 
 DOCX_TEMPLATE_DIR = Path("templates/docx")
@@ -14,7 +16,14 @@ DOCX_TEMPLATE_CATALOG = [
     {
         "template_id": "ats_classic_docx",
         "display_name": "ATS Classic DOCX",
-        "description": "Programmatic one-column DOCX renderer with conservative ATS-friendly spacing and headings.",
+        "description": "Compact traditional ATS-friendly DOCX with clear section hierarchy and minimal styling.",
+        "best_for": "Conservative applications, banks, enterprise, corporate roles, ATS-heavy roles",
+        "visual_style": "Compact, traditional, text-first",
+        "layout": "One-column",
+        "strengths": "High readability, compact spacing, conventional section hierarchy",
+        "cautions": "Less visually expressive than modern template",
+        "recommended_for": "Finance, banking, corporate IT, operations, business analysis, backend roles",
+        "not_recommended_for": "Design-heavy creative roles",
         "ats_safety_level": "high",
         "visual_density": "medium",
         "supports_docx": True,
@@ -23,7 +32,14 @@ DOCX_TEMPLATE_CATALOG = [
     {
         "template_id": "ats_modern_docx",
         "display_name": "ATS Modern DOCX",
-        "description": "Programmatic one-column DOCX renderer with slightly stronger hierarchy and more whitespace.",
+        "description": "Modern ATS-friendly DOCX with more whitespace, stronger headings, and clean separators.",
+        "best_for": "Modern tech roles, startups, software engineering, AI/data roles, product-oriented roles",
+        "visual_style": "Modern, clean, more whitespace",
+        "layout": "One-column",
+        "strengths": "Stronger hierarchy, cleaner spacing, more polished visual impression",
+        "cautions": "May use slightly more space than classic",
+        "recommended_for": "Software engineering, AI applications, data, product, digital roles",
+        "not_recommended_for": "Ultra-conservative one-page corporate submissions where maximum compactness is needed",
         "ats_safety_level": "high",
         "visual_density": "medium",
         "supports_docx": True,
@@ -88,6 +104,19 @@ def ensure_builtin_docx_templates() -> list[dict]:
 
 def get_docx_template_catalog() -> list[dict]:
     return deepcopy(DOCX_TEMPLATE_CATALOG)
+
+
+def _add_bottom_border(paragraph, color="CCCCCC", size="6", space="4") -> None:
+    """Helper to apply a clean bottom border to a paragraph using native word XML."""
+    pPr = paragraph._element.get_or_add_pPr()
+    pBdr = OxmlElement('w:pBdr')
+    bottom = OxmlElement('w:bottom')
+    bottom.set(qn('w:val'), 'single')
+    bottom.set(qn('w:sz'), str(size))
+    bottom.set(qn('w:space'), str(space))
+    bottom.set(qn('w:color'), str(color))
+    pBdr.append(bottom)
+    pPr.append(pBdr)
 
 
 def render_cv_with_docx_template(
@@ -175,32 +204,40 @@ def _get_template(template_id: str) -> dict | None:
 def _style_for_template(template_id: str) -> dict:
     if template_id == "ats_modern_docx":
         return {
-            "margin": 0.72,
-            "name_size": 19,
+            "margin": 0.75,
+            "name_size": 20,
             "title_size": 11,
             "contact_size": 9,
-            "body_size": 10.2,
-            "heading_size": 11.5,
-            "heading_space_before": 10,
-            "heading_space_after": 2,
-            "item_space_after": 3,
-            "bullet_space_after": 1.6,
+            "body_size": 10,
+            "heading_size": 12,
+            "heading_space_before": 12,
+            "heading_space_after": 3,
+            "item_space_before": 6,
+            "item_space_after": 2,
+            "bullet_space_after": 1.5,
             "separator": True,
-            "align_header": WD_ALIGN_PARAGRAPH.LEFT,
+            "separator_color": "D0D0D0",
+            "separator_size": "4",  # 1/2 pt thin line
+            "align_header": WD_ALIGN_PARAGRAPH.CENTER,
+            "modern_style": True,
         }
     return {
-        "margin": 0.62,
-        "name_size": 17,
+        "margin": 0.75,
+        "name_size": 16,
         "title_size": 10.5,
-        "contact_size": 8.8,
+        "contact_size": 9,
         "body_size": 10,
-        "heading_size": 10.8,
-        "heading_space_before": 7,
-        "heading_space_after": 1,
+        "heading_size": 11,
+        "heading_space_before": 8,
+        "heading_space_after": 2,
+        "item_space_before": 4,
         "item_space_after": 1.5,
         "bullet_space_after": 0.8,
         "separator": True,
+        "separator_color": "A0A0A0",
+        "separator_size": "6",  # 3/4 pt line
         "align_header": WD_ALIGN_PARAGRAPH.LEFT,
+        "modern_style": False,
     }
 
 
@@ -223,28 +260,42 @@ def _render_header(document: Document, structured_cv: dict, style: dict) -> None
     target_title = _clean(contact.get("target_title"))
     contact_line = _contact_line(contact)
 
+    last_p = None
+
     if full_name:
         paragraph = document.add_paragraph()
         paragraph.alignment = style["align_header"]
+        paragraph.paragraph_format.space_after = Pt(2)
         run = paragraph.add_run(full_name)
         run.bold = True
         run.font.size = Pt(float(style["name_size"]))
+        last_p = paragraph
 
     if target_title:
         paragraph = document.add_paragraph()
         paragraph.alignment = style["align_header"]
+        paragraph.paragraph_format.space_after = Pt(2)
         run = paragraph.add_run(target_title)
         run.bold = True
         run.font.size = Pt(float(style["title_size"]))
+        last_p = paragraph
 
     if contact_line:
         paragraph = document.add_paragraph()
         paragraph.alignment = style["align_header"]
+        paragraph.paragraph_format.space_after = Pt(4)
         run = paragraph.add_run(contact_line)
         run.font.size = Pt(float(style["contact_size"]))
+        last_p = paragraph
 
-    if full_name or target_title or contact_line:
-        _add_separator(document, style)
+    if last_p and style.get("separator"):
+        _add_bottom_border(
+            last_p,
+            color=style.get("separator_color", "CCCCCC"),
+            size=style.get("separator_size", "6"),
+            space="8"
+        )
+        last_p.paragraph_format.space_after = Pt(12)
 
 
 def _render_sections(document: Document, structured_cv: dict, style: dict) -> None:
@@ -258,11 +309,21 @@ def _render_sections(document: Document, structured_cv: dict, style: dict) -> No
             "certifications": _certification_items,
             "languages": _language_items,
         }[section_key]
+
         items = renderer(structured_cv)
-        if not items:
-            continue
-        _add_heading(document, SECTION_TITLES[section_key], style)
+
+        # Robustness: Filter out items with empty content text to avoid rendering blank elements
+        valid_items = []
         for item in items:
+            cleaned_text = _clean(item.get("text"))
+            if cleaned_text:
+                valid_items.append({"type": item.get("type"), "text": cleaned_text})
+
+        if not valid_items:
+            continue
+
+        _add_heading(document, SECTION_TITLES[section_key], style)
+        for item in valid_items:
             if item["type"] == "heading":
                 _add_item_heading(document, item["text"], style)
             elif item["type"] == "bullet":
@@ -279,24 +340,42 @@ def _add_heading(document: Document, text: str, style: dict) -> None:
     run.bold = True
     run.font.size = Pt(float(style["heading_size"]))
     if style.get("separator"):
-        _add_separator(document, style)
-
-
-def _add_separator(document: Document, style: dict) -> None:
-    paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_after = Pt(float(style["heading_space_after"]))
-    run = paragraph.add_run("_" * 72)
-    run.font.size = Pt(5)
+        _add_bottom_border(
+            paragraph,
+            color=style.get("separator_color", "CCCCCC"),
+            size=style.get("separator_size", "6"),
+            space="4"
+        )
 
 
 def _add_item_heading(document: Document, text: str, style: dict) -> None:
     if not text:
         return
     paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_before = Pt(float(style.get("item_space_before", 4)))
     paragraph.paragraph_format.space_after = Pt(float(style["item_space_after"]))
-    run = paragraph.add_run(text)
+
+    parts = [p.strip() for p in text.split(" | ") if p.strip()]
+    if not parts:
+        return
+
+    # First component (e.g. Job Title, Project Name, School Name) -> Bold
+    run = paragraph.add_run(parts[0])
     run.bold = True
     run.font.size = Pt(float(style["body_size"]))
+
+    sep = "  •  " if style.get("modern_style") else "  |  "
+
+    for i, part in enumerate(parts[1:]):
+        sep_run = paragraph.add_run(sep)
+        sep_run.font.size = Pt(float(style["body_size"]))
+
+        run = paragraph.add_run(part)
+        run.font.size = Pt(float(style["body_size"]))
+
+        # Second component (e.g. Company name, Degree type) -> Italic
+        if i == 0:
+            run.italic = True
 
 
 def _add_paragraph(document: Document, text: str, style: dict) -> None:
@@ -357,7 +436,9 @@ def _experience_items(structured_cv: dict) -> list[dict]:
         if heading:
             items.append({"type": "heading", "text": heading})
         for bullet in _list(record.get("bullets")):
-            items.append({"type": "bullet", "text": _clean(bullet)})
+            cleaned_bullet = _clean(bullet)
+            if cleaned_bullet:
+                items.append({"type": "bullet", "text": cleaned_bullet})
         description = _clean(record.get("description"))
         if description:
             items.append({"type": "paragraph", "text": description})
@@ -379,7 +460,9 @@ def _project_items(structured_cv: dict) -> list[dict]:
         if description:
             items.append({"type": "paragraph", "text": description})
         for bullet in _list(record.get("bullets")):
-            items.append({"type": "bullet", "text": _clean(bullet)})
+            cleaned_bullet = _clean(bullet)
+            if cleaned_bullet:
+                items.append({"type": "bullet", "text": cleaned_bullet})
     return items
 
 
@@ -397,7 +480,9 @@ def _education_items(structured_cv: dict) -> list[dict]:
         if heading:
             items.append({"type": "heading", "text": heading})
         for detail in _list(record.get("details")):
-            items.append({"type": "bullet", "text": _clean(detail)})
+            cleaned_detail = _clean(detail)
+            if cleaned_detail:
+                items.append({"type": "bullet", "text": cleaned_detail})
     return items
 
 

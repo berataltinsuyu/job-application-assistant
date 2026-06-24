@@ -399,7 +399,17 @@ TRANSLATIONS = {
         "docx_render_mode_tpl": "Şablon DOCX",
         "docx_template_select": "DOCX Şablonu Seçin",
         "docx_template_experimental_note": "Şablon DOCX deneyseldir ve ATS dostu tutulmuştur. Göndermeden önce formatı kontrol edin.",
-        "docx_template_warning": "Şablon DOCX oluşturulamadı. Lütfen Programatik DOCX modunu kullanın."
+        "docx_template_warning": "Şablon DOCX oluşturulamadı. Lütfen Programatik DOCX modunu kullanın.",
+        "docx_template_guidance": "Şablon rehberi",
+        "docx_best_for": "En uygun kullanım",
+        "docx_style": "Stil",
+        "docx_strengths": "Güçlü yönler",
+        "docx_cautions": "Dikkat edilmesi gerekenler",
+        "docx_recommended_for": "Önerilen roller",
+        "docx_not_recommended_for": "Önerilmeyen durumlar",
+        "docx_ats_safety": "ATS güvenliği",
+        "docx_visual_density": "Görsel yoğunluk",
+        "docx_layout": "Yerleşim"
     },
     "en": {
         "app_title": "💼 AI Job Application Assistant",
@@ -782,7 +792,17 @@ TRANSLATIONS = {
         "docx_render_mode_tpl": "Template DOCX",
         "docx_template_select": "Select DOCX Template",
         "docx_template_experimental_note": "Template DOCX is experimental and ATS-friendly. Review formatting before sending.",
-        "docx_template_warning": "Template DOCX rendering failed. Please fallback to Programmatic DOCX mode."
+        "docx_template_warning": "Template DOCX rendering failed. Please fallback to Programmatic DOCX mode.",
+        "docx_template_guidance": "Template guidance",
+        "docx_best_for": "Best for",
+        "docx_style": "Style",
+        "docx_strengths": "Strengths",
+        "docx_cautions": "Cautions",
+        "docx_recommended_for": "Recommended for",
+        "docx_not_recommended_for": "Not recommended for",
+        "docx_ats_safety": "ATS safety",
+        "docx_visual_density": "Visual density",
+        "docx_layout": "Layout"
     }
 }
 
@@ -1321,6 +1341,21 @@ def get_asset_quality_report(asset: dict) -> dict:
 def get_asset_structure_report(asset: dict) -> dict:
     structured = unwrap_asset_structured_json(asset)
     return structured.get("structure_report") if isinstance(structured.get("structure_report"), dict) else {}
+
+
+def render_docx_template_guidance_expander(template_info: dict) -> None:
+    if not isinstance(template_info, dict) or not template_info:
+        return
+    with st.expander(t("docx_template_guidance"), expanded=False):
+        st.markdown(f"**{t('docx_best_for')}:** {template_info.get('best_for', '')}")
+        st.markdown(f"**{t('docx_style')}:** {template_info.get('visual_style', '')}")
+        st.markdown(f"**{t('docx_layout')}:** {template_info.get('layout', '')}")
+        st.markdown(f"**{t('docx_strengths')}:** {template_info.get('strengths', '')}")
+        st.markdown(f"**{t('docx_cautions')}:** {template_info.get('cautions', '')}")
+        st.markdown(f"**{t('docx_recommended_for')}:** {template_info.get('recommended_for', '')}")
+        st.markdown(f"**{t('docx_not_recommended_for')}:** {template_info.get('not_recommended_for', '')}")
+        st.markdown(f"**{t('docx_ats_safety')}:** {str(template_info.get('ats_safety_level', '')).upper()}")
+        st.markdown(f"**{t('docx_visual_density')}:** {str(template_info.get('visual_density', '')).upper()}")
 
 
 def render_quality_report(report: dict, title: str, score_key: str) -> None:
@@ -2084,6 +2119,7 @@ elif selected_page_key == "📄 ATS CV Builder":
                     selected_template_info = tpl_options[selected_tpl_disp]
                     selected_template_id_for_docx = selected_template_info["template_id"]
                     st.caption(selected_template_info.get("description", ""))
+                    render_docx_template_guidance_expander(selected_template_info)
                 else:
                     st.warning("No DOCX templates available. Using default.")
 
@@ -2744,6 +2780,7 @@ elif selected_page_key == "💼 Job Workspace":
                                 selected_template_info = tpl_options[selected_tpl_disp]
                                 jw_docx_template_id = selected_template_info["template_id"]
                                 st.caption(selected_template_info.get("description", ""))
+                                render_docx_template_guidance_expander(selected_template_info)
                             else:
                                 st.warning("No DOCX templates available. Using default.")
 

@@ -51,7 +51,7 @@ venv/bin/python scratch/seed_demo_data.py
 - "Generated materials are drafts and should be reviewed before sending."
 - "CV Quality Check and Structure Validation are deterministic review helpers; they flag contact corruption, field mixing, and unsupported senior claims."
 - "Adaptation Level controls how assertively the generated CV is tailored while still forbidding invented facts."
-- "Template DOCX is now available experimentally in both ATS CV Builder and Job Workspace CV generation. Classic and Modern styles are rendered programmatically."
+- "Template DOCX is available in both ATS CV Builder and Job Workspace CV generation. Classic and Modern styles are rendered locally and programmatically with built-in styling, including bottom borders and dedicated layout properties."
 
 ## Known Limitations
 
@@ -60,7 +60,7 @@ venv/bin/python scratch/seed_demo_data.py
 - Gemini-backed generation requires `GEMINI_API_KEY`.
 - Scores are estimates, not official ATS results.
 - Quality checks are heuristic and should guide review, not replace proofreading.
-- Future DOCX template support is only a folder/documentation foundation in this phase.
+- Custom templates are experimental; use the 'Template guidance' expander in the UI to select the right style.
 
 ## Troubleshooting
 
