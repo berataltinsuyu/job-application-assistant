@@ -85,6 +85,14 @@ def list_ats_cv_templates():
     }
 
 
+@router.get("/docx-templates")
+def list_docx_templates():
+    from services.docx_template_service import get_docx_template_catalog
+    return {
+        "catalog": get_docx_template_catalog()
+    }
+
+
 @router.get("/templates/{template_id}")
 def read_ats_cv_template(template_id: str):
     try:
@@ -297,19 +305,61 @@ async def export_ats_cv_docx(
     one_page: str = Form("false"),
     enabled_sections: str = Form(""),
     export_style: str = Form("standard"),
+    docx_render_mode: str = Form("programmatic"),
+    docx_template_id: str = Form(""),
 ):
     ats_cv, template, parsed_one_page, parsed_sections, parsed_export_style = _parse_export_payload(
         ats_cv_json, template_id, language, one_page, enabled_sections, export_style
     )
-    docx_bytes = render_ats_cv_to_docx(
-        ats_cv, template, language, parsed_one_page, parsed_sections, parsed_export_style
-    )
+
+    resolved_template_id = template["id"]
+
+    if docx_render_mode == "template":
+        from services.docx_template_service import render_cv_with_docx_template
+        import os
+        import uuid
+        temp_path = f"scratch/temp_export_{uuid.uuid4().hex}.docx"
+        try:
+            render_res = render_cv_with_docx_template(
+                structured_cv=ats_cv,
+                template_id=docx_template_id,
+                output_path=temp_path,
+                metadata={"docx_render_mode": "template", "docx_template_id": docx_template_id}
+            )
+            if render_res.get("success"):
+                with open(temp_path, "rb") as f:
+                    docx_bytes = f.read()
+                resolved_template_id = docx_template_id
+            else:
+                warnings_str = ", ".join(render_res.get("warnings", []))
+                err_detail = warnings_str or render_res.get("message") or "Unknown template rendering error"
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Template rendering failed: {err_detail}. Please use Programmatic DOCX fallback."
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="Template rendering failed. Please use Programmatic DOCX fallback."
+            )
+        finally:
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except Exception:
+                    pass
+    else:
+        docx_bytes = render_ats_cv_to_docx(
+            ats_cv, template, language, parsed_one_page, parsed_sections, parsed_export_style
+        )
 
     return Response(
         content=docx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
-            "Content-Disposition": f'attachment; filename="{_cv_export_filename("ats_cv", template["id"], "docx")}"'
+            "Content-Disposition": f'attachment; filename="{_cv_export_filename("ats_cv", resolved_template_id, "docx")}"'
         },
     )
 

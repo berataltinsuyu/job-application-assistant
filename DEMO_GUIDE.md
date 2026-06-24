@@ -51,7 +51,7 @@ venv/bin/python scratch/seed_demo_data.py
 - "Generated materials are drafts and should be reviewed before sending."
 - "CV Quality Check and Structure Validation are deterministic review helpers; they flag contact corruption, field mixing, and unsupported senior claims."
 - "Adaptation Level controls how assertively the generated CV is tailored while still forbidding invented facts."
-- "The DOCX template folder is prepared for future placeholder rendering, but Phase 4A does not add final designer templates."
+- "Template DOCX is now available experimentally in both ATS CV Builder and Job Workspace CV generation. Classic and Modern styles are rendered programmatically."
 
 ## Known Limitations
 

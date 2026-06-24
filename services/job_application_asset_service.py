@@ -249,6 +249,8 @@ async def generate_job_tailored_cv(
     one_page: bool,
     enabled_sections: list[str] | None,
     adaptation_level: str = "balanced",
+    docx_render_mode: str = "programmatic",
+    docx_template_id: str = "",
 ) -> dict:
     job = db.query(MonitoredJob).filter(MonitoredJob.id == job_id).first()
     if not job:
@@ -322,6 +324,12 @@ async def generate_job_tailored_cv(
         "adaptation_level": _normalize_adaptation_level(adaptation_level),
     })
 
+    if docx_render_mode == "template":
+        structured_payload["docx_render_mode"] = "template"
+        structured_payload["docx_template_id"] = docx_template_id
+    else:
+        structured_payload["docx_render_mode"] = "programmatic"
+
     fmt = output_format.lower()
     if fmt == "pdf":
         file_bytes = render_ats_cv_to_pdf(
@@ -333,14 +341,49 @@ async def generate_job_tailored_cv(
             export_style="standard"
         )
     elif fmt == "docx":
-        file_bytes = render_ats_cv_to_docx(
-            ats_cv=ats_cv,
-            template=template,
-            language=language,
-            one_page=one_page,
-            enabled_sections=sections_set,
-            export_style="standard"
-        )
+        if docx_render_mode == "template":
+            from services.docx_template_service import render_cv_with_docx_template
+            import uuid
+            temp_path = f"scratch/temp_tailored_{uuid.uuid4().hex}.docx"
+            try:
+                render_res = render_cv_with_docx_template(
+                    structured_cv=ats_cv,
+                    template_id=docx_template_id,
+                    output_path=temp_path,
+                    metadata={"docx_render_mode": "template", "docx_template_id": docx_template_id}
+                )
+                if render_res.get("success"):
+                    with open(temp_path, "rb") as f:
+                        file_bytes = f.read()
+                else:
+                    warnings_str = ", ".join(render_res.get("warnings", []))
+                    err_detail = warnings_str or render_res.get("message") or "Unknown template rendering error"
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Template rendering failed: {err_detail}. Please use Programmatic DOCX fallback."
+                    )
+            except HTTPException:
+                raise
+            except Exception:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Template rendering failed. Please use Programmatic DOCX fallback."
+                )
+            finally:
+                if os.path.exists(temp_path):
+                    try:
+                        os.remove(temp_path)
+                    except Exception:
+                        pass
+        else:
+            file_bytes = render_ats_cv_to_docx(
+                ats_cv=ats_cv,
+                template=template,
+                language=language,
+                one_page=one_page,
+                enabled_sections=sections_set,
+                export_style="standard"
+            )
     elif fmt == "txt":
         file_bytes = text_preview.encode("utf-8")
     elif fmt == "json":
@@ -356,8 +399,9 @@ async def generate_job_tailored_cv(
         )
         fmt = "pdf"
 
+    resolved_template_id = docx_template_id if (fmt == "docx" and docx_render_mode == "template") else template_id
     os.makedirs(ASSETS_DIR, exist_ok=True)
-    filename = _cv_asset_filename("tailored_cv", template_id, fmt)
+    filename = _cv_asset_filename("tailored_cv", resolved_template_id, fmt)
     file_path = os.path.join(ASSETS_DIR, filename)
 
     with open(file_path, "wb") as f:
@@ -366,7 +410,7 @@ async def generate_job_tailored_cv(
     asset = JobApplicationAsset(
         job_id=job_id,
         asset_type="tailored_cv",
-        title=f"Tailored CV - {template_id} ({language})",
+        title=f"Tailored CV - {resolved_template_id} ({language})",
         content_text=text_preview,
         structured_json=json.dumps(structured_payload, ensure_ascii=False),
         file_path=file_path,

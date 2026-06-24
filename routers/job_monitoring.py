@@ -365,6 +365,8 @@ async def create_job_tailored_cv(
     one_page: bool = Form(False),
     enabled_sections: str | None = Form(None),
     adaptation_level: str = Form("balanced"),
+    docx_render_mode: str = Form("programmatic"),
+    docx_template_id: str = Form(""),
     db: Session = Depends(get_db),
 ):
     if not validate_template_id(template_id):
@@ -393,6 +395,8 @@ async def create_job_tailored_cv(
             one_page=one_page,
             enabled_sections=sections_list,
             adaptation_level=adaptation_level,
+            docx_render_mode=docx_render_mode,
+            docx_template_id=docx_template_id,
         )
         return res
     except HTTPException:

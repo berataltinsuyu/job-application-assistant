@@ -393,7 +393,13 @@ TRANSLATIONS = {
         "output_label": "Oluşturulan Çıktı:",
         "all": "Hepsi",
         "record_deleted": "Kayıt silindi.",
-        "all_deleted": "Tüm geçmiş kayıtları başarıyla silindi."
+        "all_deleted": "Tüm geçmiş kayıtları başarıyla silindi.",
+        "docx_render_mode_label": "DOCX Oluşturma Modu",
+        "docx_render_mode_prog": "Programatik DOCX",
+        "docx_render_mode_tpl": "Şablon DOCX",
+        "docx_template_select": "DOCX Şablonu Seçin",
+        "docx_template_experimental_note": "Şablon DOCX deneyseldir ve ATS dostu tutulmuştur. Göndermeden önce formatı kontrol edin.",
+        "docx_template_warning": "Şablon DOCX oluşturulamadı. Lütfen Programatik DOCX modunu kullanın."
     },
     "en": {
         "app_title": "💼 AI Job Application Assistant",
@@ -770,7 +776,13 @@ TRANSLATIONS = {
         "output_label": "Generated Output:",
         "all": "All",
         "record_deleted": "Record deleted.",
-        "all_deleted": "All history deleted successfully."
+        "all_deleted": "All history deleted successfully.",
+        "docx_render_mode_label": "DOCX Render Mode",
+        "docx_render_mode_prog": "Programmatic DOCX",
+        "docx_render_mode_tpl": "Template DOCX",
+        "docx_template_select": "Select DOCX Template",
+        "docx_template_experimental_note": "Template DOCX is experimental and ATS-friendly. Review formatting before sending.",
+        "docx_template_warning": "Template DOCX rendering failed. Please fallback to Programmatic DOCX mode."
     }
 }
 
@@ -1446,6 +1458,8 @@ def fetch_ats_cv_export(
     one_page: bool = False,
     enabled_sections: list[str] | None = None,
     export_style: str = "standard",
+    docx_render_mode: str = "programmatic",
+    docx_template_id: str = "",
 ) -> bytes | None:
     try:
         response = requests.post(
@@ -1457,6 +1471,8 @@ def fetch_ats_cv_export(
                 "one_page": str(one_page).lower(),
                 "enabled_sections": json.dumps(enabled_sections) if enabled_sections is not None else "",
                 "export_style": export_style,
+                "docx_render_mode": docx_render_mode,
+                "docx_template_id": docx_template_id,
             }
         )
         if response.status_code == 200:
@@ -2040,11 +2056,43 @@ elif selected_page_key == "📄 ATS CV Builder":
             if not enabled_export_sections:
                 st.warning("Select at least one export section." if st.session_state.ui_lang == "en" else "En az bir dışa aktarma bölümü seçin.")
 
+            # DOCX Render Mode selector
+            render_mode_options = [t("docx_render_mode_prog"), t("docx_render_mode_tpl")]
+            selected_render_mode_label = st.radio(
+                t("docx_render_mode_label"),
+                render_mode_options,
+                index=0,
+                key="ats_cv_docx_render_mode"
+            )
+            docx_render_mode = "template" if selected_render_mode_label == t("docx_render_mode_tpl") else "programmatic"
+
+            selected_template_id_for_docx = export_template_id
+            if docx_render_mode == "template":
+                st.info(t("docx_template_experimental_note"))
+                try:
+                    tpl_catalog_res = requests.get(f"{API_BASE_URL}/ats-cv/docx-templates")
+                    if tpl_catalog_res.status_code == 200:
+                        tpl_catalog = tpl_catalog_res.json().get("catalog", [])
+                    else:
+                        tpl_catalog = []
+                except Exception:
+                    tpl_catalog = []
+
+                if tpl_catalog:
+                    tpl_options = {item["display_name"]: item for item in tpl_catalog}
+                    selected_tpl_disp = st.selectbox(t("docx_template_select"), list(tpl_options.keys()), key="ats_cv_docx_template_select")
+                    selected_template_info = tpl_options[selected_tpl_disp]
+                    selected_template_id_for_docx = selected_template_info["template_id"]
+                    st.caption(selected_template_info.get("description", ""))
+                else:
+                    st.warning("No DOCX templates available. Using default.")
+
             col_docx, col_pdf, col_txt = st.columns(3)
             can_export = bool(enabled_export_sections)
             docx_bytes = fetch_ats_cv_export(
                 "export-docx", ats_cv, export_template_id, export_language,
-                one_page_export, enabled_export_sections, selected_export_style
+                one_page_export, enabled_export_sections, selected_export_style,
+                docx_render_mode=docx_render_mode, docx_template_id=selected_template_id_for_docx
             ) if can_export else None
             pdf_bytes = fetch_ats_cv_export(
                 "export-pdf", ats_cv, export_template_id, export_language,
@@ -2060,7 +2108,7 @@ elif selected_page_key == "📄 ATS CV Builder":
                     st.download_button(
                         label=t("download_docx_cv"),
                         data=docx_bytes,
-                        file_name=safe_cv_filename("ats_cv", export_template_id, "docx"),
+                        file_name=safe_cv_filename("ats_cv", selected_template_id_for_docx, "docx"),
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
             with col_pdf:
@@ -2659,7 +2707,46 @@ elif selected_page_key == "💼 Job Workspace":
                     )
                     jw_adaptation_level = dict(jw_adaptation_options).get(jw_adaptation_label, "balanced")
                     tone_select = st.selectbox(t("jm_tone_select"), ["professional", "friendly", "concise"], key=f"jw_tone_sel_{job.get('id')}")
-                    
+
+                    # Output Format and optional DOCX controls
+                    jw_format_options = ["PDF", "DOCX"]
+                    jw_format_select = st.selectbox(
+                        "Output Format" if lang_select == "English" else "Çıktı Formatı",
+                        jw_format_options,
+                        index=0,
+                        key=f"jw_fmt_sel_{job.get('id')}"
+                    )
+
+                    jw_docx_render_mode = "programmatic"
+                    jw_docx_template_id = ""
+                    if jw_format_select == "DOCX":
+                        selected_jw_render_mode_label = st.radio(
+                            t("docx_render_mode_label"),
+                            [t("docx_render_mode_prog"), t("docx_render_mode_tpl")],
+                            index=0,
+                            key=f"jw_docx_render_mode_sel_{job.get('id')}"
+                        )
+                        jw_docx_render_mode = "template" if selected_jw_render_mode_label == t("docx_render_mode_tpl") else "programmatic"
+                        if jw_docx_render_mode == "template":
+                            st.info(t("docx_template_experimental_note"))
+                            try:
+                                tpl_catalog_res = requests.get(f"{API_BASE_URL}/ats-cv/docx-templates")
+                                if tpl_catalog_res.status_code == 200:
+                                    tpl_catalog = tpl_catalog_res.json().get("catalog", [])
+                                else:
+                                    tpl_catalog = []
+                            except Exception:
+                                tpl_catalog = []
+
+                            if tpl_catalog:
+                                tpl_options = {item["display_name"]: item for item in tpl_catalog}
+                                selected_tpl_disp = st.selectbox(t("docx_template_select"), list(tpl_options.keys()), key=f"jw_docx_template_sel_{job.get('id')}")
+                                selected_template_info = tpl_options[selected_tpl_disp]
+                                jw_docx_template_id = selected_template_info["template_id"]
+                                st.caption(selected_template_info.get("description", ""))
+                            else:
+                                st.warning("No DOCX templates available. Using default.")
+
                     btn_col1, btn_col2, btn_col3 = st.columns(3)
                     is_disabled = (effective_cv_file is None)
                     
@@ -2668,9 +2755,11 @@ elif selected_page_key == "💼 Job Workspace":
                             data = {
                                 "template_id": template_select,
                                 "language": lang_select,
-                                "output_format": "pdf",
+                                "output_format": jw_format_select.lower(),
                                 "one_page": str(one_page_select).lower(),
                                 "adaptation_level": jw_adaptation_level,
+                                "docx_render_mode": jw_docx_render_mode,
+                                "docx_template_id": jw_docx_template_id,
                             }
                             with st.spinner("Generating tailored CV..."):
                                 res = api_json("POST", f"/job-monitoring/jobs/{job.get('id')}/assets/tailored-cv", timeout=90, files=effective_cv_file, data=data)
