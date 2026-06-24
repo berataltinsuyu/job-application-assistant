@@ -8,6 +8,35 @@ ACTION_VERBS = {
     "delivered", "designed", "developed", "documented", "implemented", "improved",
     "integrated", "managed", "optimized", "prepared", "reviewed", "supported", "tested",
     "validated", "wrote", "led", "coordinated", "maintained", "assisted", "contributed",
+    "accelerated", "accomplished", "administered", "advised", "allocated", "approved",
+    "architected", "assessed", "authored", "automated", "budgeted", "calculated",
+    "championed", "clarified", "coached", "compiled", "composed", "conducted",
+    "consolidated", "consulted", "crafted", "decreased", "defined", "delegated",
+    "deployed", "detailed", "directed", "discovered", "distributed",
+    "drafted", "edited", "educated", "eliminated", "enabled", "enacted", "encouraged",
+    "engineered", "enhanced", "established", "evaluated", "examined", "executed",
+    "expanded", "expedited", "facilitated", "forecasted", "formulated", "fostered",
+    "founded", "generated", "guided", "headed", "identified", "illustrated",
+    "increased", "influenced", "initiated", "inspected", "inspired",
+    "installed", "instructed", "insured", "introduced", "investigated", "launched",
+    "lectured", "liaised", "maximized", "mediated", "mentored", "merged", "minimized",
+    "modeled", "moderated", "monitored", "motivated", "negotiated", "obtained",
+    "operated", "organized", "originated", "overhauled", "oversaw", "participated",
+    "partnered", "performed", "pioneered", "planned", "positioned", "predicted",
+    "prevented", "processed", "produced", "programmed", "promoted", "proposed",
+    "provided", "published", "purchased", "realized", "recommended", "reconciled",
+    "recorded", "recruited", "redesigned", "reduced", "referred", "regulated",
+    "rehabilitated", "remodeled", "rendered", "reorganized", "repaired", "reported",
+    "represented", "researched", "resolved", "restructured", "retrieved", "revamped",
+    "revised", "scheduled", "screened", "secured", "selected", "served", "shaped",
+    "simplified", "solved", "sparked", "spearheaded", "standardized", "stimulated",
+    "streamlined", "structured", "studied", "supervised", "surveyed", "targeted",
+    "taught", "trained", "transferred", "transformed", "translated", "upgraded",
+    "utilised", "utilized", "verified", "build", "building", "create", "creating", "develop",
+    "developing", "implement", "implementing", "manage", "managing", "optimize",
+    "optimizing", "design", "designing", "direct", "directing", "lead", "leading",
+    "maintain", "maintaining", "support", "supporting", "test", "testing", "write",
+    "writing", "coordinate", "coordinating", "collaborate", "collaborating"
 }
 
 SUSPICIOUS_CLAIMS = [
@@ -25,10 +54,16 @@ JOB_TITLE_TERMS = {
     "consultant", "designer", "administrator", "coordinator", "lead", "director",
 }
 
+STRONG_ORG_TERMS = {
+    "ltd", "inc", "a.ş", "a.s", "holding", "corp", "corporation", "co.", "incorporated",
+    "university", "college", "school", "institute", "academy"
+}
+
 ORG_TERMS = {
     "ltd", "inc", "a.ş", "a.s", "bank", "university", "holding", "technologies",
     "technology", "software studio", "software", "group", "corp", "corporation",
-    "company", "college", "school", "institute", "labs", "lab",
+    "company", "college", "school", "institute", "labs", "lab", "academy", "studio",
+    "solutions", "systems"
 }
 
 DEGREE_TERMS = {
@@ -37,14 +72,14 @@ DEGREE_TERMS = {
     "yüksek lisans",
 }
 
-DATE_PATTERN = re.compile(
-    r"\b(19|20)\d{2}\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|present|current|now)\b",
+DATE_FRAGMENT_PATTERN = re.compile(
+    r"\b(19|20)\d{2}\b|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec|present|current|now|ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık)\b",
     re.IGNORECASE,
 )
 EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}")
 URL_PATTERN = re.compile(r"https?://[^\s,)>\]]+", re.IGNORECASE)
 PHONE_PATTERN = re.compile(r"(\+?\d[\d\s().-]{7,}\d)")
-CHAR_SPACED_PATTERN = re.compile(r"\b(?:[A-ZÇĞİÖŞÜ]\s+){4,}[A-ZÇĞİÖŞÜ]\b")
+CHAR_SPACED_PATTERN = re.compile(r"\b(?:[a-zA-ZÇĞİÖŞÜçğıöşü]\s+){3,}[a-zA-ZÇĞİÖŞÜçğıöşü]\b")
 
 
 def analyze_cv_output_quality(
@@ -64,7 +99,9 @@ def analyze_cv_output_quality(
     critical_count = sum(1 for issue in issues if issue["severity"] == "critical")
     warning_count = sum(1 for issue in issues if issue["severity"] == "warning")
     info_count = sum(1 for issue in issues if issue["severity"] == "info")
-    score = max(0, 100 - critical_count * 25 - warning_count * 8 - info_count * 3)
+
+    # Tuned weights: critical: -20, warning: -7, info: -2
+    score = max(0, 100 - critical_count * 20 - warning_count * 7 - info_count * 2)
 
     if critical_count:
         summary = "Needs review before sending due to critical contact or structure issues."
@@ -92,12 +129,29 @@ def validate_cv_structure(structured_cv: dict) -> dict:
     contact = _dict(structured.get("contact"))
     linkedin = _clean(contact.get("linkedin"))
     github = _clean(contact.get("github"))
+
+    swapped_socials = False
     if linkedin and "github.com" in linkedin.lower():
-        _add_issue(issues, "critical", "contact", "LinkedIn field appears to contain a GitHub URL.", "Move the URL to the GitHub field.")
+        swapped_socials = True
     if github and "linkedin.com" in github.lower():
-        _add_issue(issues, "critical", "contact", "GitHub field appears to contain a LinkedIn URL.", "Move the URL to the LinkedIn field.")
-    if linkedin and github and _normalize_url(linkedin) == _normalize_url(github):
-        _add_issue(issues, "critical", "contact", "The same URL appears in both LinkedIn and GitHub fields.", "Keep each social URL in the correct platform field.")
+        swapped_socials = True
+    if swapped_socials:
+        _add_issue(
+            issues,
+            "critical",
+            "contact",
+            "LinkedIn/GitHub fields may be swapped.",
+            "Ensure LinkedIn URL is in the LinkedIn field and GitHub URL is in the GitHub field."
+        )
+
+    if linkedin and github and _normalize_url(linkedin) == _normalize_url(github) and not swapped_socials:
+        _add_issue(
+            issues,
+            "critical",
+            "contact",
+            "The same URL appears in both LinkedIn and GitHub fields.",
+            "Keep each social URL in the correct platform field."
+        )
 
     for section_name in ("experience", "internship_experience"):
         for item in _list(structured.get(section_name)):
@@ -125,14 +179,16 @@ def validate_cv_structure(structured_cv: dict) -> dict:
         if name and _looks_like_org(name) and issuer and not _looks_like_org(issuer):
             _add_issue(issues, "warning", "structure", "Certification name and issuer may be swapped.", "Use the certificate title as name and the issuing organization as issuer.")
 
-    duplicate_skills = _duplicate_skills_across_categories(structured.get("skills") or structured.get("technical_skills") or structured.get("core_skills"))
+    duplicate_skills = _dedupe_skills(structured.get("skills") or structured.get("technical_skills") or structured.get("core_skills"))
     if duplicate_skills:
         _add_issue(issues, "info", "structure", f"Duplicate skills appear across categories: {', '.join(duplicate_skills[:8])}.", "Deduplicate skills or keep them in the most relevant category.")
 
     critical_count = sum(1 for issue in issues if issue["severity"] == "critical")
     warning_count = sum(1 for issue in issues if issue["severity"] == "warning")
     info_count = sum(1 for issue in issues if issue["severity"] == "info")
-    score = max(0, 100 - critical_count * 30 - warning_count * 10 - info_count * 4)
+
+    # Tuned weights: critical: -20, warning: -7, info: -2
+    score = max(0, 100 - critical_count * 20 - warning_count * 7 - info_count * 2)
     return {
         "is_valid": critical_count == 0,
         "structure_score": score,
@@ -159,11 +215,15 @@ def _check_contact_quality(text: str, structured: dict, issues: list[dict]) -> N
     if duplicated_socials:
         _add_issue(issues, "warning", "contact", "LinkedIn or GitHub URL appears duplicated.", "Keep each social link once in the contact section.")
 
+    swapped_socials = False
     if linkedin and "github.com" in linkedin.lower():
-        _add_issue(issues, "critical", "contact", "LinkedIn field contains a GitHub URL.", "Move the URL to GitHub.")
+        swapped_socials = True
     if github and "linkedin.com" in github.lower():
-        _add_issue(issues, "critical", "contact", "GitHub field contains a LinkedIn URL.", "Move the URL to LinkedIn.")
-    if linkedin and github and _normalize_url(linkedin) == _normalize_url(github):
+        swapped_socials = True
+    if swapped_socials:
+        _add_issue(issues, "critical", "contact", "LinkedIn/GitHub fields may be swapped.", "Ensure LinkedIn URL is in the LinkedIn field and GitHub URL is in the GitHub field.")
+
+    if linkedin and github and _normalize_url(linkedin) == _normalize_url(github) and not swapped_socials:
         _add_issue(issues, "critical", "contact", "LinkedIn and GitHub fields contain the same URL.", "Use distinct URLs for each platform.")
 
     for label, value, expected in (("LinkedIn", linkedin, "linkedin.com"), ("GitHub", github, "github.com")):
@@ -240,15 +300,39 @@ def _check_truthfulness_quality(text: str, structured: dict, issues: list[dict])
 
 
 def _check_title_company_mix(title: str, company: str, issues: list[dict], section_name: str) -> None:
-    if title and _looks_like_org(title) and not _looks_like_job_title(title):
-        _add_issue(issues, "warning", "structure", f"{section_name} title looks like a company or organization.", "Move organization text to the company field.")
-    if company and _looks_like_job_title(company) and not _looks_like_org(company):
-        _add_issue(issues, "warning", "structure", f"{section_name} company looks like a job title.", "Move role text to the title field.")
+    if title and _looks_like_company(title) and not _looks_like_job_title(title):
+        _add_issue(
+            issues,
+            "warning",
+            "structure",
+            "Title field may contain organization text.",
+            "Move organization text to the company field."
+        )
+    if company and _looks_like_job_title(company) and not _looks_like_company(company):
+        _add_issue(
+            issues,
+            "warning",
+            "structure",
+            "Company field may contain a role title.",
+            "Move role text to the title field."
+        )
     for field_name, value in (("title", title), ("company", company)):
-        if value and DATE_PATTERN.search(value):
-            _add_issue(issues, "warning", "structure", f"Date-like value appears inside {section_name} {field_name}.", "Move dates into a dedicated date field.")
-        if value and _contains_location_hint(value):
-            _add_issue(issues, "info", "structure", f"Location-like value appears inside {section_name} {field_name}.", "Move location into a dedicated location field.")
+        if value and _contains_date_fragment(value):
+            _add_issue(
+                issues,
+                "warning",
+                "structure",
+                "Date appears inside company/title field.",
+                "Move date-like values into a dedicated date field."
+            )
+        if value and _contains_location_fragment(value):
+            _add_issue(
+                issues,
+                "info",
+                "structure",
+                "Location appears inside company/title field.",
+                "Move location-like text to the location field."
+            )
 
 
 def _add_issue(issues: list[dict], severity: str, category: str, message: str, suggested_fix: str) -> None:
@@ -278,6 +362,10 @@ def _normalize_url(value: str) -> str:
     text = _clean(value).lower().rstrip("/.,")
     text = re.sub(r"^https?://(www\.)?", "", text)
     return text
+
+
+def _normalize_for_compare(text: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9çğıöşüÇĞİÖŞÜ]", "", text).lower()
 
 
 def _flatten_skills(value: Any) -> list[str]:
@@ -311,13 +399,28 @@ def _check_duplicate_names(items: list, label: str, issues: list[dict]) -> None:
 
 
 def _looks_like_job_title(value: str) -> bool:
-    words = set(re.findall(r"[A-Za-zÇĞİÖŞÜçğıöşü.]+", value.lower()))
+    lowered = value.lower()
+    words = set(re.findall(r"[a-zçğıöşü]+", lowered))
+    if words & STRONG_ORG_TERMS:
+        return False
     return bool(words & JOB_TITLE_TERMS)
 
 
 def _looks_like_org(value: str) -> bool:
     lowered = value.lower()
-    return any(term in lowered for term in ORG_TERMS)
+    words = set(re.findall(r"[a-zçğıöşü]+", lowered))
+    if not words:
+        return False
+    if words & STRONG_ORG_TERMS:
+        return True
+    if any(term in lowered for term in ORG_TERMS):
+        if not (words & JOB_TITLE_TERMS):
+            return True
+    return False
+
+
+def _looks_like_company(value: str) -> bool:
+    return _looks_like_org(value)
 
 
 def _looks_like_degree(value: str) -> bool:
@@ -326,8 +429,16 @@ def _looks_like_degree(value: str) -> bool:
 
 
 def _contains_location_hint(value: str) -> bool:
+    return _contains_location_fragment(value)
+
+
+def _contains_location_fragment(value: str) -> bool:
     lowered = value.lower()
-    return bool(re.search(r"\b(remote|hybrid|on-site|istanbul|ankara|turkey|usa|united states|europe)\b", lowered))
+    return bool(re.search(r"\b(remote|hybrid|on-site|istanbul|ankara|turkey|usa|united states|europe|izmir|bursa|kocaeli|location)\b", lowered))
+
+
+def _contains_date_fragment(value: str) -> bool:
+    return bool(DATE_FRAGMENT_PATTERN.search(value))
 
 
 def _likely_project_title_in_description(value: str) -> bool:
@@ -347,3 +458,6 @@ def _duplicate_skills_across_categories(value: Any) -> list[str]:
             seen[skill.casefold()] += 1
     return [skill for skill, count in seen.items() if count > 1]
 
+
+def _dedupe_skills(skills: Any) -> list[str]:
+    return _duplicate_skills_across_categories(skills)

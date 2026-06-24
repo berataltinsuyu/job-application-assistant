@@ -613,23 +613,36 @@ def _normalize_adaptation_level(value: str) -> str:
 def _adaptation_level_guidance(adaptation_level: str) -> str:
     if adaptation_level == "conservative":
         return (
-            "Use mostly directly supported CV content. Keep repositioning minimal. "
-            "Prefer cautious wording and avoid adding transferable claims unless clearly supported. "
-            "This is safest for strict applications."
+            "ADAPTATION MODE: CONSERVATIVE (Safest wording)\n"
+            "- Use safest, most literal wording directly supported by the CV.\n"
+            "- Keep repositioning minimal. Do not try to aggressively align unrelated experience.\n"
+            "- Avoid any bold claims or active target positioning.\n"
+            "- Avoid 'AI-focused' or similar domain buzzwords unless the source CV clearly has AI-related content.\n"
+            "- Focus strictly on exact matching facts."
         )
     if adaptation_level == "strong":
         return (
-            "Use more assertive ATS-focused positioning and target role keywords when the source CV supports them. "
-            "Still do not invent facts. Allowed wording includes hands-on exposure, project-based experience, "
-            "foundation in, transitioning toward, applied related experience in, strong interest in, and AI-focused "
-            "backend development when backend plus AI-related evidence exists. Do not claim fake companies, fake roles, "
-            "fake projects, fake certificates, fake degrees, unsupported years of experience, production ownership, "
-            "senior architect/lead claims, or direct compliance ownership."
+            "ADAPTATION MODE: STRONG (Confident, active ATS positioning)\n"
+            "- Use more confident, active, and assertive ATS-focused positioning and target-role keywords.\n"
+            "- Actively highlight transferable skills using target terminology where the CV facts support it.\n"
+            "- Still MUST NOT invent facts.\n"
+            "- Strict constraint: Avoid unsupported seniority, direct ownership, production-scale, team leadership, compliance ownership, or fake years of experience.\n"
+            "- STRICT PROMPT CONSTRAINTS:\n"
+            "  * Never invent: company, job title, degree, certificate, project, employment duration, years of experience, production ownership, or senior/lead/architect claims.\n"
+            "  * Allowed phrasing: 'hands-on exposure', 'project-based experience', 'academic and project foundation', 'applied experience in', 'transitioning toward', 'strong interest in', 'AI-enabled applications' (only if supported).\n"
+            "  * Not allowed unless explicitly supported in source CV: 'senior', 'lead', 'architect', 'enterprise-wide', 'owned production', 'managed team', '3+ years', '5+ years', 'MLOps production ownership', 'compliance owner'."
         )
+    # Default is balanced
     return (
-        "Reframe existing experience toward the target job. Add transferable wording when reasonably supported. "
-        "Balance ATS relevance with truthfulness. Allowed wording includes hands-on exposure, project-based experience, "
-        "foundation in, transitioning toward, applied related experience in, and strong interest in when supported."
+        "ADAPTATION MODE: BALANCED (Default, truthful transferable framing)\n"
+        "- Reframe existing experience toward the target job description.\n"
+        "- Use truthful transferable framing and target keywords when supported by the CV context.\n"
+        "- Do not make the candidate sound weak, but remain strictly honest and defensible.\n"
+        "- Okay to use phrasing like: 'project-based experience', 'hands-on exposure', 'foundation in', 'growing focus on'.\n"
+        "- STRICT PROMPT CONSTRAINTS:\n"
+        "  * Never invent: company, job title, degree, certificate, project, employment duration, years of experience, production ownership, or senior/lead/architect claims.\n"
+        "  * Allowed phrasing: 'hands-on exposure', 'project-based experience', 'academic and project foundation', 'applied experience in', 'transitioning toward', 'strong interest in', 'AI-enabled applications' (only if supported).\n"
+        "  * Not allowed unless explicitly supported in source CV: 'senior', 'lead', 'architect', 'enterprise-wide', 'owned production', 'managed team', '3+ years', '5+ years', 'MLOps production ownership', 'compliance owner'."
     )
 
 
