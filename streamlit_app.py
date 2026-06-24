@@ -53,6 +53,7 @@ TRANSLATIONS = {
         "tab_jobs": "İlanlar",
         "tab_add_job": "İlan Ekle",
         "tab_search_profiles": "Arama Profilleri",
+        "tab_sources": "Kaynaklar",
         "tab_pipeline": "Pipeline",
         "tab_assets": "Materyaller",
         "job_workspace_desc": "İş ilanlarınızı yönetin, arama profillerini takip edin, başvuru sürecini izleyin ve başvuru materyalleri oluşturun.",
@@ -258,6 +259,12 @@ TRANSLATIONS = {
         "jm_rescore_profile": "Yeniden puanlama profili",
         "jm_rescored": "İlan yeniden puanlandı.",
         "jm_source_filter": "Kaynak filtresi",
+        "jm_sources_phase3a_note": "Phase 3A kaynak adaptör altyapısını hazırlar. Şu anda yalnızca manual_mock çalıştırılabilir. Gerçek iş ilanı kaynakları henüz uygulanmamıştır.",
+        "jm_source_settings_saved": "Kaynak ayarları kaydedildi.",
+        "jm_source_test": "Kaynağı Test Et",
+        "jm_source_update": "Ayarları Kaydet",
+        "jm_source_disabled": "Devre Dışı",
+        "jm_source_enabled": "Aktif",
         "jm_alert_filter": "Alert profili filtresi",
         "jm_min_score_filter": "Minimum skor filtresi",
         "jm_all_sources": "Tüm kaynaklar",
@@ -398,6 +405,7 @@ TRANSLATIONS = {
         "tab_jobs": "Jobs",
         "tab_add_job": "Add Job",
         "tab_search_profiles": "Search Profiles",
+        "tab_sources": "Sources",
         "tab_pipeline": "Pipeline",
         "tab_assets": "Assets",
         "job_workspace_desc": "Manage your job listings, track search alerts, view pipeline progress, and generate custom application materials.",
@@ -603,6 +611,12 @@ TRANSLATIONS = {
         "jm_rescore_profile": "Rescore profile",
         "jm_rescored": "Job rescored.",
         "jm_source_filter": "Source filter",
+        "jm_sources_phase3a_note": "Phase 3A prepares the source adapter system. Only manual_mock is runnable. Real job board adapters are not implemented yet.",
+        "jm_source_settings_saved": "Source settings saved.",
+        "jm_source_test": "Test Source",
+        "jm_source_update": "Save Settings",
+        "jm_source_disabled": "Disabled",
+        "jm_source_enabled": "Enabled",
         "jm_alert_filter": "Alert profile filter",
         "jm_min_score_filter": "Minimum score filter",
         "jm_all_sources": "All sources",
@@ -2069,11 +2083,19 @@ elif selected_page_key == "💼 Job Workspace":
     st.write(t("job_workspace_desc") if "job_workspace_desc" in TRANSLATIONS[st.session_state.ui_lang] else "Manage your job listings, track search alerts, view pipeline progress, and generate custom application materials.")
 
     alerts = api_json("GET", "/job-monitoring/alerts") or []
+    sources_payload = api_json("GET", "/job-monitoring/sources", timeout=30) or {}
+    source_settings = sources_payload.get("sources", [])
+    source_names = [source.get("source_name") for source in source_settings if source.get("source_name")]
+    enabled_runnable_sources = [
+        source.get("source_name") for source in source_settings
+        if source.get("enabled") and source.get("runnable") and source.get("status") == "active"
+    ]
 
-    tab_jobs, tab_add, tab_profiles, tab_pipeline, tab_assets = st.tabs([
+    tab_jobs, tab_add, tab_profiles, tab_sources, tab_pipeline, tab_assets = st.tabs([
         t("tab_jobs") if "tab_jobs" in TRANSLATIONS[st.session_state.ui_lang] else "Jobs",
         t("tab_add_job") if "tab_add_job" in TRANSLATIONS[st.session_state.ui_lang] else "Add Job",
         t("tab_search_profiles") if "tab_search_profiles" in TRANSLATIONS[st.session_state.ui_lang] else "Search Profiles",
+        t("tab_sources") if "tab_sources" in TRANSLATIONS[st.session_state.ui_lang] else "Sources",
         t("tab_pipeline") if "tab_pipeline" in TRANSLATIONS[st.session_state.ui_lang] else "Pipeline",
         t("tab_assets") if "tab_assets" in TRANSLATIONS[st.session_state.ui_lang] else "Assets"
     ])
@@ -2108,7 +2130,7 @@ elif selected_page_key == "💼 Job Workspace":
         with filter_col1:
             status_filter = st.selectbox(t("jm_status_filter"), status_options, key="jw_status_filter")
         with filter_col2:
-            source_filter = st.selectbox(t("jm_source_filter"), [t("jm_all_sources"), "manual_mock", "manual_import"], key="jw_source_filter")
+            source_filter = st.selectbox(t("jm_source_filter"), [t("jm_all_sources")] + (source_names or ["manual_mock", "manual_import"]), key="jw_source_filter")
         with filter_col3:
             alert_filter_options = [(t("jm_all_alerts"), None)] + [
                 (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
@@ -2619,8 +2641,9 @@ elif selected_page_key == "💼 Job Workspace":
             
             sources = st.multiselect(
                 t("jm_sources"),
-                ["manual_mock"],
-                default=["manual_mock"],
+                enabled_runnable_sources,
+                default=enabled_runnable_sources,
+                help=t("jm_sources_phase3a_note"),
             )
             
             selected_excluded = st.multiselect(
@@ -2653,7 +2676,7 @@ elif selected_page_key == "💼 Job Workspace":
                 "seniority": seniority_str,
                 "job_type": job_type_str,
                 "work_model": work_model_str,
-                "sources": sources or ["manual_mock", "manual_import"],
+                "sources": sources,
                 "excluded_keywords": excluded,
                 "min_match_score": min_match_score,
                 "is_active": is_active,
@@ -2718,7 +2741,112 @@ elif selected_page_key == "💼 Job Workspace":
                 ]
                 st.dataframe(run_rows, use_container_width=True)
 
-    # --- Tab 4: Pipeline ---
+    # --- Tab 4: Sources ---
+    with tab_sources:
+        st.subheader(t("tab_sources"))
+        st.info(t("jm_sources_phase3a_note"))
+
+        if not source_settings:
+            st.warning("No source settings returned by API.")
+        else:
+            source_rows = [
+                {
+                    "display_name": source.get("display_name"),
+                    "source_name": source.get("source_name"),
+                    "status": source.get("status"),
+                    "enabled": source.get("enabled"),
+                    "runnable": source.get("runnable"),
+                    "cooldown_minutes": source.get("cooldown_minutes"),
+                    "last_run_at": source.get("last_run_at") or "",
+                    "last_status": source.get("last_status") or "",
+                    "last_error": source.get("last_error") or "",
+                    "fetches_external_url": source.get("fetches_external_url"),
+                }
+                for source in source_settings
+            ]
+            st.dataframe(source_rows, use_container_width=True)
+
+            for source in source_settings:
+                source_name = source.get("source_name")
+                title_bits = [
+                    source.get("display_name") or source_name,
+                    f"`{source_name}`",
+                    t("jm_source_enabled") if source.get("enabled") else t("jm_source_disabled"),
+                    f"status: {source.get('status')}",
+                ]
+                with st.expander(" | ".join(title_bits), expanded=source_name == "manual_mock"):
+                    col_s1, col_s2, col_s3 = st.columns(3)
+                    with col_s1:
+                        st.write(f"**Type:** {source.get('source_type')}")
+                        st.write(f"**Runnable:** {source.get('runnable')}")
+                        st.write(f"**Auto search:** {source.get('supports_auto_search')}")
+                    with col_s2:
+                        st.write(f"**Requires API key:** {source.get('requires_api_key')}")
+                        st.write(f"**Fetches external URL:** {source.get('fetches_external_url')}")
+                        st.write(f"**Safety:** {source.get('safety_level')}")
+                    with col_s3:
+                        st.write(f"**Last run:** {source.get('last_run_at') or '-'}")
+                        st.write(f"**Last status:** {source.get('last_status') or '-'}")
+                        st.write(f"**Last error:** {source.get('last_error') or '-'}")
+
+                    st.caption(source.get("description") or "")
+                    st.info(source.get("safety_notes") or "")
+                    if source.get("message"):
+                        st.warning(source.get("message"))
+
+                    can_edit_enabled = source.get("status") != "not_implemented"
+                    with st.form(f"jw_source_settings_form_{source_name}"):
+                        new_enabled = st.checkbox(
+                            t("jm_source_enabled"),
+                            value=bool(source.get("enabled")),
+                            disabled=not can_edit_enabled,
+                            key=f"jw_source_enabled_{source_name}",
+                        )
+                        new_cooldown = st.number_input(
+                            "Cooldown minutes / Bekleme süresi (dk)",
+                            min_value=0,
+                            max_value=1440,
+                            value=int(source.get("cooldown_minutes") or 0),
+                            step=1,
+                            key=f"jw_source_cooldown_{source_name}",
+                        )
+                        config_value = json.dumps(source.get("config_json") or {}, ensure_ascii=False, indent=2)
+                        with st.expander("Advanced config / Gelişmiş yapılandırma", expanded=False):
+                            config_text = st.text_area(
+                                "config_json",
+                                value=config_value,
+                                height=120,
+                                key=f"jw_source_config_{source_name}",
+                            )
+                        save_source = st.form_submit_button(t("jm_source_update"))
+
+                    if save_source:
+                        try:
+                            parsed_config = json.loads(config_text or "{}")
+                        except Exception:
+                            st.error("config_json must be valid JSON.")
+                            parsed_config = None
+                        if parsed_config is not None:
+                            payload = {
+                                "enabled": new_enabled,
+                                "cooldown_minutes": int(new_cooldown),
+                                "config_json": parsed_config,
+                            }
+                            result = api_json("PATCH", f"/job-monitoring/sources/{source_name}", json=payload)
+                            if result:
+                                st.success(t("jm_source_settings_saved"))
+                                st.rerun()
+
+                    test_col, _ = st.columns([1, 3])
+                    with test_col:
+                        if st.button(t("jm_source_test"), key=f"jw_source_test_{source_name}"):
+                            test_result = api_json("POST", f"/job-monitoring/sources/{source_name}/test")
+                            if test_result and test_result.get("success"):
+                                st.success(test_result.get("message"))
+                            elif test_result:
+                                st.warning(test_result.get("message"))
+
+    # --- Tab 5: Pipeline ---
     with tab_pipeline:
         st.subheader("Application Pipeline / Başvuru Takip")
         pipeline_jobs = api_json("GET", "/job-monitoring/pipeline") or []
@@ -2776,7 +2904,7 @@ elif selected_page_key == "💼 Job Workspace":
                 for j, p in upcoming_deadlines[:5]:
                     st.write(f"- **{p.get('application_deadline')}**: Apply to *{j.get('company')}*")
 
-    # --- Tab 5: Assets ---
+    # --- Tab 6: Assets ---
     with tab_assets:
         st.subheader("All Generated Assets / Tüm Oluşturulan Materyaller")
         assets_res = api_json("GET", "/job-monitoring/assets", timeout=30)

@@ -9,6 +9,12 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from services import job_monitoring_service, job_application_pipeline_service, job_application_asset_service
+from services.job_sources import (
+    get_available_sources,
+    get_source_setting,
+    update_source_setting,
+    validate_source_can_run,
+)
 
 
 
@@ -46,6 +52,12 @@ class AlertProfileUpdate(BaseModel):
 
 class JobStatusUpdate(BaseModel):
     status: str
+
+
+class SourceSettingUpdate(BaseModel):
+    enabled: bool | None = None
+    cooldown_minutes: int | None = Field(default=None, ge=0)
+    config_json: dict[str, Any] | None = None
 
 
 class ManualJobCreate(BaseModel):
@@ -120,6 +132,53 @@ def run_alert(alert_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
         raise HTTPException(status_code=500, detail="Job monitoring run failed.") from exc
+
+
+@router.get("/sources")
+def list_sources(db: Session = Depends(get_db)):
+    try:
+        return {"sources": get_available_sources(db)}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to list source settings.") from exc
+
+
+@router.get("/sources/{source_name}")
+def get_source(source_name: str, db: Session = Depends(get_db)):
+    source = get_source_setting(db, source_name)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found.")
+    return {"source": source}
+
+
+@router.patch("/sources/{source_name}")
+def patch_source(source_name: str, payload: SourceSettingUpdate, db: Session = Depends(get_db)):
+    try:
+        update_data = payload.model_dump(exclude_unset=True)
+        source = update_source_setting(source_name, update_data, db)
+        return {"source": source}
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to update source setting.") from exc
+
+
+@router.post("/sources/{source_name}/test")
+def test_source(source_name: str, db: Session = Depends(get_db)):
+    source = get_source_setting(db, source_name)
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found.")
+    can_run = validate_source_can_run(source_name, db)
+    if source_name == "manual_mock" and can_run:
+        return {"source_name": source_name, "success": True, "message": "manual_mock is available and runnable."}
+    if source_name == "manual_import":
+        return {"source_name": source_name, "success": False, "message": "manual_import is a manual-only source and cannot be run."}
+    return {
+        "source_name": source_name,
+        "success": False,
+        "message": source.get("message") or "Source is not runnable in Phase 3A.",
+    }
 
 
 @router.get("/jobs")
@@ -469,6 +528,4 @@ def download_asset(asset_id: int, db: Session = Depends(get_db)):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Failed to download asset.") from exc
-
-
 

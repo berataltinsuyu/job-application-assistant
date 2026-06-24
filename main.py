@@ -17,10 +17,13 @@ from routers import (
     ats_cv_builder,
     job_monitoring
 )
-from database import Base, engine, ensure_job_monitoring_schema
+from database import Base, SessionLocal, engine, ensure_job_monitoring_schema
+from services.job_sources.registry import seed_default_source_settings
 
 Base.metadata.create_all(bind=engine)
 ensure_job_monitoring_schema()
+with SessionLocal() as db:
+    seed_default_source_settings(db)
 
 app = FastAPI(
     title="Job Application Assistant API",

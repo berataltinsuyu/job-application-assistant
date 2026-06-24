@@ -9,8 +9,8 @@ CV dosyaları ve iş ilanları üzerinden uyum analizi, ATS puanlaması, kapak y
 ## 🚀 Features | Özellikler
 
 - **PDF, TXT, & JSON Exports**: Download all reports and documents as JSON, TXT, and PDF / Tüm rapor ve taslakları JSON, TXT ve PDF formatında indirme.
-- **Job Recommendations**: Real-time internet job postings search and ranking using SerpAPI Google Jobs / SerpAPI Google Jobs ile internetten gerçek zamanlı iş ilanı arama ve sıralama.
-- **URL Extractor**: Scrape job description from public URLs / URL üzerinden iş ilanı metni ayıklama.
+- **Job Workspace**: Search profiles, safe mock source runs, manual job import, scoring, job intelligence, pipeline tracking, and generated application assets / Arama profilleri, güvenli mock kaynak çalıştırma, manuel ilan ekleme, puanlama, ilan analizi, başvuru takibi ve oluşturulan başvuru materyalleri.
+- **Safe Source Registry**: Phase 3A source settings, cooldown controls, and disabled placeholders for future reviewed adapters / Phase 3A kaynak ayarları, bekleme süresi kontrolleri ve gelecekte incelenecek adaptörler için devre dışı placeholder kaynaklar.
 - **ATS Compatibilty**: Compute score, format warnings & keyword gaps / ATS uyumluluk puanı ve eksik anahtar kelimeler.
 - **CV Optimization**: Rewrite sections and draft tailored CV improvements / CV iyileştirme önerileri ve bölüm bazlı yeniden yazma.
 - **Outreach & Letter**: Generate cover letters and application email drafts / Kapak yazısı ve iş başvurusu e-posta taslakları oluşturma.
@@ -94,6 +94,51 @@ Safety policy:
 - Do not bypass login, CAPTCHA, Cloudflare, paywalls, or access controls.
 - Do not use proxies, evasion techniques, hidden browser automation, or aggressive polling.
 - Keep monitoring low-frequency and user-controlled.
+
+### Phase 3A - Safe Job Source Adapter Foundation
+
+Phase 3A adds the source adapter foundation required before any real job-board integration is considered.
+
+Purpose:
+- Store source settings in `job_source_settings`.
+- List available sources through `/job-monitoring/sources`.
+- Allow safe source enable/disable and cooldown updates.
+- Route Search Profile runs through a source registry and cooldown guard.
+- Keep manual mock runs and manual job import working without external fetching.
+
+Available sources:
+- `manual_mock`: enabled by default, runnable, local mock data only, no external URL fetching.
+- `manual_import`: enabled by default, manual-only, not runnable as a monitoring source.
+- `company_careers_placeholder`: disabled, not implemented.
+- `techcareer_placeholder`: disabled, not implemented.
+- `youthall_placeholder`: disabled, not implemented.
+- `linkedin_placeholder`: disabled, not implemented.
+- `kariyer_placeholder`: disabled, not implemented.
+
+How source settings work:
+- Settings are seeded automatically if missing.
+- `enabled`, `cooldown_minutes`, and `config_json` can be updated through the API or the Job Workspace **Sources** tab.
+- `runnable` and implementation status are controlled by the registry, not by user config.
+- Not-implemented placeholders cannot be enabled in Phase 3A.
+
+Cooldown behavior:
+- Before a source run, the registry checks whether the source is enabled, runnable, implemented, and outside its cooldown window.
+- Blocked sources are skipped with a clear warning in run history.
+- If all selected sources are skipped, the run is marked failed without attempting any external access.
+
+Why real sources are not implemented yet:
+- Phase 3A is infrastructure only.
+- Real adapters will be added in future phases only after reviewing public access, robots.txt, provider terms, rate limits, and safety constraints.
+- URLs are not fetched automatically. Users must paste job descriptions manually for real postings.
+
+Phase 3A safety policy:
+- No real job board fetching.
+- No LinkedIn, Kariyer.net, Techcareer, Youthall, Indeed, or company career page requests.
+- No URL fetching or scraping.
+- No browser automation.
+- No CAPTCHA, Cloudflare, login, paywall, or access-control bypass.
+- No proxies or evasion logic.
+- Source adapters must explicitly declare whether they fetch external URLs.
 
 ### Phase 2B - Manual Job Import
 

@@ -48,6 +48,25 @@ class JobSearchRun(Base):
     error_message = Column(Text, nullable=True)
 
 
+class JobSourceSetting(Base):
+    __tablename__ = "job_source_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_name = Column(String(100), nullable=False, unique=True, index=True)
+    display_name = Column(String(255), nullable=False)
+    enabled = Column(Boolean, nullable=False, default=False)
+    runnable = Column(Boolean, nullable=False, default=False)
+    status = Column(String(50), nullable=False, default="disabled")
+    cooldown_minutes = Column(Integer, nullable=False, default=0)
+    last_run_at = Column(DateTime, nullable=True)
+    last_status = Column(String(50), nullable=True)
+    last_error = Column(Text, nullable=True)
+    config_json = Column(Text, nullable=False, default="{}")
+    safety_notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class MonitoredJob(Base):
     __tablename__ = "monitored_jobs"
     __table_args__ = (
@@ -125,6 +144,5 @@ class JobApplicationAsset(Base):
     language = Column(String(100), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
 
 

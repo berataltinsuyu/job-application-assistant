@@ -9,7 +9,13 @@ from models import JobAlertProfile, JobSearchRun, MonitoredJob, JobIntelligenceR
 from services import job_intelligence_service
 from services.job_match_service import _normalize as _normalize_for_dedupe
 from services.job_match_service import score_job_against_profile
-from services.job_sources import get_phase_2a_adapters
+from services.job_sources import (
+    can_run_source,
+    get_available_sources,
+    get_source_adapter,
+    record_source_run,
+)
+from services.job_sources.source_config import DEFAULT_SOURCE_CONFIGS
 
 
 ALLOWED_JOB_STATUSES = {"new", "saved", "rejected", "applied", "archived"}
@@ -96,25 +102,45 @@ def run_alert_profile(db: Session, alert_id: int) -> dict:
         raise ValueError("Alert profile is inactive.")
 
     alert_profile = serialize_alert_profile(profile)
-    adapters = _adapters_for_profile(alert_profile)
+    runnable_sources, skipped_sources = _runnable_sources_for_profile(db, alert_profile)
     now = _utc_now()
     run = JobSearchRun(
         alert_profile_id=profile.id,
         started_at=now,
         status="running",
-        source_count=len(adapters),
+        source_count=len(runnable_sources),
         jobs_found=0,
         new_jobs_count=0,
+        error_message=_format_skipped_sources(skipped_sources),
     )
     db.add(run)
     db.commit()
     db.refresh(run)
 
+    if not runnable_sources:
+        run.status = "failed"
+        run.finished_at = _utc_now()
+        run.error_message = _format_skipped_sources(skipped_sources) or "No enabled runnable sources were available."
+        db.commit()
+        db.refresh(run)
+        return {
+            "run": serialize_search_run(run),
+            "jobs": list_monitored_jobs(db, alert_profile_id=profile.id),
+            "skipped_sources": skipped_sources,
+        }
+
     jobs_found = 0
     new_jobs_count = 0
     try:
-        for adapter in adapters:
-            source_jobs = adapter.search_jobs(alert_profile)
+        for source_name, adapter in runnable_sources:
+            try:
+                source_jobs = adapter.search_jobs(alert_profile)
+                record_source_run(db, source_name, "success", None)
+            except Exception as source_exc:
+                record_source_run(db, source_name, "failed", str(source_exc))
+                skipped_sources.append({"source_name": source_name, "reason": str(source_exc)})
+                continue
+
             jobs_found += len(source_jobs)
             for source_job in source_jobs:
                 normalized_job = _normalize_job(source_job, adapter.source_name)
@@ -134,11 +160,13 @@ def run_alert_profile(db: Session, alert_id: int) -> dict:
         run.jobs_found = jobs_found
         run.new_jobs_count = new_jobs_count
         run.finished_at = _utc_now()
+        run.error_message = _format_skipped_sources(skipped_sources)
         db.commit()
         db.refresh(run)
         return {
             "run": serialize_search_run(run),
             "jobs": list_monitored_jobs(db, alert_profile_id=profile.id),
+            "skipped_sources": skipped_sources,
         }
     except Exception as exc:
         db.rollback()
@@ -373,10 +401,31 @@ def _get_alert_model(db: Session, alert_id: int) -> JobAlertProfile | None:
     return db.query(JobAlertProfile).filter(JobAlertProfile.id == alert_id).first()
 
 
-def _adapters_for_profile(alert_profile: dict):
-    available = get_phase_2a_adapters()
+def _runnable_sources_for_profile(db: Session, alert_profile: dict):
     requested_sources = alert_profile.get("sources") or [DEFAULT_SOURCE]
-    return [available[source] for source in requested_sources if source in available]
+    runnable_sources = []
+    skipped_sources = []
+    for source in requested_sources:
+        can_run, reason = can_run_source(source, db)
+        adapter = get_source_adapter(source) if can_run else None
+        if can_run and adapter:
+            runnable_sources.append((source, adapter))
+            continue
+        skipped_sources.append({
+            "source_name": source,
+            "reason": reason or f"{source} does not have a runnable adapter in Phase 3A.",
+        })
+    return runnable_sources, skipped_sources
+
+
+def _format_skipped_sources(skipped_sources: list[dict]) -> str:
+    if not skipped_sources:
+        return ""
+    parts = [
+        f"{item.get('source_name')}: {item.get('reason')}"
+        for item in skipped_sources
+    ]
+    return "Skipped sources: " + " | ".join(parts)
 
 
 def _find_existing_job(db: Session, alert_profile_id: int, source: str, source_job_id: str) -> MonitoredJob | None:
@@ -476,10 +525,11 @@ def _normalize_job(job: dict, source_name: str) -> dict:
 
 def _valid_sources(value) -> list[str]:
     sources = _list_value(value) or [DEFAULT_SOURCE]
-    invalid_sources = [source for source in sources if source != DEFAULT_SOURCE]
+    available = set(DEFAULT_SOURCE_CONFIGS.keys())
+    invalid_sources = [source for source in sources if source not in available]
     if invalid_sources:
-        raise ValueError("Phase 2A supports only the manual_mock source.")
-    return [DEFAULT_SOURCE]
+        raise ValueError(f"Unknown source(s): {', '.join(invalid_sources)}.")
+    return sources
 
 
 def _score_for_manual_job(job: dict, alert_profile: dict | None) -> dict:
@@ -637,4 +687,3 @@ def get_job_intelligence(db: Session, job_id: int) -> dict | None:
         "job_id": job_id,
         "intelligence": json.loads(report.report_json)
     }
-
