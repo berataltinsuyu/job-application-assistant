@@ -17,10 +17,11 @@ client = genai.Client(
 )
 
 
-def analyze_cv_for_job(cv_text: str, job_text: str) -> dict:
+def analyze_cv_for_job(cv_text: str, job_text: str, language: str = "Turkish") -> dict:
     prompt = build_analysis_prompt(
         cv_text=cv_text,
-        job_text=job_text
+        job_text=job_text,
+        language=language
     )
 
     try:
@@ -143,7 +144,7 @@ def generate_interview_questions(job_text: str, language: str) -> dict:
         )
 
 
-def build_analysis_prompt(cv_text: str, job_text: str) -> str:
+def build_analysis_prompt(cv_text: str, job_text: str, language: str) -> str:
     return f"""
 Aşağıdaki CV metnini ve iş ilanını analiz et.
 
@@ -153,7 +154,10 @@ CV METNİ:
 İŞ İLANI:
 {job_text}
 
-Lütfen sonucu Türkçe üret.
+ÇIKTI DİLİ:
+{language}
+
+Lütfen sonucu belirtilen çıktı dilinde üret: {language}.
 
 Analiz başlıkları:
 1. Genel uyum skoru 0-100 arasında olsun.

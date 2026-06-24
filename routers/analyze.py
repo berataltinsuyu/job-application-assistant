@@ -18,13 +18,15 @@ router = APIRouter(
 async def analyze_application(
     cv_file: UploadFile = File(...),
     job_text: str = Form(...),
+    language: str = Form("Turkish"),
     db: Session = Depends(get_db)
 ):
     cv_text = await extract_text_from_cv(cv_file)
 
     result = analyze_cv_for_job(
         cv_text=cv_text,
-        job_text=job_text
+        job_text=job_text,
+        language=language
     )
 
     history = ApplicationHistory(
@@ -43,5 +45,6 @@ async def analyze_application(
         "cv_filename": cv_file.filename,
         "cv_text_length": len(cv_text),
         "job_text_length": len(job_text),
+        "language": language,
         "result": result
     }

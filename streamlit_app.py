@@ -29,7 +29,7 @@ TRANSLATIONS = {
         
         # Navigation items
         "nav_dashboard": "📊 Panel",
-        "nav_job_url": "🔗 İlan Linkinden Metin Çıkarma",
+        "nav_job_url": "🔗 URL ile İlan Çekme Devre Dışı",
         "nav_cv_analysis": "🔍 CV Analizi",
         "nav_ats_score": "🎯 ATS Skoru",
         "nav_ats_cv_builder": "📄 ATS CV Oluşturucu",
@@ -59,7 +59,7 @@ TRANSLATIONS = {
         
         # Validation & Warnings
         "please_upload_cv": "⚠️ Lütfen sol menüden bir CV dosyası yükleyin.",
-        "please_enter_job_desc": "⚠️ Lütfen sol menüye bir iş ilanı metni girin (veya Linkten Çıkarıcıyı kullanın).",
+        "please_enter_job_desc": "⚠️ Lütfen sol menüye bir iş ilanı metni girin.",
         "btn_analyze": "CV Analiz Et",
         "btn_calculate_ats": "ATS Skorunu Hesapla",
         "btn_extract_keywords": "Anahtar Kelimeleri Çıkar",
@@ -92,7 +92,7 @@ TRANSLATIONS = {
         "db_no_history": "Geçmişte işlem bulunmamaktadır. Sol menüyü kullanarak ilk analizini başlat!",
         
         # Pages specific
-        "job_url_desc": "İş ilanının bulunduğu sayfanın linkini girerek ilan detaylarını otomatik olarak ayıklayın (LinkedIn vb. ilan siteleri dahil).",
+        "job_url_desc": "URL ile ilan çekme devre dışıdır. Lütfen iş ilanı metnini manuel olarak yapıştırın.",
         "job_url_label": "İş İlanı URL'sini Girin:",
         "btn_extract_job": "İlan Detaylarını Çıkar",
         "set_active_job": "Aktif İş İlanı Olarak Ayarla",
@@ -374,7 +374,7 @@ TRANSLATIONS = {
         
         # Navigation items
         "nav_dashboard": "📊 Dashboard",
-        "nav_job_url": "🔗 Job URL Extractor",
+        "nav_job_url": "🔗 URL Fetching Disabled",
         "nav_cv_analysis": "🔍 CV Analysis",
         "nav_ats_score": "🎯 ATS Score",
         "nav_ats_cv_builder": "📄 ATS CV Builder",
@@ -404,7 +404,7 @@ TRANSLATIONS = {
         
         # Validation & Warnings
         "please_upload_cv": "⚠️ Please upload your CV in the sidebar.",
-        "please_enter_job_desc": "⚠️ Please provide a job description in the sidebar (or use Job URL Extractor).",
+        "please_enter_job_desc": "⚠️ Please provide a job description in the sidebar.",
         "btn_analyze": "Analyze Match",
         "btn_calculate_ats": "Calculate ATS Score",
         "btn_extract_keywords": "Extract Job Keywords",
@@ -437,7 +437,7 @@ TRANSLATIONS = {
         "db_no_history": "No operations found in history. Start analyzing your first application using the side menu!",
         
         # Pages specific
-        "job_url_desc": "Enter a public job posting link to scrape details automatically (including LinkedIn, tech boards, and general sites).",
+        "job_url_desc": "URL fetching is disabled. Please paste the job description manually.",
         "job_url_label": "Enter Job Posting URL:",
         "btn_extract_job": "Extract Job Details",
         "set_active_job": "Set as Active Job Description",
@@ -763,33 +763,6 @@ global_job_desc = st.sidebar.text_area(
     key="global_job_desc_input"
 )
 st.session_state.global_job_text = global_job_desc
-
-with st.sidebar.expander(t("nav_job_url"), expanded=False):
-    job_url = st.text_input(t("job_url_label"), placeholder="https://...", key="sidebar_job_url")
-    if st.button(t("btn_extract_job"), key="sidebar_btn_extract_job"):
-        if not job_url.strip():
-            st.warning("Please enter a URL / Lütfen geçerli bir URL girin.")
-        else:
-            with st.spinner(t("spinner_job")):
-                try:
-                    response = requests.post(
-                        f"{API_BASE_URL}/extract-job-description",
-                        json={"job_url": job_url}
-                    )
-                    if response.status_code == 200:
-                        result = response.json()
-                        if result.get("success"):
-                            st.success(t("extraction_success"))
-                            st.session_state["global_job_desc_input"] = result.get("extracted_text", "")
-                            st.session_state.global_job_text = result.get("extracted_text", "")
-                            st.rerun()
-                        else:
-                            st.error(result.get("message"))
-                    else:
-                        st.error(f"Error {response.status_code}: {response.text}")
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
 
 global_language = st.sidebar.selectbox(
     t("output_lang"),
@@ -1381,11 +1354,11 @@ if selected_page_key == "📊 Dashboard":
     st.markdown(f"### {t('db_features')}")
     col_feat1, col_feat2 = st.columns(2)
     with col_feat1:
-        st.info(f"**🔍 {t('nav_cv_analysis')} & {t('nav_ats_score')}**\n\nUpload CV and get detailed reports and score indicators dynamically.")
-        st.success(f"**📝 {t('nav_tailored_cv')} & {t('nav_cover_letter')}**\n\nWrite customized matching proposals and targeted connection templates.")
+        st.info(f"**🔍 {t('nav_cv_tools')}**\n\nUse the global CV and job description for CV analysis, ATS scoring, improvement suggestions, and section rewrites.")
+        st.success(f"**💼 {t('nav_job_workspace')}**\n\nTrack jobs, manage pipeline notes, analyze roles, and generate job-specific materials from saved listings.")
     with col_feat2:
-        st.warning(f"**🔗 {t('nav_job_url')}**\n\nScrape details directly from link urls without copying contents manually.")
-        st.info(f"**🤝 {t('nav_interview_prep')} & {t('nav_personalized_interview')}**\n\nGenerate guides tailored specific to your experiences.")
+        st.warning(f"**✉️ {t('nav_application_materials')}**\n\nGenerate cover letters, application emails, and interview prep using the shared inputs.")
+        st.info(f"**📄 {t('nav_ats_cv_builder')}**\n\nBuild ATS-friendly CV exports while preserving locked contact fields from the uploaded CV.")
 
     st.markdown(f"### {t('db_recent_history')}")
     if history_data:
@@ -1413,7 +1386,10 @@ elif selected_page_key == "🔍 CV Tools":
             if st.button(t("btn_analyze"), key="cv_tools_analyze_btn"):
                 with st.spinner(t("spinner_analyze")):
                     try:
-                        data = {"job_text": job_text}
+                        data = {
+                            "job_text": job_text,
+                            "language": global_language
+                        }
                         response = requests.post(
                             f"{API_BASE_URL}/analyze",
                             files=cv_files,
@@ -2643,8 +2619,8 @@ elif selected_page_key == "💼 Job Workspace":
             
             sources = st.multiselect(
                 t("jm_sources"),
-                ["manual_mock", "manual_import"],
-                default=["manual_mock", "manual_import"],
+                ["manual_mock"],
+                default=["manual_mock"],
             )
             
             selected_excluded = st.multiselect(
