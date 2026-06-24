@@ -129,7 +129,7 @@ def ensure_ats_score_explanation(ats_cv: dict, language: str) -> dict:
 
 def extract_contact_fields_from_cv_text(cv_text: str) -> dict:
     """Extract conservative contact values from the source CV text."""
-    text = cv_text or ""
+    text = unspace_cv_text(cv_text)
     contact = {
         "full_name": "",
         "email": "",
@@ -181,9 +181,10 @@ def extract_contact_fields_from_text(cv_text: str) -> dict:
 
 def extract_proper_nouns_from_cv_text(cv_text: str) -> dict:
     """Infer protected proper nouns conservatively from CV section text."""
-    sections = _split_cv_text_into_sections(cv_text or "")
+    text = unspace_cv_text(cv_text)
+    sections = _split_cv_text_into_sections(text)
     return {
-        "schools": _extract_schools(sections, cv_text or ""),
+        "schools": _extract_schools(sections, text),
         "companies": _extract_companies(sections),
         "projects": _extract_project_names(sections),
         "certifications": _extract_certification_names(sections),
@@ -682,3 +683,42 @@ def _non_empty_or_default(values: list[str], default: str) -> list[str]:
 
 def build_aligned_target_title(target_role: str, target_family: str, language: str) -> str:
     return target_title_for_job_family(target_role, target_family or "general", language) or target_role
+
+
+def _clean_character_spacing(val: str) -> str:
+    if not val:
+        return ""
+    val_str = str(val).strip()
+    
+    # Split by two or more spaces to detect words
+    parts = re.split(r"\s{2,}", val_str)
+    cleaned_parts = []
+    for part in parts:
+        part_tokens = part.split()
+        if not part_tokens:
+            continue
+        # If the part looks character-spaced: e.g. single letters separated by space
+        # We consider it character-spaced if there is more than 1 token and
+        # at least 70% of tokens are single characters.
+        if len(part_tokens) > 1 and (sum(1 for t in part_tokens if len(t) == 1) / len(part_tokens)) >= 0.70:
+            cleaned_parts.append("".join(part_tokens))
+        else:
+            cleaned_parts.append(part)
+            
+    if len(parts) == 1:
+        tokens = val_str.split()
+        if len(tokens) > 1 and (sum(1 for t in tokens if len(t) == 1) / len(tokens)) >= 0.70:
+            return "".join(tokens)
+            
+    return " ".join(cleaned_parts)
+
+
+def unspace_cv_text(text: str) -> str:
+    if not text:
+        return ""
+    lines = text.splitlines()
+    cleaned_lines = []
+    for line in lines:
+        cleaned_lines.append(_clean_character_spacing(line))
+    return "\n".join(cleaned_lines)
+

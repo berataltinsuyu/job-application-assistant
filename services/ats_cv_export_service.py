@@ -307,17 +307,35 @@ def estimate_cv_content_density(ats_cv: dict) -> str:
 
 
 def render_contact(ats_cv: dict, language: str) -> dict:
+    from services.ats_cv_postprocessing import _clean_character_spacing
     contact = ats_cv.get("contact", {}) if isinstance(ats_cv, dict) else {}
     contact_parts = []
+    
+    full_name = _clean_character_spacing(contact.get("full_name", ""))
+    target_title = _clean_character_spacing(contact.get("target_title", ""))
+    
+    seen_links = set()
     for key in ["email", "phone", "location", "linkedin", "github", "portfolio"]:
-        value = _clean_text(contact.get(key))
-        if value:
-            contact_parts.append(value)
+        val = contact.get(key, "")
+        val = _clean_character_spacing(val)
+        if not val:
+            continue
+            
+        if key in ["linkedin", "github", "portfolio"]:
+            # Normalize to detect duplicates (e.g. protocol, www, trailing slash)
+            norm = val.lower().strip().rstrip("/")
+            norm = re.sub(r"^https?://(www\.)?", "", norm)
+            if norm in seen_links:
+                continue
+            seen_links.add(norm)
+            
+        contact_parts.append(val)
+        
     contact_lines = _contact_lines(contact_parts)
 
     return {
-        "full_name": _clean_text(contact.get("full_name")),
-        "target_title": _clean_text(contact.get("target_title")),
+        "full_name": full_name,
+        "target_title": target_title,
         "contact_line": " | ".join(contact_parts),
         "contact_lines": contact_lines,
     }

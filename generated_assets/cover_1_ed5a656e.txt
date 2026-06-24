@@ -1,0 +1,13 @@
+Dear Hiring Manager,
+
+I am writing to express my strong interest in the Software Engineer position at your company. With my background in developing scalable backend systems at Acme Corp and my proficiency in Python-based frameworks, I am confident that I have the technical skills required to contribute effectively to your engineering team.
+
+During my five-year tenure at Acme Corp, I specialized in building and maintaining robust REST APIs using Django and FastAPI. My experience directly aligns with your requirements for managing data flows and ensuring high-performance backend architecture. Furthermore, I am comfortable working with SQL databases and documenting technical requirements to ensure seamless collaboration across product and operations teams.
+
+I am particularly drawn to this role because of your team’s commitment to building efficient and reliable systems. I am eager to bring my analytical approach to problem-solving and my technical expertise to help your company continue delivering high-quality solutions.
+
+Thank you for your time and consideration. I would welcome the opportunity to discuss how my experience and skills can contribute to your ongoing projects. I look forward to hearing from you soon.
+
+Sincerely,
+
+John Doe

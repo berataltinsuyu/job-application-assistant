@@ -5,7 +5,8 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from models import JobAlertProfile, JobSearchRun, MonitoredJob
+from models import JobAlertProfile, JobSearchRun, MonitoredJob, JobIntelligenceReport, JobApplicationPipeline
+from services import job_intelligence_service
 from services.job_match_service import _normalize as _normalize_for_dedupe
 from services.job_match_service import score_job_against_profile
 from services.job_sources import get_phase_2a_adapters
@@ -185,10 +186,36 @@ def update_job_status(db: Session, job_id: int, status: str) -> dict | None:
     if not job:
         return None
     job.status = status
-    job.updated_at = _utc_now()
+    now = _utc_now()
+    job.updated_at = now
+
+    pipeline = db.query(JobApplicationPipeline).filter(JobApplicationPipeline.job_id == job_id).first()
+    if not pipeline:
+        pipeline = JobApplicationPipeline(
+            job_id=job_id,
+            application_stage="not_started",
+            application_priority="medium",
+            application_materials_status="not_started",
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(pipeline)
+
+    if status == "applied":
+        pipeline.application_stage = "applied"
+        if not pipeline.applied_at:
+            pipeline.applied_at = now.strftime("%Y-%m-%d")
+    elif status == "rejected":
+        pipeline.application_stage = "rejected"
+    elif status == "archived":
+        pipeline.application_stage = "archived"
+
+    pipeline.updated_at = now
+
     db.commit()
     db.refresh(job)
     return serialize_monitored_job(job)
+
 
 
 def create_manual_job(db: Session, job_payload: dict) -> dict:
@@ -550,3 +577,64 @@ def _list_value(value) -> list[str]:
 
 def _utc_now() -> datetime:
     return datetime.utcnow()
+
+
+def analyze_job(db: Session, job_id: int, alert_profile_id: int | None = None) -> dict:
+    job = db.query(MonitoredJob).filter(MonitoredJob.id == job_id).first()
+    if not job:
+        raise LookupError("Monitored job not found.")
+
+    alert_id_to_use = alert_profile_id or job.alert_profile_id
+    alert_profile = None
+    if alert_id_to_use is not None:
+        alert_model = _get_alert_model(db, alert_id_to_use)
+        if alert_profile_id is not None and not alert_model:
+            raise LookupError("Alert profile not found.")
+        if alert_model:
+            alert_profile = serialize_alert_profile(alert_model)
+
+    job_dict = serialize_monitored_job(job)
+    report_data = job_intelligence_service.generate_job_intelligence(job_dict, alert_profile)
+
+    existing_report = db.query(JobIntelligenceReport).filter(JobIntelligenceReport.job_id == job_id).first()
+    now = _utc_now()
+    if existing_report:
+        existing_report.job_family = report_data["job_family"]
+        existing_report.seniority_assessment = report_data["seniority_assessment"]
+        existing_report.report_json = json.dumps(report_data, ensure_ascii=False)
+        existing_report.updated_at = now
+        db.commit()
+        db.refresh(existing_report)
+    else:
+        new_report = JobIntelligenceReport(
+            job_id=job_id,
+            job_family=report_data["job_family"],
+            seniority_assessment=report_data["seniority_assessment"],
+            report_json=json.dumps(report_data, ensure_ascii=False),
+            created_at=now,
+            updated_at=now
+        )
+        db.add(new_report)
+        db.commit()
+        db.refresh(new_report)
+
+    return {
+        "job": serialize_monitored_job(job),
+        "intelligence": report_data
+    }
+
+
+def get_job_intelligence(db: Session, job_id: int) -> dict | None:
+    job = db.query(MonitoredJob).filter(MonitoredJob.id == job_id).first()
+    if not job:
+        raise LookupError("Monitored job not found.")
+
+    report = db.query(JobIntelligenceReport).filter(JobIntelligenceReport.job_id == job_id).first()
+    if not report:
+        return None
+
+    return {
+        "job_id": job_id,
+        "intelligence": json.loads(report.report_json)
+    }
+

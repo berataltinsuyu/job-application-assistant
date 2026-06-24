@@ -1,0 +1,13 @@
+Dear Hiring Manager,
+
+I am writing to express my strong interest in the Junior Developer position at your company. As a Computer Engineering student with a solid foundation in backend development, I have gained hands-on experience in building scalable solutions using .NET, C#, and Python. My academic background and practical experience align well with your requirements for a developer proficient in SQL and API development.
+
+During my recent internship at VakıfBank in the Payment Systems department, I actively contributed to the development and maintenance of RESTful API endpoints using .NET Core. I am highly comfortable working with SQL to perform data validation and backend operations, and I have experience using tools like Postman and Swagger for API testing and documentation. Additionally, my projects, including a Restaurant POS System and a Merchant Application System, demonstrate my ability to design business logic, integrate third-party APIs, and manage secure data interactions.
+
+I am particularly drawn to this role because it requires the combination of Python, SQL, and API building skills that I have been refining throughout my studies and professional projects. My experience in a fast-paced retail environment and my collaborative work in technical team settings have allowed me to develop strong problem-solving and communication skills, which I am eager to apply to your team.
+
+I am confident that my technical skills and dedication to software development make me a strong candidate for this position. Thank you for your time and consideration. I look forward to the possibility of discussing how my background and enthusiasm can contribute to your team during an interview.
+
+Sincerely,
+
+Berat Altinsuyu

@@ -2,6 +2,7 @@ import json
 import hashlib
 import re
 import requests
+import os
 import streamlit as st
 from datetime import datetime
 from fpdf import FPDF
@@ -42,6 +43,19 @@ TRANSLATIONS = {
         "nav_personalized_interview": "🎯 Kişiselleştirilmiş Mülakat",
         "nav_job_monitoring": "🛰️ İş İlanı Takip Agentı",
         "nav_history": "📜 Geçmiş",
+        "nav_job_workspace": "💼 İş Alanı",
+        "nav_cv_tools": "🔍 CV Araçları",
+        "nav_application_materials": "✉️ Başvuru Materyalleri",
+        "override_inputs_title": "⚙️ Genel Dosyaları Geçersiz Kıl / Özel Giriş Kullan (İsteğe Bağlı)",
+        "override_cv_label": "Bu sayfa için farklı bir CV yükle (İsteğe Bağlı):",
+        "override_job_label": "Bu sayfa için farklı bir iş ilanı girin (İsteğe Bağlı):",
+        # Job Workspace tab labels
+        "tab_jobs": "İlanlar",
+        "tab_add_job": "İlan Ekle",
+        "tab_search_profiles": "Arama Profilleri",
+        "tab_pipeline": "Pipeline",
+        "tab_assets": "Materyaller",
+        "job_workspace_desc": "İş ilanlarınızı yönetin, arama profillerini takip edin, başvuru sürecini izleyin ve başvuru materyalleri oluşturun.",
         
         # Validation & Warnings
         "please_upload_cv": "⚠️ Lütfen sol menüden bir CV dosyası yükleyin.",
@@ -205,8 +219,22 @@ TRANSLATIONS = {
         "jm_reject": "Reddet",
         "jm_mark_applied": "Başvuruldu olarak işaretle",
         "jm_archive": "Arşivle",
-        "jm_placeholder": "ATS CV Builder entegrasyonu Phase 2E’de eklenecektir.",
-        "jm_alert_created": "Alarm profili oluşturuldu.",
+        "jm_placeholder": "Başvuru materyallerini doğrudan buradan oluşturabilirsiniz.",
+        "jm_assets_section": "Başvuru Materyali Oluştur",
+        "jm_upload_cv": "CV Dosyası Yükle (PDF/DOCX)",
+        "jm_lang_select": "Çıktı Dili",
+        "jm_template_select": "CV Şablonu",
+        "jm_tone_select": "E-posta/Kapak Yazısı Tonu",
+        "jm_generate_cv": "Özelleştirilmiş CV Oluştur",
+        "jm_generate_cover": "Kapak Yazısı Oluştur",
+        "jm_generate_email": "Başvuru E-postası Oluştur",
+        "jm_existing_assets": "Oluşturulmuş Materyaller",
+        "jm_asset_type": "Materyal Tipi",
+        "jm_created_at": "Oluşturulma Tarihi",
+        "jm_export_format": "Format",
+        "jm_download": "İndir",
+        "jm_preview": "Önizleme",
+        "jm_cv_uploaded_success": "CV başarıyla analiz için yüklendi.",
         "jm_alert_deactivated": "Alarm profili pasifleştirildi.",
         "jm_run_complete": "Mock takip çalışması tamamlandı.",
         "jm_status_updated": "İlan durumu güncellendi.",
@@ -234,6 +262,42 @@ TRANSLATIONS = {
         "jm_min_score_filter": "Minimum skor filtresi",
         "jm_all_sources": "Tüm kaynaklar",
         "jm_all_alerts": "Tüm alert profilleri",
+        "jm_detected_family": "İş Ailesi",
+        "jm_detected_seniority": "Kıdem Seviyesi",
+        "jm_recommendation": "Başvuru Önerisi",
+        "jm_role_summary": "Rol Özeti",
+        "jm_match_reason": "Eşleşme Gerekçesi",
+        "jm_strengths": "Güçlü Yönler",
+        "jm_gaps": "Geliştirilmesi Gereken Yönler",
+        "jm_missing_keywords_lbl": "Eksik Anahtar Kelimeler",
+        "jm_suggested_cv_focus": "Önerilen CV Odağı",
+        "jm_suggested_project_focus": "Önerilen Proje Odağı",
+        "jm_suggested_skill_focus": "Önerilen Yetkinlik Odağı",
+        "jm_risk_notes": "Risk / Dikkat Edilmesi Gereken Hususlar",
+        "jm_interview_focus": "Mülakat Hazırlık Konuları",
+        "jm_analyze_job": "İlanı analiz et",
+        "jm_analysis_report": "İlan Analiz Raporu",
+        "jm_select_alert_for_analysis": "Analiz için alert profili seçin",
+        "jm_use_associated_alert": "İlanın mevcut alert profilini kullan",
+        "jm_analysis_complete": "İlan analizi tamamlandı.",
+        "jm_pipeline_title": "Başvuru Takip Süreci",
+        "jm_pipeline_stage": "Süreç Aşaması",
+        "jm_pipeline_priority": "Öncelik",
+        "jm_pipeline_materials": "Belgelerin Durumu",
+        "jm_pipeline_deadline": "Son Başvuru Tarihi",
+        "jm_pipeline_applied_at": "Başvuru Tarihi",
+        "jm_pipeline_next_action": "Sonraki Adım",
+        "jm_pipeline_next_action_date": "Sonraki Adım Tarihi",
+        "jm_pipeline_interview_date": "Mülakat Tarihi",
+        "jm_pipeline_contact_person": "İletişim Kişisi",
+        "jm_pipeline_contact_email": "İletişim E-postası",
+        "jm_pipeline_notes": "Başvuru Notları",
+        "jm_save_pipeline": "Süreci Kaydet",
+        "jm_pipeline_updated": "Başvuru süreci güncellendi.",
+        "jm_pipeline_overview": "Süreç Genel Bakış",
+        "jm_upcoming_actions": "Yaklaşan Adımlar",
+        "jm_upcoming_deadlines": "Yaklaşan Son Başvurular",
+        "jm_high_priority": "Yüksek Öncelikli İlanlar",
 
         # ATS CV Builder
         "ats_cv_builder": "ATS CV Oluşturucu",
@@ -324,6 +388,19 @@ TRANSLATIONS = {
         "nav_personalized_interview": "🎯 Personalized Interview",
         "nav_job_monitoring": "🛰️ Job Monitoring Agent",
         "nav_history": "📜 History",
+        "nav_job_workspace": "💼 Job Workspace",
+        "nav_cv_tools": "🔍 CV Tools",
+        "nav_application_materials": "✉️ Application Materials",
+        "override_inputs_title": "⚙️ Override Global CV / Job Description (Optional)",
+        "override_cv_label": "Upload a different CV for this page (Optional):",
+        "override_job_label": "Enter a different job description for this page (Optional):",
+        # Job Workspace tab labels
+        "tab_jobs": "Jobs",
+        "tab_add_job": "Add Job",
+        "tab_search_profiles": "Search Profiles",
+        "tab_pipeline": "Pipeline",
+        "tab_assets": "Assets",
+        "job_workspace_desc": "Manage your job listings, track search alerts, view pipeline progress, and generate custom application materials.",
         
         # Validation & Warnings
         "please_upload_cv": "⚠️ Please upload your CV in the sidebar.",
@@ -487,8 +564,22 @@ TRANSLATIONS = {
         "jm_reject": "Reject",
         "jm_mark_applied": "Mark applied",
         "jm_archive": "Archive",
-        "jm_placeholder": "ATS CV Builder integration will be added in Phase 2E.",
-        "jm_alert_created": "Alert profile created.",
+        "jm_placeholder": "You can generate application materials directly from here.",
+        "jm_assets_section": "Generate Application Materials",
+        "jm_upload_cv": "Upload CV File (PDF/DOCX)",
+        "jm_lang_select": "Output Language",
+        "jm_template_select": "CV Template",
+        "jm_tone_select": "Email/Cover Letter Tone",
+        "jm_generate_cv": "Generate Tailored CV",
+        "jm_generate_cover": "Generate Cover Letter",
+        "jm_generate_email": "Generate Application Email",
+        "jm_existing_assets": "Generated Materials",
+        "jm_asset_type": "Material Type",
+        "jm_created_at": "Created At",
+        "jm_export_format": "Format",
+        "jm_download": "Download",
+        "jm_preview": "Preview",
+        "jm_cv_uploaded_success": "CV successfully uploaded for analysis.",
         "jm_alert_deactivated": "Alert profile deactivated.",
         "jm_run_complete": "Mock monitoring run completed.",
         "jm_status_updated": "Job status updated.",
@@ -516,6 +607,42 @@ TRANSLATIONS = {
         "jm_min_score_filter": "Minimum score filter",
         "jm_all_sources": "All sources",
         "jm_all_alerts": "All alert profiles",
+        "jm_detected_family": "Job Family",
+        "jm_detected_seniority": "Seniority Level",
+        "jm_recommendation": "Recommendation",
+        "jm_role_summary": "Role Summary",
+        "jm_match_reason": "Match Reason",
+        "jm_strengths": "Candidate Strengths",
+        "jm_gaps": "Candidate Gaps",
+        "jm_missing_keywords_lbl": "Missing Keywords",
+        "jm_suggested_cv_focus": "Suggested CV Focus",
+        "jm_suggested_project_focus": "Suggested Project Focus",
+        "jm_suggested_skill_focus": "Suggested Skill Focus",
+        "jm_risk_notes": "Risk Notes / Warnings",
+        "jm_interview_focus": "Interview Focus Areas",
+        "jm_analyze_job": "Analyze job",
+        "jm_analysis_report": "Job Analysis Report",
+        "jm_select_alert_for_analysis": "Select alert profile for analysis",
+        "jm_use_associated_alert": "Use job's current alert profile",
+        "jm_analysis_complete": "Job analysis completed.",
+        "jm_pipeline_title": "Application Pipeline",
+        "jm_pipeline_stage": "Application Stage",
+        "jm_pipeline_priority": "Priority",
+        "jm_pipeline_materials": "Materials Status",
+        "jm_pipeline_deadline": "Application Deadline",
+        "jm_pipeline_applied_at": "Applied At",
+        "jm_pipeline_next_action": "Next Action",
+        "jm_pipeline_next_action_date": "Next Action Date",
+        "jm_pipeline_interview_date": "Interview Date",
+        "jm_pipeline_contact_person": "Contact Person",
+        "jm_pipeline_contact_email": "Contact Email",
+        "jm_pipeline_notes": "Application Notes",
+        "jm_save_pipeline": "Save Pipeline",
+        "jm_pipeline_updated": "Application pipeline updated.",
+        "jm_pipeline_overview": "Pipeline Overview",
+        "jm_upcoming_actions": "Upcoming Actions",
+        "jm_upcoming_deadlines": "Upcoming Deadlines",
+        "jm_high_priority": "High Priority Jobs",
 
         # ATS CV Builder
         "ats_cv_builder": "ATS CV Builder",
@@ -637,6 +764,33 @@ global_job_desc = st.sidebar.text_area(
 )
 st.session_state.global_job_text = global_job_desc
 
+with st.sidebar.expander(t("nav_job_url"), expanded=False):
+    job_url = st.text_input(t("job_url_label"), placeholder="https://...", key="sidebar_job_url")
+    if st.button(t("btn_extract_job"), key="sidebar_btn_extract_job"):
+        if not job_url.strip():
+            st.warning("Please enter a URL / Lütfen geçerli bir URL girin.")
+        else:
+            with st.spinner(t("spinner_job")):
+                try:
+                    response = requests.post(
+                        f"{API_BASE_URL}/extract-job-description",
+                        json={"job_url": job_url}
+                    )
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get("success"):
+                            st.success(t("extraction_success"))
+                            st.session_state["global_job_desc_input"] = result.get("extracted_text", "")
+                            st.session_state.global_job_text = result.get("extracted_text", "")
+                            st.rerun()
+                        else:
+                            st.error(result.get("message"))
+                    else:
+                        st.error(f"Error {response.status_code}: {response.text}")
+                except Exception as e:
+                    st.error(f"{t('status_error')} {str(e)}")
+
+
 global_language = st.sidebar.selectbox(
     t("output_lang"),
     ["Turkish", "English"],
@@ -648,20 +802,10 @@ st.sidebar.markdown("---")
 # Navigation Menu Options translated
 menu_map = {
     "📊 Dashboard": "nav_dashboard",
-    "🔗 Job URL Extractor": "nav_job_url",
-    "🔍 CV Analysis": "nav_cv_analysis",
-    "🎯 ATS Score": "nav_ats_score",
+    "💼 Job Workspace": "nav_job_workspace",
     "📄 ATS CV Builder": "nav_ats_cv_builder",
-    "🔑 Job Keywords": "nav_job_keywords",
-    "💡 CV Improvement": "nav_cv_improvement",
-    "📝 Tailored CV": "nav_tailored_cv",
-    "✍️ Rewrite CV Section": "nav_rewrite_section",
-    "✉️ Cover Letter": "nav_cover_letter",
-    "📧 Application Email": "nav_app_email",
-    "🤝 Interview Prep": "nav_interview_prep",
-    "🎯 Personalized Interview": "nav_personalized_interview",
-    "💼 Job Recommendations": "nav_job_recommendations",
-    "🛰️ Job Monitoring Agent": "nav_job_monitoring",
+    "🔍 CV Tools": "nav_cv_tools",
+    "✉️ Application Materials": "nav_application_materials",
     "📜 History": "nav_history"
 }
 
@@ -725,28 +869,114 @@ def sync_ats_locked_fields_from_uploaded_cv(uploaded_cv) -> None:
     }
 
     if uploaded_cv is None:
-        if st.session_state.get("ats_cv_locked_source_fingerprint"):
-            for locked_key in contact_keys:
-                st.session_state[f"ats_cv_{locked_key}"] = ""
-            st.session_state["ats_cv_locked_proper_nouns"] = ATS_LOCKED_PROPER_NOUNS.copy()
-            st.session_state["ats_cv_locked_proper_nouns_json"] = json.dumps(ATS_LOCKED_PROPER_NOUNS, ensure_ascii=False, indent=2)
-            st.session_state["ats_cv_locked_source_fingerprint"] = ""
+        st.session_state["ats_cv_locked_source_fingerprint"] = ""
+        st.session_state["cached_contact"] = {}
+        st.session_state["cached_proper_nouns"] = ATS_LOCKED_PROPER_NOUNS.copy()
+        st.session_state["cached_proper_nouns_json"] = json.dumps(ATS_LOCKED_PROPER_NOUNS, ensure_ascii=False, indent=2)
+        for locked_key in contact_keys:
+            st.session_state[f"ats_cv_{locked_key}"] = ""
+        st.session_state["ats_cv_locked_proper_nouns"] = ATS_LOCKED_PROPER_NOUNS.copy()
+        st.session_state["ats_cv_locked_proper_nouns_json"] = json.dumps(ATS_LOCKED_PROPER_NOUNS, ensure_ascii=False, indent=2)
         return
 
     file_bytes = uploaded_cv.getvalue()
     fingerprint = f"{uploaded_cv.name}:{len(file_bytes)}:{hashlib.sha256(file_bytes).hexdigest()}"
-    if st.session_state.get("ats_cv_locked_source_fingerprint") == fingerprint:
-        return
 
-    cv_text = extract_uploaded_cv_text(uploaded_cv)
-    extracted_contact = extract_contact_fields_from_cv_text(cv_text) if cv_text else {}
-    extracted_proper_nouns = extract_proper_nouns_from_cv_text(cv_text) if cv_text else ATS_LOCKED_PROPER_NOUNS.copy()
+    # If fingerprint is different, extract again
+    if st.session_state.get("ats_cv_locked_source_fingerprint") != fingerprint:
+        cv_text = extract_uploaded_cv_text(uploaded_cv)
+        st.session_state["cv_extraction_failed"] = not cv_text
+        extracted_contact = extract_contact_fields_from_cv_text(cv_text) if cv_text else {}
+        extracted_proper_nouns = extract_proper_nouns_from_cv_text(cv_text) if cv_text else ATS_LOCKED_PROPER_NOUNS.copy()
+        
+        st.session_state["cached_contact"] = extracted_contact
+        st.session_state["cached_proper_nouns"] = extracted_proper_nouns
+        st.session_state["cached_proper_nouns_json"] = json.dumps(extracted_proper_nouns, ensure_ascii=False, indent=2)
+        st.session_state["ats_cv_locked_source_fingerprint"] = fingerprint
 
-    for locked_key, contact_key in contact_keys.items():
-        st.session_state[f"ats_cv_{locked_key}"] = extracted_contact.get(contact_key, "")
-    st.session_state["ats_cv_locked_proper_nouns"] = extracted_proper_nouns
-    st.session_state["ats_cv_locked_proper_nouns_json"] = json.dumps(extracted_proper_nouns, ensure_ascii=False, indent=2)
-    st.session_state["ats_cv_locked_source_fingerprint"] = fingerprint
+        # For a new CV upload, we must populate/overwrite the widget state
+        for locked_key, contact_key in contact_keys.items():
+            st.session_state[f"ats_cv_{locked_key}"] = extracted_contact.get(contact_key, "")
+    else:
+        # If fingerprint matches, we only populate the widget key if it got deleted (e.g. after switching pages)
+        cached_contact = st.session_state.setdefault("cached_contact", {})
+        for locked_key, contact_key in contact_keys.items():
+            if f"ats_cv_{locked_key}" not in st.session_state:
+                st.session_state[f"ats_cv_{locked_key}"] = cached_contact.get(contact_key, "")
+
+    st.session_state["ats_cv_locked_proper_nouns"] = st.session_state.setdefault("cached_proper_nouns", ATS_LOCKED_PROPER_NOUNS.copy())
+    if "ats_cv_locked_proper_nouns_json" not in st.session_state:
+        st.session_state["ats_cv_locked_proper_nouns_json"] = st.session_state.get(
+            "cached_proper_nouns_json",
+            json.dumps(st.session_state["ats_cv_locked_proper_nouns"], ensure_ascii=False, indent=2)
+        )
+
+
+def get_effective_inputs(page_id: str, require_cv=True, require_job=True):
+    """
+    Returns (cv_file_dict_or_none, job_text, has_error, effective_cv_obj).
+    Reuses global CV and job description by default.
+    Provides optional override inputs in an expander.
+    """
+    has_error = False
+    effective_cv_file = None
+    effective_job_text = ""
+    effective_cv_obj = None
+
+    # Status summary
+    st.markdown("##### " + t("nav_title") + " Settings")
+    col1, col2 = st.columns(2)
+    with col1:
+        if global_cv is not None:
+            st.caption(f"✓ Using global CV: **{global_cv.name}**")
+            effective_cv_file = {
+                "cv_file": (global_cv.name, global_cv.getvalue(), global_cv.type)
+            }
+            effective_cv_obj = global_cv
+        else:
+            st.caption("⚠️ No global CV uploaded in sidebar.")
+            
+    with col2:
+        if st.session_state.get("global_job_desc_input", "").strip():
+            st.caption("✓ Using global job description from sidebar.")
+            effective_job_text = st.session_state.global_job_desc_input.strip()
+        else:
+            st.caption("⚠️ No global job description in sidebar.")
+
+    # Optional override section
+    override_exp = st.expander(t("override_inputs_title"), expanded=False)
+    with override_exp:
+        override_cv = st.file_uploader(
+            t("override_cv_label"),
+            type=["pdf", "docx"],
+            key=f"override_cv_{page_id}"
+        )
+        if override_cv is not None:
+            effective_cv_file = {
+                "cv_file": (override_cv.name, override_cv.getvalue(), override_cv.type)
+            }
+            effective_cv_obj = override_cv
+            st.info(f"Using override CV: {override_cv.name}")
+
+        override_job = st.text_area(
+            t("override_job_label"),
+            value="",
+            height=120,
+            key=f"override_job_{page_id}"
+        )
+        if override_job.strip():
+            effective_job_text = override_job.strip()
+            st.info("Using override job description.")
+
+    if require_cv and effective_cv_file is None:
+        st.warning(t("please_upload_cv"))
+        has_error = True
+
+    if require_job and not effective_job_text:
+        st.warning(t("please_enter_job_desc"))
+        has_error = True
+
+    return effective_cv_file, effective_job_text, has_error, effective_cv_obj
 
 
 def validate_inputs(require_cv=True, require_job=True):
@@ -763,10 +993,13 @@ def parse_comma_values(value: str) -> list[str]:
     return [item.strip() for item in str(value or "").replace("\n", ",").split(",") if item.strip()]
 
 
-def api_json(method: str, path: str, **kwargs):
+def api_json(method: str, path: str, timeout: int = 20, **kwargs):
     url = f"{API_BASE_URL}{path}"
     try:
-        response = requests.request(method, url, timeout=20, **kwargs)
+        response = requests.request(method, url, timeout=timeout, **kwargs)
+    except requests.exceptions.Timeout:
+        st.error("Generation took too long. Please try again or check backend logs." if "assets" in path and method.upper() == "POST" else "Request took too long. Please try again.")
+        return None
     except Exception as exc:
         st.error(f"{t('status_error')} {str(exc)}")
         return None
@@ -1152,7 +1385,7 @@ if selected_page_key == "📊 Dashboard":
         st.success(f"**📝 {t('nav_tailored_cv')} & {t('nav_cover_letter')}**\n\nWrite customized matching proposals and targeted connection templates.")
     with col_feat2:
         st.warning(f"**🔗 {t('nav_job_url')}**\n\nScrape details directly from link urls without copying contents manually.")
-        st.help(f"**🤝 {t('nav_interview_prep')} & {t('nav_personalized_interview')}**\n\nGenerate guides tailored specific to your experiences.")
+        st.info(f"**🤝 {t('nav_interview_prep')} & {t('nav_personalized_interview')}**\n\nGenerate guides tailored specific to your experiences.")
 
     st.markdown(f"### {t('db_recent_history')}")
     if history_data:
@@ -1162,139 +1395,196 @@ if selected_page_key == "📊 Dashboard":
         st.info(t("db_no_history"))
 
 
-elif selected_page_key == "🔗 Job URL Extractor":
-    st.header(t("nav_job_url"))
-    st.write(t("job_url_desc"))
-
-    job_url = st.text_input(t("job_url_label"), placeholder="https://...")
-
-    if st.button(t("btn_extract_job")):
-        if not job_url.strip():
-            st.warning("Please enter a URL / Lütfen geçerli bir URL girin.")
-        else:
-            with st.spinner(t("spinner_job")):
-                try:
-                    response = requests.post(
-                        f"{API_BASE_URL}/extract-job-description",
-                        json={"job_url": job_url}
-                    )
-                    if response.status_code == 200:
-                        result = response.json()
-                        if result.get("success"):
-                            st.success(t("extraction_success"))
-                            extracted_text = result.get("extracted_text", "")
-                            st.text_area(t("job_desc"), value=extracted_text, height=300)
-                            
-                            if st.button(t("set_active_job")):
-                                st.session_state.global_job_text = extracted_text
-                                st.success(t("extraction_save_success"))
-                                st.rerun()
-                        else:
-                            st.error(result.get("message"))
-                    else:
-                        st.error(f"Error {response.status_code}: {response.text}")
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "🔍 CV Analysis":
-    st.header(t("nav_cv_analysis"))
+elif selected_page_key == "🔍 CV Tools":
+    st.header(t("nav_cv_tools"))
     
-    if validate_inputs():
-        if st.button(t("btn_analyze")):
-            with st.spinner(t("spinner_analyze")):
-                try:
-                    files = get_cv_files()
-                    data = {"job_text": st.session_state.global_job_text}
-                    response = requests.post(
-                        f"{API_BASE_URL}/analyze",
-                        files=files,
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("status_complete"))
-                        st.metric(t("fit_score"), f"{result.get('match_score', 'N/A')}%")
-                        
-                        st.subheader(t("summary"))
-                        st.write(result.get("summary", ""))
-
-                        st.subheader(t("strengths"))
-                        for item in result.get("strengths", []):
-                            st.write(f"✅ {item}")
-
-                        st.subheader(t("weaknesses"))
-                        for item in result.get("weaknesses", []):
-                            st.write(f"⚠️ {item}")
-
-                        st.subheader(t("cv_improvements"))
-                        for item in result.get("cv_improvements", []):
-                            st.write(f"💡 {item}")
-
-                        st.subheader(t("strategy"))
-                        st.write(result.get("application_strategy", ""))
-
-                        st.subheader(t("recommendation"))
-                        st.write(result.get("final_recommendation", ""))
-                        
-                        st.markdown("---")
-                        render_download_buttons(t("nav_cv_analysis"), result, "cv_analysis_report")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "🎯 ATS Score":
-    st.header(t("nav_ats_score"))
-
-    if validate_inputs():
-        if st.button(t("btn_calculate_ats")):
-            with st.spinner(t("spinner_ats")):
-                try:
-                    files = get_cv_files()
-                    data = {
-                        "job_text": st.session_state.global_job_text,
-                        "language": global_language
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/ats-score",
-                        files=files,
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("status_complete"))
-                        st.metric(t("nav_ats_score"), f"{result.get('ats_score', 0)}%")
-                        
-                        st.subheader(t("matched_keywords"))
-                        st.write(", ".join(result.get("matched_keywords", [])))
-                        
-                        st.subheader(t("missing_keywords"))
-                        for kw in result.get("missing_keywords", []):
-                            st.markdown(f"- ❌ {kw}")
+    cv_files, job_text, has_error, effective_cv_obj = get_effective_inputs("cv_tools", require_cv=True, require_job=True)
+    
+    if not has_error:
+        tab1, tab2, tab3, tab4 = st.tabs([
+            t("nav_cv_analysis"),
+            t("nav_ats_score"),
+            t("nav_cv_improvement"),
+            t("nav_rewrite_section")
+        ])
+        
+        with tab1:
+            st.subheader(t("nav_cv_analysis"))
+            if st.button(t("btn_analyze"), key="cv_tools_analyze_btn"):
+                with st.spinner(t("spinner_analyze")):
+                    try:
+                        data = {"job_text": job_text}
+                        response = requests.post(
+                            f"{API_BASE_URL}/analyze",
+                            files=cv_files,
+                            data=data
+                        )
+                        if response.status_code == 200:
+                            res = response.json()
+                            result = res["result"]
                             
-                        st.subheader(t("keyword_recs"))
-                        for rec in result.get("keyword_recommendations", []):
-                            st.markdown(f"- 💡 {rec}")
+                            st.success(t("status_complete"))
+                            st.metric(t("fit_score"), f"{result.get('match_score', 'N/A')}%")
                             
-                        st.subheader(t("format_warnings"))
-                        for warn in result.get("format_warnings", []):
-                            st.markdown(f"- ⚠️ {warn}")
+                            st.subheader(t("summary"))
+                            st.write(result.get("summary", ""))
+
+                            st.subheader(t("strengths"))
+                            for item in result.get("strengths", []):
+                                st.write(f"✅ {item}")
+
+                            st.subheader(t("weaknesses"))
+                            for item in result.get("weaknesses", []):
+                                st.write(f"⚠️ {item}")
+
+                            st.subheader(t("cv_improvements"))
+                            for item in result.get("cv_improvements", []):
+                                st.write(f"💡 {item}")
+
+                            st.subheader(t("strategy"))
+                            st.write(result.get("application_strategy", ""))
+
+                            st.subheader(t("recommendation"))
+                            st.write(result.get("final_recommendation", ""))
                             
-                        st.subheader(t("summary"))
-                        st.write(result.get("summary", ""))
-                        
-                        st.markdown("---")
-                        render_download_buttons(t("nav_ats_score"), result, "ats_score_report")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
+                            st.markdown("---")
+                            render_download_buttons(t("nav_cv_analysis"), result, "cv_analysis_report")
+                        else:
+                            st.error(response.text)
+                    except Exception as e:
+                        st.error(f"{t('status_error')} {str(e)}")
+
+        with tab2:
+            st.subheader(t("nav_ats_score"))
+            if st.button(t("btn_calculate_ats"), key="cv_tools_ats_btn"):
+                with st.spinner(t("spinner_ats")):
+                    try:
+                        data = {
+                            "job_text": job_text,
+                            "language": global_language
+                        }
+                        response = requests.post(
+                            f"{API_BASE_URL}/ats-score",
+                            files=cv_files,
+                            data=data
+                        )
+                        if response.status_code == 200:
+                            res = response.json()
+                            result = res["result"]
+                            
+                            st.success(t("status_complete"))
+                            st.metric(t("nav_ats_score"), f"{result.get('ats_score', 0)}%")
+                            
+                            st.subheader(t("matched_keywords"))
+                            st.write(", ".join(result.get("matched_keywords", [])))
+                            
+                            st.subheader(t("missing_keywords"))
+                            for kw in result.get("missing_keywords", []):
+                                st.markdown(f"- ❌ {kw}")
+                                
+                            st.subheader(t("keyword_recs"))
+                            for rec in result.get("keyword_recommendations", []):
+                                st.markdown(f"- 💡 {rec}")
+                                
+                            st.subheader(t("format_warnings"))
+                            for warn in result.get("format_warnings", []):
+                                st.markdown(f"- ⚠️ {warn}")
+                                
+                            st.subheader(t("summary"))
+                            st.write(result.get("summary", ""))
+                            
+                            st.markdown("---")
+                            render_download_buttons(t("nav_ats_score"), result, "ats_score_report")
+                        else:
+                            st.error(response.text)
+                    except Exception as e:
+                        st.error(f"{t('status_error')} {str(e)}")
+
+        with tab3:
+            st.subheader(t("nav_cv_improvement"))
+            if st.button(t("btn_gen_improvements"), key="cv_tools_improv_btn"):
+                with st.spinner(t("spinner_improvements")):
+                    try:
+                        data = {
+                            "job_text": job_text,
+                            "language": global_language
+                        }
+                        response = requests.post(
+                            f"{API_BASE_URL}/cv-improvement",
+                            files=cv_files,
+                            data=data
+                        )
+                        if response.status_code == 200:
+                            res = response.json()
+                            result = res["result"]
+                            
+                            st.success(t("status_complete"))
+                            st.subheader(t("summary"))
+                            st.write(result.get("overall_feedback", ""))
+                            
+                            st.subheader(t("priority_actions"))
+                            for act in result.get("priority_actions", []):
+                                st.markdown(f"🔥 **{act}**")
+                                
+                            st.subheader(t("missing_sections"))
+                            for sec in result.get("missing_sections", []):
+                                st.markdown(f"- ❌ {sec}")
+                                
+                            st.subheader(t("skills_suggestions"))
+                            for sug in result.get("skills_section_suggestions", []):
+                                st.markdown(f"- {sug}")
+                                
+                            st.subheader(t("projects_suggestions"))
+                            for sug in result.get("project_section_suggestions", []):
+                                st.markdown(f"- {sug}")
+                                
+                            st.subheader(t("experience_suggestions"))
+                            for sug in result.get("experience_section_suggestions", []):
+                                st.markdown(f"- {sug}")
+                                
+                            st.markdown("---")
+                            render_download_buttons(t("nav_cv_improvement"), result, "cv_improvements_report")
+                        else:
+                            st.error(response.text)
+                    except Exception as e:
+                        st.error(f"{t('status_error')} {str(e)}")
+
+        with tab4:
+            st.subheader(t("nav_rewrite_section"))
+            sec_type = st.selectbox(t("select_section"), ["summary", "skills", "projects", "experience"], key="cv_tools_rewrite_sec_type")
+            rewrite_tone = st.selectbox(t("select_tone"), ["professional", "confident", "concise"], key="cv_tools_rewrite_tone")
+            
+            if st.button(t("btn_rewrite"), key="cv_tools_rewrite_btn"):
+                with st.spinner(t("spinner_rewrite")):
+                    try:
+                        data = {
+                            "job_text": job_text,
+                            "section_type": sec_type,
+                            "language": global_language,
+                            "tone": rewrite_tone
+                        }
+                        response = requests.post(
+                            f"{API_BASE_URL}/rewrite-cv-section",
+                            files=cv_files,
+                            data=data
+                        )
+                        if response.status_code == 200:
+                            res = response.json()
+                            result = res["result"]
+                            
+                            st.success(t("status_complete"))
+                            st.subheader(f"{t('nav_rewrite_section')} - {result.get('section_type').upper()} ({rewrite_tone.title()})")
+                            st.text_area(t("output_label"), value=result.get("rewritten_content"), height=250, key="cv_tools_rewritten_val")
+                            
+                            st.subheader(t("rationale"))
+                            st.info(result.get("explanation", ""))
+                            
+                            st.markdown("---")
+                            render_download_buttons(t("nav_rewrite_section"), result, "cv_rewrite_report")
+                        else:
+                            st.error(response.text)
+                    except Exception as e:
+                        st.error(f"{t('status_error')} {str(e)}")
 
 
 elif selected_page_key == "📄 ATS CV Builder":
@@ -1346,6 +1636,9 @@ elif selected_page_key == "📄 ATS CV Builder":
 
         sync_ats_locked_fields_from_uploaded_cv(global_cv)
 
+        if global_cv is not None and st.session_state.get("cv_extraction_failed"):
+            st.warning("⚠️ Lütfen dikkat: Özgeçmişten metin/iletişim bilgileri otomatik ayıklanamadı. İletişim alanlarını manuel olarak doldurabilirsiniz. / Note: Could not extract contact fields automatically from the uploaded CV. Please fill them in manually.")
+
         st.subheader(t("locked_contact_fields"))
         locked_contact_values = {}
         locked_contact_rows = [
@@ -1370,6 +1663,21 @@ elif selected_page_key == "📄 ATS CV Builder":
                         key=f"ats_cv_{right_key}",
                     )
 
+        # Update cached_contact so manual edits are not lost when switching pages!
+        cached_contact = st.session_state.setdefault("cached_contact", {})
+        contact_keys = {
+            "locked_full_name": "full_name",
+            "locked_email": "email",
+            "locked_phone": "phone",
+            "locked_location": "location",
+            "locked_linkedin": "linkedin",
+            "locked_github": "github",
+            "locked_portfolio": "portfolio",
+        }
+        for k, ck in contact_keys.items():
+            if k in locked_contact_values:
+                cached_contact[ck] = locked_contact_values[k]
+
         if not all(locked_contact_values.get(key, "").strip() for key in ["locked_full_name", "locked_email", "locked_phone"]):
             st.warning(t("locked_contact_warning"))
 
@@ -1383,6 +1691,15 @@ elif selected_page_key == "📄 ATS CV Builder":
                 key="ats_cv_locked_proper_nouns_json",
                 height=160,
             )
+
+        # Update cached_proper_nouns so manual edits are not lost when switching pages!
+        try:
+            parsed_proper_nouns = json.loads(locked_proper_nouns_json)
+            if isinstance(parsed_proper_nouns, list):
+                st.session_state["cached_proper_nouns"] = parsed_proper_nouns
+                st.session_state["cached_proper_nouns_json"] = locked_proper_nouns_json
+        except Exception:
+            pass
 
         if st.button(t("generate_ats_cv")):
             if validate_inputs(require_cv=True, require_job=True):
@@ -1568,647 +1885,700 @@ elif selected_page_key == "📄 ATS CV Builder":
                     )
 
 
-elif selected_page_key == "🔑 Job Keywords":
-    st.header(t("nav_job_keywords"))
-
-    if validate_inputs(require_cv=False):
-        if st.button(t("btn_extract_keywords")):
-            with st.spinner(t("spinner_keywords")):
-                try:
-                    data = {
-                        "job_text": st.session_state.global_job_text,
-                        "language": global_language
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/job-keywords",
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("status_complete"))
-                        st.subheader(f"{result.get('role_title', 'N/A')} ({result.get('experience_level', 'N/A')})")
-                        st.write(result.get("role_summary", ""))
-                        
-                        col1, col2 = st.columns(2)
-                        with col1:
-                            st.markdown(f"### {t('must_have')}")
-                            for skill in result.get("must_have_skills", []):
-                                st.write(f"- 🎯 {skill}")
-                            st.markdown(f"### {t('nice_to_have')}")
-                            for skill in result.get("nice_to_have_skills", []):
-                                st.write(f"- ⭐ {skill}")
-                        with col2:
-                            st.markdown(f"### {t('tech_keywords')}")
-                            st.write(", ".join(result.get("technical_keywords", [])))
-                            st.markdown(f"### {t('soft_skills')}")
-                            st.write(", ".join(result.get("soft_skills", [])))
-                        
-                        st.subheader(t("responsibilities"))
-                        for resp in result.get("responsibilities", []):
-                            st.write(f"- {resp}")
-                            
-                        st.markdown("---")
-                        render_download_buttons(t("nav_job_keywords"), result, "job_keywords_report")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "💡 CV Improvement":
-    st.header(t("nav_cv_improvement"))
-
-    if validate_inputs():
-        if st.button(t("btn_gen_improvements")):
-            with st.spinner(t("spinner_improvements")):
-                try:
-                    files = get_cv_files()
-                    data = {
-                        "job_text": st.session_state.global_job_text,
-                        "language": global_language
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/cv-improvement",
-                        files=files,
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("status_complete"))
-                        st.subheader(t("summary"))
-                        st.write(result.get("overall_feedback", ""))
-                        
-                        st.subheader(t("priority_actions"))
-                        for act in result.get("priority_actions", []):
-                            st.markdown(f"🔥 **{act}**")
-                            
-                        st.subheader(t("missing_sections"))
-                        for sec in result.get("missing_sections", []):
-                            st.markdown(f"- ❌ {sec}")
-                            
-                        st.subheader(t("skills_suggestions"))
-                        for sug in result.get("skills_section_suggestions", []):
-                            st.markdown(f"- {sug}")
-                            
-                        st.subheader(t("projects_suggestions"))
-                        for sug in result.get("project_section_suggestions", []):
-                            st.markdown(f"- {sug}")
-                            
-                        st.subheader(t("experience_suggestions"))
-                        for sug in result.get("experience_section_suggestions", []):
-                            st.markdown(f"- {sug}")
-                            
-                        st.markdown("---")
-                        render_download_buttons(t("nav_cv_improvement"), result, "cv_improvements_report")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "📝 Tailored CV":
-    st.header(t("nav_tailored_cv"))
-
-    if validate_inputs():
-        if st.button(t("btn_gen_tailored")):
-            with st.spinner(t("spinner_tailored")):
-                try:
-                    files = get_cv_files()
-                    data = {
-                        "job_text": st.session_state.global_job_text,
-                        "language": global_language
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/tailored-cv",
-                        files=files,
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("status_complete"))
-                        st.subheader(t("tailored_summary"))
-                        st.write(result.get("profile_summary", ""))
-                        
-                        st.subheader(t("tailored_skills"))
-                        st.write(", ".join(result.get("skills", [])))
-                        
-                        st.subheader(t("tailored_projects"))
-                        for prj in result.get("projects", []):
-                            st.markdown(f"**{prj.get('name')}**")
-                            st.write(prj.get("description"))
-                            st.write("---")
-                            
-                        st.subheader(t("tailored_experience"))
-                        for bullet in result.get("experience_bullets", []):
-                            st.write(f"- {bullet}")
-                            
-                        st.subheader(t("education"))
-                        st.write(result.get("education_section", ""))
-                        
-                        if result.get("warnings"):
-                            st.warning("⚠️ " + t("warnings") + ": " + ", ".join(result.get("warnings", [])))
-                        
-                        st.markdown("---")
-                        render_download_buttons(t("nav_tailored_cv"), result, "tailored_cv")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "✍️ Rewrite CV Section":
-    st.header(t("nav_rewrite_section"))
-
-    sec_type = st.selectbox(t("select_section"), ["summary", "skills", "projects", "experience"])
-    rewrite_tone = st.selectbox(t("select_tone"), ["professional", "confident", "concise"])
-
-    if validate_inputs():
-        if st.button(t("btn_rewrite")):
-            with st.spinner(t("spinner_rewrite")):
-                try:
-                    files = get_cv_files()
-                    data = {
-                        "job_text": st.session_state.global_job_text,
-                        "section_type": sec_type,
-                        "language": global_language,
-                        "tone": rewrite_tone
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/rewrite-cv-section",
-                        files=files,
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("status_complete"))
-                        st.subheader(f"{t('nav_rewrite_section')} - {result.get('section_type').upper()} ({rewrite_tone.title()})")
-                        st.text_area(t("output_label"), value=result.get("rewritten_content"), height=250)
-                        
-                        st.subheader(t("rationale"))
-                        st.info(result.get("explanation", ""))
-                        
-                        st.markdown("---")
-                        render_download_buttons(t("nav_rewrite_section"), result, "cv_rewrite_report")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "✉️ Cover Letter":
-    st.header(t("nav_cover_letter"))
-
-    cl_tone = st.selectbox(t("select_tone"), ["professional", "friendly", "confident", "formal", "short"])
-
-    if validate_inputs():
-        if st.button(t("btn_gen_cover_letter")):
-            with st.spinner(t("spinner_cover_letter")):
-                try:
-                    files = get_cv_files()
-                    data = {
-                        "job_text": st.session_state.global_job_text,
-                        "tone": cl_tone,
-                        "language": global_language
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/cover-letter",
-                        files=files,
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("status_complete"))
-                        st.text_area(t("nav_cover_letter"), value=result, height=350)
-                        
-                        st.markdown("---")
-                        render_download_buttons(t("nav_cover_letter"), result, "cover_letter")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "📧 Application Email":
-    st.header(t("nav_app_email"))
-
-    comp_name = st.text_input(t("company_name"), placeholder="e.g. Acme Corp")
-    pos_title = st.text_input(t("position_title"), placeholder="e.g. Backend Developer")
-    email_tone = st.selectbox(t("select_tone"), ["professional", "friendly", "concise"])
-
-    if validate_inputs():
-        if st.button(t("btn_gen_email")):
-            with st.spinner(t("spinner_email")):
-                try:
-                    files = get_cv_files()
-                    data = {
-                        "job_text": st.session_state.global_job_text,
-                        "language": global_language,
-                        "tone": email_tone,
-                        "company_name": comp_name or "",
-                        "position_title": pos_title or ""
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/application-email",
-                        files=files,
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("templates_ready"))
-                        
-                        st.subheader(f"{t('email_subject')}: {result.get('subject')}")
-                        st.text_area(t("email_body"), value=result.get("email_body"), height=250)
-                        
-                        st.subheader(t("linkedin_msg"))
-                        st.text_area(t("linkedin_msg"), value=result.get("short_linkedin_message"), height=120)
-                        
-                        st.subheader(t("follow_up_msg"))
-                        st.text_area(t("follow_up_msg"), value=result.get("follow_up_message"), height=180)
-                        
-                        st.markdown("---")
-                        render_download_buttons(t("nav_app_email"), result, "application_email")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "🤝 Interview Prep":
-    st.header(t("nav_interview_prep"))
-
-    if validate_inputs(require_cv=False):
-        if st.button(t("btn_gen_prep")):
-            with st.spinner(t("spinner_prep")):
-                try:
-                    data = {
-                        "job_text": st.session_state.global_job_text,
-                        "language": global_language
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/interview-prep",
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("status_complete"))
-                        
-                        st.subheader(t("tech_questions"))
-                        for idx, item in enumerate(result.get("technical_questions", [])):
-                            st.markdown(f"**Q{idx+1}: {item.get('question')}**")
-                            st.write(f"💡 Hint: {item.get('answer_hint')}")
-                            st.divider()
-                            
-                        st.subheader(t("hr_questions"))
-                        for idx, item in enumerate(result.get("hr_questions", [])):
-                            st.markdown(f"**Q{idx+1}: {item.get('question')}**")
-                            st.write(f"💡 Hint: {item.get('answer_hint')}")
-                            st.divider()
-
-                        st.subheader(t("challenge_questions"))
-                        for idx, item in enumerate(result.get("challenging_questions", [])):
-                            st.markdown(f"**Q{idx+1}: {item.get('question')}**")
-                            st.write(f"💡 Hint: {item.get('answer_hint')}")
-                            st.divider()
-                            
-                        st.subheader(t("prep_tips"))
-                        for tip in result.get("preparation_tips", []):
-                            st.write(f"- {tip}")
-                            
-                        st.markdown("---")
-                        render_download_buttons(t("nav_interview_prep"), result, "interview_prep")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "🎯 Personalized Interview":
-    st.header(t("nav_personalized_interview"))
-
-    prep_diff = st.selectbox(t("difficulty"), ["easy", "medium", "hard"])
-
-    if validate_inputs():
-        if st.button(t("btn_gen_custom_prep")):
-            with st.spinner(t("spinner_personalized_prep")):
-                try:
-                    files = get_cv_files()
-                    data = {
-                        "job_text": st.session_state.global_job_text,
-                        "language": global_language,
-                        "difficulty": prep_diff
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/personalized-interview-prep",
-                        files=files,
-                        data=data
-                    )
-                    if response.status_code == 200:
-                        res = response.json()
-                        result = res["result"]
-                        
-                        st.success(t("status_complete"))
-                        
-                        st.subheader(t("tech_questions"))
-                        for idx, item in enumerate(result.get("technical_questions", [])):
-                            st.markdown(f"**Q{idx+1}: {item.get('question')}**")
-                            st.write(f"💡 Hint: {item.get('answer_hint')}")
-                            st.divider()
-                            
-                        st.subheader(t("cv_questions"))
-                        for idx, item in enumerate(result.get("cv_based_questions", [])):
-                            st.markdown(f"**Q{idx+1}: {item.get('question')}**")
-                            st.write(f"💡 Hint: {item.get('answer_hint')}")
-                            st.divider()
-
-                        st.subheader(t("weak_questions"))
-                        for idx, item in enumerate(result.get("weak_area_questions", [])):
-                            st.markdown(f"**Q{idx+1}: {item.get('question')}**")
-                            st.write(f"💡 Hint: {item.get('answer_hint')}")
-                            st.divider()
-                            
-                        st.subheader(t("sample_answers"))
-                        for sa in result.get("sample_answers", []):
-                            st.markdown(f"**Q: {sa.get('question')}**")
-                            st.write(f"💬 Sample Answer: {sa.get('sample_answer')}")
-                            st.divider()
-
-                        st.subheader(t("prep_plan"))
-                        for step in result.get("preparation_plan", []):
-                            st.write(f"- 📋 {step}")
-                            
-                        st.markdown("---")
-                        render_download_buttons(t("nav_personalized_interview"), result, "personalized_interview_prep")
-                    else:
-                        st.error(response.text)
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
-
-
-elif selected_page_key == "💼 Job Recommendations":
-    st.header(t("nav_job_recommendations"))
+elif selected_page_key == "✉️ Application Materials":
+    st.header(t("nav_application_materials"))
     
-    if validate_inputs(require_cv=True, require_job=False):
-        col_loc, col_remote = st.columns([2, 1])
-        with col_loc:
-            location_input = st.text_input(t("location_label"), value="")
-        with col_remote:
-            st.write("")
-            st.write("")
-            remote_preference = st.checkbox(t("remote_label"), value=False)
-            
-        col_provider, col_lang = st.columns(2)
-        with col_provider:
-            provider_choice = st.selectbox(
-                t("provider_label"),
-                ["Auto", "SerpAPI Google Jobs", "Jooble", "Adzuna"],
-                key="rec_provider_choice"
-            )
-        with col_lang:
-            result_lang = st.selectbox(t("output_lang"), ["Turkish", "English"], key="rec_result_lang")
-            
-        provider_map = {
-            "Auto": "auto",
-            "SerpAPI Google Jobs": "serpapi",
-            "Jooble": "jooble",
-            "Adzuna": "adzuna"
-        }
-        provider_param = provider_map[provider_choice]
+    cv_files, job_text, has_error, effective_cv_obj = get_effective_inputs("app_materials", require_cv=False, require_job=True)
+    
+    if not has_error:
+        tab1, tab2, tab3, tab4 = st.tabs([
+            t("nav_cover_letter"),
+            t("nav_app_email"),
+            t("nav_interview_prep"),
+            t("nav_personalized_interview")
+        ])
         
-        if st.button(t("find_suitable_jobs")):
-            with st.spinner(t("spinner_recommendations")):
-                try:
-                    files = get_cv_files()
-                    data = {
-                        "location": location_input,
-                        "remote": str(remote_preference).lower(),
-                        "language": result_lang,
-                        "provider": provider_param
-                    }
-                    response = requests.post(
-                        f"{API_BASE_URL}/job-recommendations/recommended-jobs",
-                        files=files,
-                        data=data
-                    )
-                    
-                    if response.status_code == 200:
-                        res = response.json()
-                        st.success(t("status_complete"))
-                        
-                        profile = res.get("candidate_profile", {})
-                        st.subheader(f"👤 {t('candidate_profile')}")
-                        st.write(f"**{t('summary')}:** {profile.get('profile_summary', '')}")
-                        st.write(f"**Experience Level:** {profile.get('experience_level', '')}")
-                        st.write(f"**Target Roles:** {', '.join(profile.get('target_roles', []))}")
-                        st.write(f"**Technical Skills:** {', '.join(profile.get('technical_skills', []))}")
-                        st.write(f"**Soft Skills:** {', '.join(profile.get('soft_skills', []))}")
-                        st.write(f"**Preferred Job Types:** {', '.join(profile.get('preferred_job_types', []))}")
-                        st.write("---")
-                        
-                        queries = res.get("search_queries", [])
-                        st.subheader(f"🔍 {t('search_queries')}")
-                        for q in queries:
-                            st.write(f"- {q}")
-                        st.write("---")
-                        
-                        tried_q = res.get("tried_queries", [])
-                        if tried_q:
-                            st.subheader(f"🔄 {t('tried_searches')}")
-                            for idx, tq in enumerate(tried_q):
-                                st.write(
-                                    f"**{idx+1}.** Query: `{tq.get('query')}` | "
-                                    f"Location: `{tq.get('location') or 'Anywhere'}` | "
-                                    f"Remote: `{tq.get('remote')}` | "
-                                    f"Results: `{tq.get('result_count')}`"
-                                )
-                            st.write("---")
-                            
-                        tried_prov = res.get("tried_providers", [])
-                        if tried_prov:
-                            st.subheader(f"🔌 {t('tried_providers_label')}")
-                            for tp in tried_prov:
-                                status_emoji = "✅" if tp.get("status") == "success" else "❌"
-                                st.write(
-                                    f"- **{tp.get('provider').upper()}**: {status_emoji} "
-                                    f"Status: `{tp.get('status')}` | "
-                                    f"Results: `{tp.get('result_count')}`"
-                                )
-                            st.write("---")
-                        
-                        rec_jobs = res.get("recommended_jobs", [])
-                        summary = res.get("summary", "")
-                        st.subheader(f"💼 {t('recommended_jobs')}")
-                        if summary:
-                            st.info(summary)
-                            
-                        for idx, job in enumerate(rec_jobs):
-                            with st.expander(
-                                f"🎯 Match {job.get('match_score')}% | {job.get('title')} at {job.get('company')} ({job.get('location')})"
-                            ):
-                                st.markdown(f"**Source / Kaynak:** {job.get('source', 'N/A')}")
-                                if job.get("via"):
-                                    st.markdown(f"**Via / Aracılığıyla:** {job.get('via')}")
-                                if job.get("posted_date"):
-                                    st.markdown(f"**Posted / Yayınlanma:** {job.get('posted_date')}")
-                                    
-                                st.markdown(f"##### {t('strengths')}")
-                                st.write(", ".join(job.get("matched_skills", [])))
-                                
-                                st.markdown(f"##### {t('weaknesses')}")
-                                st.write(", ".join(job.get("missing_skills", [])))
-                                
-                                st.markdown(f"##### Rationale / Açıklama")
-                                st.write(job.get("why_good_match", ""))
-                                
-                                st.markdown(f"##### Application Tip / Başvuru İpucu")
-                                st.write(job.get("application_tip", ""))
-                                
-                                url = job.get("url", "")
-                                st.markdown("##### Apply Link / Başvuru Linki")
-                                if url:
-                                    st.link_button("🔗 Open Job / İlanı Aç", url)
-                                else:
-                                    st.info(t("no_apply_link"))
-                                    
-                        st.markdown("---")
-                        render_download_buttons(t("nav_job_recommendations"), res, "job_recommendations_report")
-                    else:
+        with tab1:
+            st.subheader(t("nav_cover_letter"))
+            cl_tone = st.selectbox(t("select_tone"), ["professional", "friendly", "confident", "formal", "short"], key="app_materials_cl_tone")
+            
+            if cv_files is None:
+                st.warning(t("please_upload_cv"))
+            else:
+                if st.button(t("btn_gen_cover_letter"), key="app_materials_cl_btn"):
+                    with st.spinner(t("spinner_cover_letter")):
                         try:
-                            err_detail = response.json().get("detail", "")
-                        except Exception:
-                            err_detail = response.text
+                            data = {
+                                "job_text": job_text,
+                                "tone": cl_tone,
+                                "language": global_language
+                            }
+                            response = requests.post(
+                                f"{API_BASE_URL}/cover-letter",
+                                files=cv_files,
+                                data=data
+                            )
+                            if response.status_code == 200:
+                                res = response.json()
+                                result = res["result"]
+                                
+                                st.success(t("status_complete"))
+                                st.text_area(t("nav_cover_letter"), value=result, height=350, key="app_materials_cl_val")
+                                
+                                st.markdown("---")
+                                render_download_buttons(t("nav_cover_letter"), result, "cover_letter")
+                            else:
+                                st.error(response.text)
+                        except Exception as e:
+                            st.error(f"{t('status_error')} {str(e)}")
+
+        with tab2:
+            st.subheader(t("nav_app_email"))
+            comp_name = st.text_input(t("company_name"), placeholder="e.g. Acme Corp", key="app_materials_email_comp")
+            pos_title = st.text_input(t("position_title"), placeholder="e.g. Backend Developer", key="app_materials_email_pos")
+            email_tone = st.selectbox(t("select_tone"), ["professional", "friendly", "concise"], key="app_materials_email_tone")
+            
+            if cv_files is None:
+                st.warning(t("please_upload_cv"))
+            else:
+                if st.button(t("btn_gen_email"), key="app_materials_email_btn"):
+                    with st.spinner(t("spinner_email")):
+                        try:
+                            data = {
+                                "job_text": job_text,
+                                "language": global_language,
+                                "tone": email_tone,
+                                "company_name": comp_name or "",
+                                "position_title": pos_title or ""
+                            }
+                            response = requests.post(
+                                f"{API_BASE_URL}/application-email",
+                                files=cv_files,
+                                data=data
+                            )
+                            if response.status_code == 200:
+                                res = response.json()
+                                result = res["result"]
+                                
+                                st.success(t("templates_ready"))
+                                
+                                st.subheader(f"{t('email_subject')}: {result.get('subject')}")
+                                st.text_area(t("email_body"), value=result.get("email_body"), height=250, key="app_materials_email_val")
+                                
+                                st.subheader(t("linkedin_msg"))
+                                st.text_area(t("linkedin_msg"), value=result.get("short_linkedin_message"), height=120, key="app_materials_linkedin_val")
+                                
+                                st.subheader(t("follow_up_msg"))
+                                st.text_area(t("follow_up_msg"), value=result.get("follow_up_message"), height=180, key="app_materials_followup_val")
+                                
+                                st.markdown("---")
+                                render_download_buttons(t("nav_app_email"), result, "application_email")
+                            else:
+                                st.error(response.text)
+                        except Exception as e:
+                            st.error(f"{t('status_error')} {str(e)}")
+
+        with tab3:
+            st.subheader(t("nav_interview_prep"))
+            if st.button(t("btn_gen_prep"), key="app_materials_prep_btn"):
+                with st.spinner(t("spinner_prep")):
+                    try:
+                        data = {
+                            "job_text": job_text,
+                            "language": global_language
+                        }
+                        response = requests.post(
+                            f"{API_BASE_URL}/interview-prep",
+                            data=data
+                        )
+                        if response.status_code == 200:
+                            res = response.json()
+                            result = res["result"]
                             
-                        if "serpapi" in err_detail.lower():
-                            st.error(t("missing_key_warning"))
+                            st.success(t("status_complete"))
+                            
+                            st.subheader(t("tech_questions"))
+                            for idx, item in enumerate(result.get("technical_questions", [])):
+                                st.markdown(f"**Q{idx+1}: {item.get('question')}**")
+                                st.write(f"💡 Hint: {item.get('answer_hint')}")
+                                st.divider()
+                                
+                            st.subheader(t("hr_questions"))
+                            for idx, item in enumerate(result.get("hr_questions", [])):
+                                st.markdown(f"**Q{idx+1}: {item.get('question')}**")
+                                st.write(f"💡 Hint: {item.get('answer_hint')}")
+                                st.divider()
+
+                            st.subheader(t("challenge_questions"))
+                            for idx, item in enumerate(result.get("challenging_questions", [])):
+                                st.markdown(f"**Q{idx+1}: {item.get('question')}**")
+                                st.write(f"💡 Hint: {item.get('answer_hint')}")
+                                st.divider()
+                                
+                            st.subheader(t("prep_tips"))
+                            for tip in result.get("preparation_tips", []):
+                                st.write(f"- {tip}")
+                                
+                            st.markdown("---")
+                            render_download_buttons(t("nav_interview_prep"), result, "interview_prep")
                         else:
-                            st.error(f"{t('status_error')} {err_detail}")
-                except Exception as e:
-                    st.error(f"{t('status_error')} {str(e)}")
+                            st.error(response.text)
+                    except Exception as e:
+                        st.error(f"{t('status_error')} {str(e)}")
+
+        with tab4:
+            st.subheader(t("nav_personalized_interview"))
+            prep_diff = st.selectbox(t("difficulty"), ["easy", "medium", "hard"], key="app_materials_prep_diff")
+            
+            if cv_files is None:
+                st.warning(t("please_upload_cv"))
+            else:
+                if st.button(t("btn_gen_custom_prep"), key="app_materials_custom_prep_btn"):
+                    with st.spinner(t("spinner_personalized_prep")):
+                        try:
+                            data = {
+                                "job_text": job_text,
+                                "language": global_language,
+                                "difficulty": prep_diff
+                            }
+                            response = requests.post(
+                                f"{API_BASE_URL}/personalized-interview-prep",
+                                files=cv_files,
+                                data=data
+                            )
+                            if response.status_code == 200:
+                                res = response.json()
+                                result = res["result"]
+                                
+                                st.success(t("status_complete"))
+                                
+                                st.subheader(t("tech_questions"))
+                                for idx, item in enumerate(result.get("technical_questions", [])):
+                                    st.markdown(f"**Q{idx+1}: {item.get('question')}**")
+                                    st.write(f"💡 Hint: {item.get('answer_hint')}")
+                                    st.divider()
+                                    
+                                st.subheader(t("cv_questions"))
+                                for idx, item in enumerate(result.get("cv_based_questions", [])):
+                                    st.markdown(f"**Q{idx+1}: {item.get('question')}**")
+                                    st.write(f"💡 Hint: {item.get('answer_hint')}")
+                                    st.divider()
+
+                                st.subheader(t("weak_questions"))
+                                for idx, item in enumerate(result.get("weak_area_questions", [])):
+                                    st.markdown(f"**Q{idx+1}: {item.get('question')}**")
+                                    st.write(f"💡 Hint: {item.get('answer_hint')}")
+                                    st.divider()
+                                    
+                                st.subheader(t("sample_answers"))
+                                for sa in result.get("sample_answers", []):
+                                    st.markdown(f"**Q: {sa.get('question')}**")
+                                    st.write(f"💬 Sample Answer: {sa.get('sample_answer')}")
+                                    st.divider()
+
+                                st.subheader(t("prep_plan"))
+                                for step in result.get("preparation_plan", []):
+                                    st.write(f"- 📋 {step}")
+                                    
+                                st.markdown("---")
+                                render_download_buttons(t("nav_personalized_interview"), result, "personalized_interview_prep")
+                            else:
+                                st.error(response.text)
+                        except Exception as e:
+                            st.error(f"{t('status_error')} {str(e)}")
 
 
-elif selected_page_key == "🛰️ Job Monitoring Agent":
-    st.header(t("nav_job_monitoring"))
-    st.write(t("job_monitoring_desc"))
+elif selected_page_key == "💼 Job Workspace":
+    st.header(t("nav_job_workspace"))
+    st.write(t("job_workspace_desc") if "job_workspace_desc" in TRANSLATIONS[st.session_state.ui_lang] else "Manage your job listings, track search alerts, view pipeline progress, and generate custom application materials.")
 
-    st.subheader(t("jm_alert_form"))
-    with st.form("job_monitoring_alert_form"):
-        alert_name = st.text_input(t("jm_alert_name"), placeholder="Backend roles, data analyst roles, operations roles...")
-        keywords_text = st.text_area(t("jm_keywords"), help=t("jm_keywords_help"), placeholder="Python, SQL, API, operations")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            location = st.text_input(t("jm_location"), placeholder="Remote, Istanbul, Berlin...")
-            seniority = st.text_input(t("jm_seniority"), placeholder="Junior, Intern, Entry level...")
-            min_match_score = st.slider(t("jm_min_score"), 0, 100, 40)
-        with col_b:
-            job_type = st.text_input(t("jm_job_type"), placeholder="Full-time, Internship, Contract...")
-            work_model = st.text_input(t("jm_work_model"), placeholder="Remote, Hybrid, On-site...")
-            is_active = st.checkbox(t("jm_active"), value=True)
-
-        sources = st.multiselect(
-            t("jm_sources"),
-            ["manual_mock"],
-            default=["manual_mock"],
-            help="Phase 2A supports only manual_mock.",
-        )
-        excluded_keywords_text = st.text_input(t("jm_excluded_keywords"), placeholder="senior, unpaid, commission-only")
-        create_alert = st.form_submit_button(t("jm_create_alert"))
-
-    if create_alert:
-        payload = {
-            "name": alert_name,
-            "keywords": parse_comma_values(keywords_text),
-            "location": location,
-            "seniority": seniority,
-            "job_type": job_type,
-            "work_model": work_model,
-            "sources": sources or ["manual_mock"],
-            "excluded_keywords": parse_comma_values(excluded_keywords_text),
-            "min_match_score": min_match_score,
-            "is_active": is_active,
-        }
-        result = api_json("POST", "/job-monitoring/alerts", json=payload)
-        if result:
-            st.success(t("jm_alert_created"))
-            st.rerun()
-
-    st.markdown("---")
-    st.subheader(t("jm_existing_alerts"))
     alerts = api_json("GET", "/job-monitoring/alerts") or []
-    if not alerts:
-        st.info(t("jm_no_alerts"))
-    else:
-        for alert in alerts:
-            status_label = "active" if alert.get("is_active") else "inactive"
-            with st.expander(f"#{alert.get('id')} - {alert.get('name')} ({status_label})", expanded=False):
-                st.write(f"**{t('jm_keywords')}:** {', '.join(alert.get('keywords', [])) or 'N/A'}")
-                st.write(f"**{t('jm_location')}:** {alert.get('location') or 'N/A'}")
-                st.write(f"**{t('jm_seniority')}:** {alert.get('seniority') or 'N/A'}")
-                st.write(f"**{t('jm_job_type')}:** {alert.get('job_type') or 'N/A'}")
-                st.write(f"**{t('jm_work_model')}:** {alert.get('work_model') or 'N/A'}")
-                st.write(f"**{t('jm_sources')}:** {', '.join(alert.get('sources', []))}")
-                st.write(f"**{t('jm_min_score')}:** {alert.get('min_match_score')}")
-                st.write(f"**Created / Updated:** {compact_datetime(alert.get('created_at'))} / {compact_datetime(alert.get('updated_at'))}")
 
-                col_run, col_deactivate = st.columns(2)
-                with col_run:
-                    if st.button(t("jm_run_now"), key=f"jm_run_{alert.get('id')}", disabled=not alert.get("is_active")):
-                        result = api_json("POST", f"/job-monitoring/alerts/{alert.get('id')}/run")
-                        if result:
-                            run = result.get("run", {})
-                            st.success(f"{t('jm_run_complete')} New jobs: {run.get('new_jobs_count', 0)}")
-                            st.rerun()
-                with col_deactivate:
-                    if st.button(t("jm_deactivate"), key=f"jm_deactivate_{alert.get('id')}", disabled=not alert.get("is_active")):
-                        result = api_json("DELETE", f"/job-monitoring/alerts/{alert.get('id')}")
-                        if result:
-                            st.success(t("jm_alert_deactivated"))
-                            st.rerun()
+    tab_jobs, tab_add, tab_profiles, tab_pipeline, tab_assets = st.tabs([
+        t("tab_jobs") if "tab_jobs" in TRANSLATIONS[st.session_state.ui_lang] else "Jobs",
+        t("tab_add_job") if "tab_add_job" in TRANSLATIONS[st.session_state.ui_lang] else "Add Job",
+        t("tab_search_profiles") if "tab_search_profiles" in TRANSLATIONS[st.session_state.ui_lang] else "Search Profiles",
+        t("tab_pipeline") if "tab_pipeline" in TRANSLATIONS[st.session_state.ui_lang] else "Pipeline",
+        t("tab_assets") if "tab_assets" in TRANSLATIONS[st.session_state.ui_lang] else "Assets"
+    ])
 
-    st.markdown("---")
-    with st.expander(t("jm_manual_import"), expanded=False):
+    # Helper function to read asset file bytes safely
+    def get_local_asset_bytes_inline(f_path: str) -> bytes | None:
+        if not f_path:
+            return None
+        try:
+            s_dir = os.path.abspath("generated_assets")
+            r_path = os.path.abspath(f_path)
+            if r_path.startswith(s_dir + os.sep) or r_path == s_dir:
+                if os.path.exists(r_path):
+                    with open(r_path, "rb") as f:
+                        return f.read()
+        except Exception:
+            pass
+        return None
+
+    media_types = {
+        "pdf": "application/pdf",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "txt": "text/plain",
+        "json": "application/json",
+        "text": "text/plain"
+    }
+
+    # --- Tab 1: Jobs ---
+    with tab_jobs:
+        status_options = [t("jm_all_statuses"), "new", "saved", "rejected", "applied", "archived"]
+        filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
+        with filter_col1:
+            status_filter = st.selectbox(t("jm_status_filter"), status_options, key="jw_status_filter")
+        with filter_col2:
+            source_filter = st.selectbox(t("jm_source_filter"), [t("jm_all_sources"), "manual_mock", "manual_import"], key="jw_source_filter")
+        with filter_col3:
+            alert_filter_options = [(t("jm_all_alerts"), None)] + [
+                (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
+            ]
+            selected_alert_filter = st.selectbox(t("jm_alert_filter"), [label for label, _ in alert_filter_options], key="jw_alert_filter")
+            selected_alert_filter_id = dict(alert_filter_options).get(selected_alert_filter)
+        with filter_col4:
+            min_score_filter = st.slider(t("jm_min_score_filter"), 0, 100, 0, key="jw_min_score_filter")
+
+        query_params = {}
+        if status_filter != t("jm_all_statuses"):
+            query_params["status"] = status_filter
+        if source_filter != t("jm_all_sources"):
+            query_params["source"] = source_filter
+        if selected_alert_filter_id is not None:
+            query_params["alert_profile_id"] = selected_alert_filter_id
+        if min_score_filter > 0:
+            query_params["min_match_score"] = min_score_filter
+
+        jobs_path = "/job-monitoring/jobs"
+        if query_params:
+            jobs_path += f"?{urlencode(query_params)}"
+        jobs = api_json("GET", jobs_path) or []
+
+        if not jobs:
+            st.info(t("jm_no_jobs"))
+        else:
+            for job in jobs:
+                title = job.get("title") or "Untitled"
+                company = job.get("company") or "N/A"
+                score = job.get("match_score", 0)
+                job_status = job.get("status")
+                
+                # Fetch pipeline data
+                pipeline_data = None
+                try:
+                    pipe_url = f"{API_BASE_URL}/job-monitoring/jobs/{job.get('id')}/pipeline"
+                    pipe_res = requests.get(pipe_url, timeout=5)
+                    if pipe_res.status_code == 200:
+                        pipeline_data = pipe_res.json().get("pipeline")
+                except Exception:
+                    pass
+                
+                stage_val = pipeline_data.get("application_stage", "not_started") if pipeline_data else "not_started"
+                priority_val = pipeline_data.get("application_priority", "medium") if pipeline_data else "medium"
+                
+                stage_labels = {
+                    "not_started": "⚪",
+                    "preparing": "🟡 Prep",
+                    "applied": "🔵 Applied",
+                    "screening": "🟠 Screen",
+                    "interview": "🟣 Int",
+                    "technical_interview": "🟤 Tech",
+                    "offer": "🟢 Offer",
+                    "rejected": "🔴 Rej",
+                    "withdrawn": "⚫ Wdr",
+                    "archived": "⚪ Arc"
+                }
+                priority_labels = {
+                    "low": "🟢 Low",
+                    "medium": "🟡 Med",
+                    "high": "🔴 High"
+                }
+                
+                stage_str = stage_labels.get(stage_val, stage_val)
+                priority_str = priority_labels.get(priority_val, priority_val)
+                
+                card_title = f"{score}% | {title} - {company} [{job_status}] | Stage: {stage_str} | Priority: {priority_str}"
+                with st.expander(card_title, expanded=False):
+                    # Job Details Section
+                    st.markdown("#### 📋 Job Details")
+                    col_meta, col_score = st.columns([2, 1])
+                    with col_meta:
+                        st.write(f"**{t('jm_location')}:** {job.get('location') or 'N/A'}")
+                        st.write(f"**{t('jm_sources')}:** {job.get('source')}")
+                        st.write(f"**{t('jm_work_model')}:** {job.get('work_model') or 'N/A'}")
+                        st.write(f"**{t('jm_job_type')}:** {job.get('job_type') or 'N/A'}")
+                        if job.get("url"):
+                            st.link_button("Open Job / İlanı Aç", job.get("url"), key=f"jw_open_job_{job.get('id')}")
+                    with col_score:
+                        st.metric("Match Score", f"{score}%")
+                        st.write(f"**Status:** {job_status}")
+                        
+                    description = job.get("description") or ""
+                    if description:
+                        with st.expander("Show Full Description / Tam Açıklamayı Göster", expanded=False):
+                            st.write(description)
+                    
+                    # Score / Keywords Section
+                    st.markdown("#### 🎯 Score / Keywords")
+                    st.write(f"**{t('matched_keywords')}:** {', '.join(job.get('matched_keywords', [])) or 'N/A'}")
+                    st.write(f"**{t('missing_keywords')}:** {', '.join(job.get('missing_keywords', [])) or 'N/A'}")
+                    st.info(job.get("match_summary") or "No match summary available.")
+                    
+                    # Rescore Section
+                    if alerts:
+                        rescore_options = [
+                            (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
+                        ]
+                        current_alert_id = job.get("alert_profile_id")
+                        current_index = next(
+                            (idx for idx, (_, alert_id) in enumerate(rescore_options) if alert_id == current_alert_id),
+                            0,
+                        )
+                        rescore_col1, rescore_col2 = st.columns([3, 1])
+                        with rescore_col1:
+                            selected_rescore_label = st.selectbox(
+                                t("jm_rescore_profile"),
+                                [label for label, _ in rescore_options],
+                                index=current_index,
+                                key=f"jw_rescore_profile_{job.get('id')}",
+                            )
+                        with rescore_col2:
+                            st.write("")
+                            st.write("")
+                            if st.button(t("jm_rescore"), key=f"jw_rescore_btn_{job.get('id')}"):
+                                selected_rescore_id = dict(rescore_options).get(selected_rescore_label)
+                                result = api_json(
+                                    "POST",
+                                    f"/job-monitoring/jobs/{job.get('id')}/rescore",
+                                    json={"alert_profile_id": selected_rescore_id},
+                                )
+                                if result:
+                                    st.success(f"{t('jm_rescored')} Match: {result.get('match_score', 0)}%")
+                                    st.rerun()
+                                    
+                    # Analyze Job Section
+                    st.markdown("#### 🧠 Analyze Job")
+                    intel = None
+                    try:
+                        intel_url = f"{API_BASE_URL}/job-monitoring/jobs/{job.get('id')}/intelligence"
+                        intel_res = requests.get(intel_url, timeout=5)
+                        if intel_res.status_code == 200:
+                            intel = intel_res.json()
+                    except Exception:
+                        pass
+                        
+                    col_an1, col_an2 = st.columns([3, 1])
+                    with col_an1:
+                        if alerts:
+                            analyze_options = [(t("jm_use_associated_alert"), None)] + [
+                                (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
+                            ]
+                            selected_analyze_label = st.selectbox(
+                                t("jm_select_alert_for_analysis"),
+                                [label for label, _ in analyze_options],
+                                key=f"jw_analyze_profile_sel_{job.get('id')}"
+                            )
+                            selected_analyze_id = dict(analyze_options).get(selected_analyze_label)
+                        else:
+                            selected_analyze_id = None
+                    with col_an2:
+                        st.write("")
+                        st.write("")
+                        if st.button(t("jm_analyze_job"), key=f"jw_analyze_btn_{job.get('id')}"):
+                            payload = {}
+                            if selected_analyze_id is not None:
+                                payload["alert_profile_id"] = selected_analyze_id
+                            result = api_json("POST", f"/job-monitoring/jobs/{job.get('id')}/analyze", json=payload)
+                            if result:
+                                st.success(t("jm_analysis_complete"))
+                                st.rerun()
+                                
+                    if intel and intel.get("intelligence"):
+                        report = intel["intelligence"]
+                        with st.expander(t("jm_analysis_report"), expanded=True):
+                            lang = st.session_state.get("ui_lang", "en")
+                            family_labels_en = {
+                                "software_backend": "Software Backend", "frontend": "Frontend", "fullstack": "Fullstack",
+                                "ai_ml_llm": "AI / ML / LLM", "data_analytics": "Data Analytics", "business_analyst": "Business Analyst",
+                                "product_project": "Product / Project Management", "fintech_payment": "Fintech / Payment",
+                                "risk_fraud_compliance": "Risk / Fraud / Compliance", "cybersecurity": "Cybersecurity",
+                                "devops_cloud": "DevOps / Cloud", "corporate_applications": "Corporate Applications",
+                                "sales_operations": "Sales Operations", "general": "General",
+                            }
+                            family_labels_tr = {
+                                "software_backend": "Yazılım Arka Uç (Backend)", "frontend": "Ön Uç (Frontend)", "fullstack": "Tam Yığın (Fullstack)",
+                                "ai_ml_llm": "Yapay Zeka / ML / LLM", "data_analytics": "Veri Analitiği", "business_analyst": "İş Analisti",
+                                "product_project": "Ürün / Proje Yönetimi", "fintech_payment": "Finansal Teknolojiler / Ödeme",
+                                "risk_fraud_compliance": "Risk / Dolandırıcılık / Uyum", "cybersecurity": "Siber Güvenlik",
+                                "devops_cloud": "DevOps / Bulut", "corporate_applications": "Kurumsal Uygulamalar",
+                                "sales_operations": "Satış Operasyonları", "general": "Genel",
+                            }
+                            seniority_labels_en = {
+                                "internship": "Internship", "entry_level": "Entry Level", "junior": "Junior",
+                                "mid": "Mid Level", "senior": "Senior", "lead_manager": "Lead / Manager", "unknown": "Unknown",
+                            }
+                            seniority_labels_tr = {
+                                "internship": "Staj", "entry_level": "Başlangıç Seviyesi", "junior": "Junior / Küçük",
+                                "mid": "Mid / Orta Seviye", "senior": "Senior / Kıdemli", "lead_manager": "Lider / Yönetici", "unknown": "Bilinmiyor",
+                            }
+                            rec_labels_en = {
+                                "strong_apply": "🟢 Strong Apply", "apply": "🟢 Apply", "apply_with_tailored_cv": "🟡 Apply with Tailored CV",
+                                "low_match": "🟠 Low Match", "not_recommended": "🔴 Not Recommended",
+                            }
+                            rec_labels_tr = {
+                                "strong_apply": "🟢 Güçlü Başvuru", "apply": "🟢 Başvur", "apply_with_tailored_cv": "🟡 Özelleştirilmiş CV ile Başvur",
+                                "low_match": "🟠 Düşük Eşleşme", "not_recommended": "🔴 Önerilmiyor",
+                            }
+                            
+                            family_lbl = (family_labels_tr if lang == "tr" else family_labels_en).get(report.get("job_family"), report.get("job_family"))
+                            seniority_lbl = (seniority_labels_tr if lang == "tr" else seniority_labels_en).get(report.get("seniority_assessment"), report.get("seniority_assessment"))
+                            rec_lbl = (rec_labels_tr if lang == "tr" else rec_labels_en).get(report.get("application_recommendation"), report.get("application_recommendation"))
+                            
+                            st.markdown(f"**Family:** `{family_lbl}` | **Seniority:** `{seniority_lbl}` | **Rec:** `{rec_lbl}`")
+                            st.markdown(f"**Summary:** {report.get('role_summary', '')}")
+                            st.markdown(f"**Strengths:** {', '.join(report.get('candidate_strengths', []))}")
+                            st.markdown(f"**Gaps:** {', '.join(report.get('candidate_gaps', []))}")
+                            
+                    # Pipeline / Notes Section
+                    st.markdown("#### 📅 Pipeline / Notes")
+                    p_stage = pipeline_data.get("application_stage", "not_started") if pipeline_data else "not_started"
+                    p_priority = pipeline_data.get("application_priority", "medium") if pipeline_data else "medium"
+                    p_mat = pipeline_data.get("application_materials_status", "not_started") if pipeline_data else "not_started"
+                    
+                    stages_list = ["not_started", "preparing", "applied", "screening", "interview", "technical_interview", "offer", "rejected", "withdrawn", "archived"]
+                    priorities_list = ["low", "medium", "high"]
+                    mat_list = ["not_started", "cv_needed", "cover_letter_needed", "ready", "submitted"]
+                    
+                    col_f1, col_f2, col_f3 = st.columns(3)
+                    with col_f1:
+                        stage_idx = next((i for i, x in enumerate(stages_list) if x == p_stage), 0)
+                        new_stage = st.selectbox(t("jm_pipeline_stage"), stages_list, index=stage_idx, key=f"jw_f_stage_{job.get('id')}")
+                    with col_f2:
+                        priority_idx = next((i for i, x in enumerate(priorities_list) if x == p_priority), 1)
+                        new_priority = st.selectbox(t("jm_pipeline_priority"), priorities_list, index=priority_idx, key=f"jw_f_priority_{job.get('id')}")
+                    with col_f3:
+                        mat_idx = next((i for i, x in enumerate(mat_list) if x == p_mat), 0)
+                        new_mat = st.selectbox(t("jm_pipeline_materials"), mat_list, index=mat_idx, key=f"jw_f_mat_{job.get('id')}")
+                        
+                    col_d1, col_d2, col_d3 = st.columns(3)
+                    with col_d1:
+                        new_deadline = st.text_input(t("jm_pipeline_deadline"), value=pipeline_data.get("application_deadline", "") if pipeline_data else "", key=f"jw_f_dead_{job.get('id')}", placeholder="YYYY-MM-DD")
+                    with col_d2:
+                        new_applied_at = st.text_input(t("jm_pipeline_applied_at"), value=pipeline_data.get("applied_at", "") if pipeline_data else "", key=f"jw_f_app_{job.get('id')}", placeholder="YYYY-MM-DD")
+                    with col_d3:
+                        new_next_date = st.text_input(t("jm_pipeline_next_action_date"), value=pipeline_data.get("next_action_date", "") if pipeline_data else "", key=f"jw_f_next_d_{job.get('id')}", placeholder="YYYY-MM-DD")
+                        
+                    new_next_action = st.text_input(t("jm_pipeline_next_action"), value=pipeline_data.get("next_action", "") if pipeline_data else "", key=f"jw_f_next_act_{job.get('id')}")
+                    new_notes = st.text_area(t("jm_pipeline_notes"), value=pipeline_data.get("application_notes", "") if pipeline_data else "", height=100, key=f"jw_f_notes_{job.get('id')}")
+                    
+                    col_save, col_del = st.columns([3, 1])
+                    with col_save:
+                        if st.button(t("jm_save_pipeline"), key=f"jw_save_pipe_btn_{job.get('id')}"):
+                            payload = {
+                                "application_stage": new_stage,
+                                "application_priority": new_priority,
+                                "application_materials_status": new_mat,
+                                "application_deadline": new_deadline,
+                                "applied_at": new_applied_at,
+                                "next_action": new_next_action,
+                                "next_action_date": new_next_date,
+                                "application_notes": new_notes,
+                            }
+                            result = api_json("PATCH", f"/job-monitoring/jobs/{job.get('id')}/pipeline", json=payload)
+                            if result:
+                                st.success(t("jm_pipeline_updated"))
+                                st.rerun()
+                                
+                    st.write("")
+                    # Status short actions
+                    status_cols = st.columns(4)
+                    status_actions = [
+                        (t("jm_save"), "saved"),
+                        (t("jm_reject"), "rejected"),
+                        (t("jm_mark_applied"), "applied"),
+                        (t("jm_archive"), "archived"),
+                    ]
+                    for col_act, (act_label, next_status) in zip(status_cols, status_actions):
+                        with col_act:
+                            if st.button(act_label, key=f"jw_status_{job.get('id')}_{next_status}"):
+                                result = api_json(
+                                    "PATCH",
+                                    f"/job-monitoring/jobs/{job.get('id')}/status",
+                                    json={"status": next_status},
+                                )
+                                if result:
+                                    st.success(t("jm_status_updated"))
+                                    st.rerun()
+
+                    # Generate Materials Section
+                    st.markdown("#### 📝 Generate Materials")
+                    effective_cv_file = None
+                    
+                    if global_cv is not None:
+                        st.write(f"Using global CV: {global_cv.name}")
+                        effective_cv_file = {
+                            "cv_file": (global_cv.name, global_cv.getvalue(), global_cv.type)
+                        }
+                    else:
+                        st.warning("⚠️ No global CV uploaded in sidebar. Please upload in sidebar or override below.")
+                        
+                    override_exp = st.expander(t("override_inputs_title"), expanded=False)
+                    with override_exp:
+                        override_cv = st.file_uploader(
+                            t("override_cv_label"),
+                            type=["pdf", "docx"],
+                            key=f"jw_cv_override_{job.get('id')}"
+                        )
+                        if override_cv is not None:
+                            effective_cv_file = {
+                                "cv_file": (override_cv.name, override_cv.getvalue(), override_cv.type)
+                            }
+                            st.info(f"Using override CV: {override_cv.name}")
+                            
+                    lang_select = st.selectbox(t("jm_lang_select"), ["English", "Turkish"], key=f"jw_lang_sel_{job.get('id')}")
+                    templates_res = api_json("GET", "/ats-cv/templates", timeout=30)
+                    if templates_res and "templates" in templates_res:
+                        template_options = [tmpl.get("id") for tmpl in templates_res.get("templates", [])]
+                    else:
+                        template_options = ["classic_ats", "modern_clean", "creative_visual"]
+                    template_select = st.selectbox(t("jm_template_select"), template_options, key=f"jw_tmpl_sel_{job.get('id')}")
+                    one_page_select = st.checkbox("One-Page CV" if lang_select == "English" else "Tek Sayfa CV", value=False, key=f"jw_onepage_sel_{job.get('id')}")
+                    tone_select = st.selectbox(t("jm_tone_select"), ["professional", "friendly", "concise"], key=f"jw_tone_sel_{job.get('id')}")
+                    
+                    btn_col1, btn_col2, btn_col3 = st.columns(3)
+                    is_disabled = (effective_cv_file is None)
+                    
+                    with btn_col1:
+                        if st.button(t("jm_generate_cv"), key=f"jw_btn_cv_{job.get('id')}", disabled=is_disabled):
+                            data = {
+                                "template_id": template_select,
+                                "language": lang_select,
+                                "output_format": "pdf",
+                                "one_page": str(one_page_select).lower(),
+                            }
+                            with st.spinner("Generating tailored CV..."):
+                                res = api_json("POST", f"/job-monitoring/jobs/{job.get('id')}/assets/tailored-cv", timeout=90, files=effective_cv_file, data=data)
+                                if res:
+                                    st.success("CV generated successfully!")
+                                    st.rerun()
+                    with btn_col2:
+                        if st.button(t("jm_generate_cover"), key=f"jw_btn_cover_{job.get('id')}", disabled=is_disabled):
+                            data = {"language": lang_select, "tone": tone_select}
+                            with st.spinner("Generating cover letter..."):
+                                res = api_json("POST", f"/job-monitoring/jobs/{job.get('id')}/assets/cover-letter", timeout=90, files=effective_cv_file, data=data)
+                                if res:
+                                    st.success("Cover Letter generated successfully!")
+                                    st.rerun()
+                    with btn_col3:
+                        if st.button(t("jm_generate_email"), key=f"jw_btn_email_{job.get('id')}", disabled=is_disabled):
+                            data = {"language": lang_select, "tone": tone_select}
+                            with st.spinner("Generating email..."):
+                                res = api_json("POST", f"/job-monitoring/jobs/{job.get('id')}/assets/application-email", timeout=90, files=effective_cv_file, data=data)
+                                if res:
+                                    st.success("Email generated successfully!")
+                                    st.rerun()
+                                    
+                    # Job Specific Generated Assets List
+                    st.markdown("#### 📁 Generated Assets")
+                    assets_res = api_json("GET", f"/job-monitoring/jobs/{job.get('id')}/assets", timeout=30)
+                    job_assets = assets_res.get("assets", []) if assets_res else []
+                    if not job_assets:
+                        st.caption("No assets generated yet for this job.")
+                    else:
+                        job_assets.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+                        limit_assets = job_assets[:5]
+                        has_more = len(job_assets) > 5
+                        show_all = st.checkbox("Show all assets / Tüm materyalleri göster", value=False, key=f"jw_show_all_assets_job_{job.get('id')}") if has_more else False
+                        display_assets = job_assets if show_all else limit_assets
+                        
+                        for asset in display_assets:
+                            a_type = asset.get("asset_type")
+                            a_lang = asset.get("language")
+                            a_created = asset.get("created_at", "")[:16].replace("T", " ")
+                            a_fmt = asset.get("export_format") or "txt"
+                            asset_label = f"📄 {a_type.upper()} | {a_lang} | {a_fmt.upper()} | {a_created}"
+                            
+                            col_a1, col_a2, col_a3 = st.columns([3, 1, 1])
+                            with col_a1:
+                                st.write(asset_label)
+                            with col_a2:
+                                if st.button(t("jm_preview"), key=f"jw_prev_asset_btn_{asset.get('id')}"):
+                                    st.session_state["preview_asset_id"] = asset.get("id")
+                                    fetched = api_json("GET", f"/job-monitoring/assets/{asset.get('id')}", timeout=30)
+                                    if fetched and "asset" in fetched:
+                                        st.session_state["preview_asset_dict"] = fetched.get("asset")
+                                        st.rerun()
+                            with col_a3:
+                                f_path = asset.get("file_path")
+                                f_bytes = get_local_asset_bytes_inline(f_path)
+                                f_name = os.path.basename(f_path) if f_path else f"{a_type}_{job.get('id')}.{a_fmt}"
+                                if f_bytes is None:
+                                    f_bytes = (asset.get("content_text") or "").encode("utf-8")
+                                    f_name = f"{a_type}_{job.get('id')}.txt"
+                                    a_fmt = "txt"
+                                st.download_button(
+                                    t("jm_download"),
+                                    data=f_bytes,
+                                    file_name=f_name,
+                                    mime=media_types.get(a_fmt.lower(), "application/octet-stream"),
+                                    key=f"jw_dl_asset_btn_{asset.get('id')}"
+                                )
+                                
+                            if st.session_state.get("preview_asset_id") == asset.get("id"):
+                                p_dict = st.session_state.get("preview_asset_dict")
+                                if p_dict:
+                                    with st.container():
+                                        st.info(f"**Previewing:** {p_dict.get('asset_type').upper()} ({p_dict.get('language')})")
+                                        content = p_dict.get("content_text")
+                                        if not content and p_dict.get("file_path"):
+                                            content = "Metin içeriği bulunamadı, fiziksel dosyayı indirin."
+                                        st.text_area("Content Preview", content or "", height=250, key=f"jw_preview_textarea_{asset.get('id')}")
+                                        if st.button("Close Preview / Önizlemeyi Kapat", key=f"jw_close_prev_{asset.get('id')}"):
+                                            st.session_state["preview_asset_id"] = None
+                                            st.session_state["preview_asset_dict"] = None
+                                            st.rerun()
+
+    # --- Tab 2: Add Job ---
+    with tab_add:
+        st.subheader(t("jm_manual_import"))
         st.write(t("jm_manual_import_desc"))
+        
         alert_options = [(t("jm_no_alert_selected"), None)] + [
             (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
         ]
-        with st.form("job_monitoring_manual_import_form"):
+        
+        with st.form("jw_manual_import_form"):
             selected_alert_label = st.selectbox(
                 t("jm_select_alert_optional"),
                 [label for label, _ in alert_options],
+                key="jw_add_job_alert_select"
             )
             selected_alert_id = dict(alert_options).get(selected_alert_label)
 
-            manual_title = st.text_input(t("jm_job_title"))
-            manual_company = st.text_input(t("jm_company"))
-            manual_location = st.text_input(t("jm_location"))
+            manual_title = st.text_input(t("jm_job_title"), key="jw_add_job_title")
+            manual_company = st.text_input(t("jm_company"), key="jw_add_job_company")
+            manual_location = st.text_input(t("jm_location"), key="jw_add_job_location")
+            manual_url = st.text_input(t("jm_job_url"), placeholder="https://...", key="jw_add_job_url")
+            manual_description = st.text_area(t("jm_job_description"), height=220, key="jw_add_job_description")
 
-            col_work, col_type, col_seniority = st.columns(3)
-            with col_work:
-                work_model_choice = st.selectbox(t("jm_work_model"), ["", "Remote", "Hybrid", "On-site", "Custom"])
-                work_model_custom = st.text_input("Custom work model", key="jm_manual_work_model_custom") if work_model_choice == "Custom" else ""
-            with col_type:
-                job_type_choice = st.selectbox(t("jm_job_type"), ["", "Full-time", "Internship", "Contract", "Part-time", "Custom"])
-                job_type_custom = st.text_input("Custom job type", key="jm_manual_job_type_custom") if job_type_choice == "Custom" else ""
-            with col_seniority:
-                seniority_choice = st.selectbox(t("jm_seniority"), ["", "Intern", "Junior", "Entry level", "Mid", "Senior", "Custom"])
-                seniority_custom = st.text_input("Custom seniority", key="jm_manual_seniority_custom") if seniority_choice == "Custom" else ""
+            with st.expander("Advanced options / Gelişmiş Seçenekler", expanded=False):
+                col_work, col_type, col_seniority = st.columns(3)
+                with col_work:
+                    work_model_choice = st.selectbox(t("jm_work_model"), ["", "Remote", "Hybrid", "On-site", "Custom"], key="jw_add_job_work_model")
+                    work_model_custom = st.text_input("Custom work model", key="jw_add_job_work_model_custom") if work_model_choice == "Custom" else ""
+                with col_type:
+                    job_type_choice = st.selectbox(t("jm_job_type"), ["", "Full-time", "Internship", "Contract", "Part-time", "Custom"], key="jw_add_job_job_type")
+                    job_type_custom = st.text_input("Custom job type", key="jw_add_job_job_type_custom") if job_type_choice == "Custom" else ""
+                with col_seniority:
+                    seniority_choice = st.selectbox(t("jm_seniority"), ["", "Intern", "Junior", "Entry level", "Mid", "Senior", "Custom"], key="jw_add_job_seniority")
+                    seniority_custom = st.text_input("Custom seniority", key="jw_add_job_seniority_custom") if seniority_choice == "Custom" else ""
 
-            manual_source = st.text_input(t("jm_source"), value="manual_import")
-            manual_url = st.text_input(t("jm_job_url"), placeholder="https://...")
-            manual_posted_at = st.text_input(t("jm_posted_date"), placeholder="YYYY-MM-DD")
-            manual_description = st.text_area(t("jm_job_description"), height=220)
+                manual_source = st.text_input(t("jm_source"), value="manual_import", key="jw_add_job_source")
+                manual_posted_at = st.text_input(t("jm_posted_date"), placeholder="YYYY-MM-DD", key="jw_add_job_posted_at")
+
             add_manual_job = st.form_submit_button(t("jm_add_manual_job"))
 
         if add_manual_job:
@@ -2232,143 +2602,274 @@ elif selected_page_key == "🛰️ Job Monitoring Agent":
                 st.success(f"{t('jm_manual_job_added')} Match: {result.get('match_score', 0)}%")
                 st.rerun()
 
-    st.markdown("---")
-    st.subheader(t("jm_job_results"))
-    status_options = [t("jm_all_statuses"), "new", "saved", "rejected", "applied", "archived"]
-    filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
-    with filter_col1:
-        status_filter = st.selectbox(t("jm_status_filter"), status_options)
-    with filter_col2:
-        source_filter = st.selectbox(t("jm_source_filter"), [t("jm_all_sources"), "manual_mock", "manual_import"])
-    with filter_col3:
-        alert_filter_options = [(t("jm_all_alerts"), None)] + [
-            (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
-        ]
-        selected_alert_filter = st.selectbox(t("jm_alert_filter"), [label for label, _ in alert_filter_options])
-        selected_alert_filter_id = dict(alert_filter_options).get(selected_alert_filter)
-    with filter_col4:
-        min_score_filter = st.slider(t("jm_min_score_filter"), 0, 100, 0)
+    # --- Tab 3: Search Profiles ---
+    with tab_profiles:
+        st.subheader("Job Search Profile Form / İş Arama Profili")
+        
+        with st.form("jw_create_search_profile_form"):
+            alert_name = st.text_input(t("jm_alert_name"), placeholder="e.g. Backend roles, AI/ML roles...")
+            
+            selected_role_families = st.multiselect(
+                "Target Role Families / Hedef Rol Aileleri",
+                ["Backend", "Frontend", "Fullstack", "AI / ML / LLM", "Data Analyst", "Business Analyst", "Product / Project", "Corporate Applications", "DevOps / Cloud", "Cybersecurity", "Fintech / Payment", "Risk / Fraud / Compliance", "Internship / Junior", "Other"]
+            )
+            
+            selected_keywords = st.multiselect(
+                "Suggested Keywords / Önerilen Anahtar Kelimeler",
+                ["Python", "SQL", "API", "RESTful API", "FastAPI", ".NET", "ASP.NET Core", "Java", "React", "Angular", "Power Apps", "Power Automate", "SharePoint", "SAP", "Salesforce", "Qlik", "AI", "LLM", "RAG", "ChromaDB", "Docker", "Azure", "Git", "Postman"]
+            )
+            custom_keywords_text = st.text_input("Custom Keywords (comma-separated) / Özel Anahtar Kelimeler (virgülle ayrılmış)")
+            
+            selected_locations = st.multiselect(
+                t("jm_location"),
+                ["Istanbul", "Remote", "Hybrid", "Turkey", "Europe", "Other"]
+            )
+            custom_location_text = st.text_input("Custom Location / Özel Konum") if "Other" in selected_locations else ""
+            
+            selected_seniority = st.multiselect(
+                t("jm_seniority"),
+                ["Intern", "Entry Level", "Junior", "Mid", "Senior"]
+            )
+            
+            selected_job_type = st.multiselect(
+                t("jm_job_type"),
+                ["Full-time", "Internship", "Contract", "Part-time", "Freelance"]
+            )
+            
+            selected_work_model = st.multiselect(
+                t("jm_work_model"),
+                ["Remote", "Hybrid", "On-site"]
+            )
+            
+            sources = st.multiselect(
+                t("jm_sources"),
+                ["manual_mock", "manual_import"],
+                default=["manual_mock", "manual_import"],
+            )
+            
+            selected_excluded = st.multiselect(
+                t("jm_excluded_keywords"),
+                ["senior", "lead", "manager", "director", "unpaid", "commission-only"]
+            )
+            custom_excluded_text = st.text_input("Custom Excluded Keywords (comma-separated) / Özel Hariç Tutulacak Kelimeler")
+            
+            min_match_score = st.slider(t("jm_min_score"), 0, 100, 40)
+            is_active = st.checkbox(t("jm_active"), value=True)
+            
+            create_alert = st.form_submit_button("Create Search Profile / Arama Profili Oluştur")
 
-    query_params = {}
-    if status_filter != t("jm_all_statuses"):
-        query_params["status"] = status_filter
-    if source_filter != t("jm_all_sources"):
-        query_params["source"] = source_filter
-    if selected_alert_filter_id is not None:
-        query_params["alert_profile_id"] = selected_alert_filter_id
-    if min_score_filter > 0:
-        query_params["min_match_score"] = min_score_filter
-
-    jobs_path = "/job-monitoring/jobs"
-    if query_params:
-        jobs_path += f"?{urlencode(query_params)}"
-    jobs = api_json("GET", jobs_path) or []
-
-    if not jobs:
-        st.info(t("jm_no_jobs"))
-    else:
-        for job in jobs:
-            title = job.get("title") or "Untitled"
-            company = job.get("company") or "N/A"
-            score = job.get("match_score", 0)
-            with st.expander(f"{score}% | {title} - {company} [{job.get('status')}]"):
-                col_meta, col_score = st.columns([2, 1])
-                with col_meta:
-                    st.write(f"**{t('jm_location')}:** {job.get('location') or 'N/A'}")
-                    st.write(f"**{t('jm_sources')}:** {job.get('source')}")
-                    st.write(f"**{t('jm_work_model')}:** {job.get('work_model') or 'N/A'}")
-                    st.write(f"**{t('jm_job_type')}:** {job.get('job_type') or 'N/A'}")
-                    if job.get("url"):
-                        st.link_button("Open job", job.get("url"))
-                with col_score:
-                    st.metric("Match", f"{score}%")
-                    st.write(f"**Status:** {job.get('status')}")
-
-                st.write(f"**{t('matched_keywords')}:** {', '.join(job.get('matched_keywords', [])) or 'N/A'}")
-                st.write(f"**{t('missing_keywords')}:** {', '.join(job.get('missing_keywords', [])) or 'N/A'}")
-                st.write(job.get("match_summary") or "")
-                if job.get("description"):
-                    description = job.get("description")
-                    st.caption(description[:500] + ("..." if len(description) > 500 else ""))
-
-                if alerts:
-                    rescore_options = [
-                        (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
-                    ]
-                    current_alert_id = job.get("alert_profile_id")
-                    current_index = next(
-                        (idx for idx, (_, alert_id) in enumerate(rescore_options) if alert_id == current_alert_id),
-                        0,
-                    )
-                    rescore_col1, rescore_col2 = st.columns([3, 1])
-                    with rescore_col1:
-                        selected_rescore_label = st.selectbox(
-                            t("jm_rescore_profile"),
-                            [label for label, _ in rescore_options],
-                            index=current_index,
-                            key=f"jm_rescore_profile_{job.get('id')}",
-                        )
-                    with rescore_col2:
-                        if st.button(t("jm_rescore"), key=f"jm_rescore_{job.get('id')}"):
-                            selected_rescore_id = dict(rescore_options).get(selected_rescore_label)
-                            result = api_json(
-                                "POST",
-                                f"/job-monitoring/jobs/{job.get('id')}/rescore",
-                                json={"alert_profile_id": selected_rescore_id},
-                            )
-                            if result:
-                                st.success(f"{t('jm_rescored')} Match: {result.get('match_score', 0)}%")
-                                st.rerun()
-
-                status_cols = st.columns(4)
-                status_actions = [
-                    (t("jm_save"), "saved"),
-                    (t("jm_reject"), "rejected"),
-                    (t("jm_mark_applied"), "applied"),
-                    (t("jm_archive"), "archived"),
-                ]
-                for col, (label, next_status) in zip(status_cols, status_actions):
-                    with col:
-                        if st.button(label, key=f"jm_status_{job.get('id')}_{next_status}"):
-                            result = api_json(
-                                "PATCH",
-                                f"/job-monitoring/jobs/{job.get('id')}/status",
-                                json={"status": next_status},
-                            )
-                            if result:
-                                st.success(t("jm_status_updated"))
-                                st.rerun()
-
-                st.info(t("jm_placeholder"))
-                placeholder_cols = st.columns(3)
-                with placeholder_cols[0]:
-                    st.button("Generate tailored CV", key=f"jm_cv_{job.get('id')}", disabled=True)
-                with placeholder_cols[1]:
-                    st.button("Generate cover letter", key=f"jm_cover_{job.get('id')}", disabled=True)
-                with placeholder_cols[2]:
-                    st.button("Generate application email", key=f"jm_email_{job.get('id')}", disabled=True)
-
-    st.markdown("---")
-    st.subheader(t("jm_run_history"))
-    runs = api_json("GET", "/job-monitoring/runs") or []
-    if not runs:
-        st.info(t("jm_no_runs"))
-    else:
-        run_rows = [
-            {
-                "id": run.get("id"),
-                "alert_profile_id": run.get("alert_profile_id"),
-                "started_at": compact_datetime(run.get("started_at")),
-                "finished_at": compact_datetime(run.get("finished_at")),
-                "status": run.get("status"),
-                "source_count": run.get("source_count"),
-                "jobs_found": run.get("jobs_found"),
-                "new_jobs_count": run.get("new_jobs_count"),
-                "error_message": run.get("error_message"),
+        if create_alert:
+            keywords = selected_role_families + selected_keywords + [k.strip() for k in custom_keywords_text.split(",") if k.strip()]
+            excluded = selected_excluded + [k.strip() for k in custom_excluded_text.split(",") if k.strip()]
+            
+            location_str = ", ".join(selected_locations)
+            if "Other" in selected_locations and custom_location_text:
+                location_str = location_str.replace("Other", custom_location_text)
+                
+            seniority_str = ", ".join(selected_seniority)
+            job_type_str = ", ".join(selected_job_type)
+            work_model_str = ", ".join(selected_work_model)
+            
+            payload = {
+                "name": alert_name,
+                "keywords": keywords,
+                "location": location_str,
+                "seniority": seniority_str,
+                "job_type": job_type_str,
+                "work_model": work_model_str,
+                "sources": sources or ["manual_mock", "manual_import"],
+                "excluded_keywords": excluded,
+                "min_match_score": min_match_score,
+                "is_active": is_active,
             }
-            for run in runs
-        ]
-        st.dataframe(run_rows, use_container_width=True)
+            result = api_json("POST", "/job-monitoring/alerts", json=payload)
+            if result:
+                st.success("Search Profile created successfully! / Arama profili başarıyla oluşturuldu!")
+                st.rerun()
+
+        st.markdown("---")
+        st.subheader("Existing Search Profiles / Mevcut Profiller")
+        if not alerts:
+            st.info(t("jm_no_alerts"))
+        else:
+            for alert in alerts:
+                status_label = "active" if alert.get("is_active") else "inactive"
+                with st.expander(f"#{alert.get('id')} - {alert.get('name')} ({status_label})", expanded=False):
+                    st.write(f"**{t('jm_keywords')}:** {', '.join(alert.get('keywords', [])) or 'N/A'}")
+                    st.write(f"**{t('jm_location')}:** {alert.get('location') or 'N/A'}")
+                    st.write(f"**{t('jm_seniority')}:** {alert.get('seniority') or 'N/A'}")
+                    st.write(f"**{t('jm_job_type')}:** {alert.get('job_type') or 'N/A'}")
+                    st.write(f"**{t('jm_work_model')}:** {alert.get('work_model') or 'N/A'}")
+                    st.write(f"**{t('jm_sources')}:** {', '.join(alert.get('sources', []))}")
+                    st.write(f"**{t('jm_min_score')}:** {alert.get('min_match_score')}")
+                    st.write(f"**Created / Updated:** {compact_datetime(alert.get('created_at'))} / {compact_datetime(alert.get('updated_at'))}")
+
+                    col_run, col_deactivate = st.columns(2)
+                    with col_run:
+                        if st.button(t("jm_run_now"), key=f"jw_run_{alert.get('id')}", disabled=not alert.get("is_active")):
+                            result = api_json("POST", f"/job-monitoring/alerts/{alert.get('id')}/run")
+                            if result:
+                                run = result.get("run", {})
+                                st.success(f"{t('jm_run_complete')} New jobs: {run.get('new_jobs_count', 0)}")
+                                st.rerun()
+                    with col_deactivate:
+                        if st.button(t("jm_deactivate"), key=f"jw_deactivate_{alert.get('id')}", disabled=not alert.get("is_active")):
+                            result = api_json("DELETE", f"/job-monitoring/alerts/{alert.get('id')}")
+                            if result:
+                                st.success(t("jm_alert_deactivated"))
+                                st.rerun()
+
+        # Run History Expander at bottom
+        st.markdown("---")
+        with st.expander(t("jm_run_history"), expanded=False):
+            runs = api_json("GET", "/job-monitoring/runs") or []
+            if not runs:
+                st.info(t("jm_no_runs"))
+            else:
+                run_rows = [
+                    {
+                        "id": run.get("id"),
+                        "alert_profile_id": run.get("alert_profile_id"),
+                        "started_at": compact_datetime(run.get("started_at")),
+                        "finished_at": compact_datetime(run.get("finished_at")),
+                        "status": run.get("status"),
+                        "source_count": run.get("source_count"),
+                        "jobs_found": run.get("jobs_found"),
+                        "new_jobs_count": run.get("new_jobs_count"),
+                        "error_message": run.get("error_message"),
+                    }
+                    for run in runs
+                ]
+                st.dataframe(run_rows, use_container_width=True)
+
+    # --- Tab 4: Pipeline ---
+    with tab_pipeline:
+        st.subheader("Application Pipeline / Başvuru Takip")
+        pipeline_jobs = api_json("GET", "/job-monitoring/pipeline") or []
+        if not pipeline_jobs:
+            st.info(t("jm_no_jobs"))
+        else:
+            stages_count = {}
+            high_priority_jobs = []
+            upcoming_actions = []
+            upcoming_deadlines = []
+            
+            for pj in pipeline_jobs:
+                j = pj.get("job", {})
+                p = pj.get("pipeline", {})
+                
+                stage = p.get("application_stage", "not_started")
+                stages_count[stage] = stages_count.get(stage, 0) + 1
+                
+                if p.get("application_priority") == "high":
+                    high_priority_jobs.append((j, p))
+                if p.get("next_action_date"):
+                    upcoming_actions.append((j, p))
+                if p.get("application_deadline"):
+                    upcoming_deadlines.append((j, p))
+            
+            stat_cols = st.columns(4)
+            with stat_cols[0]:
+                st.metric("Preparing / Hazırlanıyor", stages_count.get("preparing", 0))
+            with stat_cols[1]:
+                st.metric("Applied / Başvuruldu", stages_count.get("applied", 0))
+            with stat_cols[2]:
+                st.metric("Interview / Mülakat", stages_count.get("interview", 0))
+            with stat_cols[3]:
+                st.metric("Offers / Teklifler", stages_count.get("offer", 0))
+                
+            sub_col1, sub_col2, sub_col3 = st.columns(3)
+            with sub_col1:
+                st.markdown(f"### 🔥 {t('jm_high_priority')}")
+                if not high_priority_jobs:
+                    st.write("No high priority jobs. / Yüksek öncelikli iş yok.")
+                for j, p in high_priority_jobs[:5]:
+                    st.write(f"- **{j.get('title')}** at *{j.get('company')}* (`{j.get('status')}`)")
+            with sub_col2:
+                st.markdown(f"### 📅 {t('jm_upcoming_actions')}")
+                upcoming_actions.sort(key=lambda x: x[1].get("next_action_date", ""))
+                if not upcoming_actions:
+                    st.write("No upcoming actions. / Yaklaşan eylem yok.")
+                for j, p in upcoming_actions[:5]:
+                    st.write(f"- **{p.get('next_action_date')}**: {p.get('next_action')} (*{j.get('title')}*)")
+            with sub_col3:
+                st.markdown(f"### ⚠️ {t('jm_upcoming_deadlines')}")
+                upcoming_deadlines.sort(key=lambda x: x[1].get("application_deadline", ""))
+                if not upcoming_deadlines:
+                    st.write("No upcoming deadlines. / Yaklaşan son tarih yok.")
+                for j, p in upcoming_deadlines[:5]:
+                    st.write(f"- **{p.get('application_deadline')}**: Apply to *{j.get('company')}*")
+
+    # --- Tab 5: Assets ---
+    with tab_assets:
+        st.subheader("All Generated Assets / Tüm Oluşturulan Materyaller")
+        assets_res = api_json("GET", "/job-monitoring/assets", timeout=30)
+        all_assets = assets_res.get("assets", []) if assets_res else []
+        if not all_assets:
+            st.info("No assets generated yet.")
+        else:
+            all_assets.sort(key=lambda x: x.get("created_at", ""), reverse=True)
+            
+            jobs = api_json("GET", "/job-monitoring/jobs") or []
+            jobs_map = {j.get("id"): j for j in jobs}
+            
+            limit_all_assets = all_assets[:5]
+            has_more_all = len(all_assets) > 5
+            show_all_assets = st.checkbox("Show all assets / Tüm materyalleri göster", value=False, key="jw_show_all_assets_global") if has_more_all else False
+            display_all_assets = all_assets if show_all_assets else limit_all_assets
+            
+            for asset in display_all_assets:
+                a_type = asset.get("asset_type")
+                a_lang = asset.get("language")
+                a_created = asset.get("created_at", "")[:16].replace("T", " ")
+                a_fmt = asset.get("export_format") or "txt"
+                
+                j_id = asset.get("job_id")
+                job_obj = jobs_map.get(j_id, {})
+                job_title = job_obj.get("title") or "Unknown Job"
+                job_company = job_obj.get("company") or "Unknown Company"
+                
+                asset_label = f"📄 {a_type.upper()} | {job_title} - {job_company} | {a_lang} | {a_fmt.upper()} | {a_created}"
+                
+                col_a1, col_a2, col_a3 = st.columns([3, 1, 1])
+                with col_a1:
+                    st.write(asset_label)
+                with col_a2:
+                    if st.button(t("jm_preview"), key=f"jw_global_prev_asset_btn_{asset.get('id')}"):
+                        st.session_state["preview_global_asset_id"] = asset.get("id")
+                        fetched = api_json("GET", f"/job-monitoring/assets/{asset.get('id')}", timeout=30)
+                        if fetched and "asset" in fetched:
+                            st.session_state["preview_global_asset_dict"] = fetched.get("asset")
+                            st.rerun()
+                with col_a3:
+                    f_path = asset.get("file_path")
+                    f_bytes = get_local_asset_bytes_inline(f_path)
+                    f_name = os.path.basename(f_path) if f_path else f"{a_type}_{j_id}.{a_fmt}"
+                    if f_bytes is None:
+                        f_bytes = (asset.get("content_text") or "").encode("utf-8")
+                        f_name = f"{a_type}_{j_id}.txt"
+                        a_fmt = "txt"
+                    st.download_button(
+                        t("jm_download"),
+                        data=f_bytes,
+                        file_name=f_name,
+                        mime=media_types.get(a_fmt.lower(), "application/octet-stream"),
+                        key=f"jw_global_dl_asset_btn_{asset.get('id')}"
+                    )
+                    
+                if st.session_state.get("preview_global_asset_id") == asset.get("id"):
+                    p_dict = st.session_state.get("preview_global_asset_dict")
+                    if p_dict:
+                        with st.container():
+                            st.info(f"**Previewing:** {p_dict.get('asset_type').upper()} ({p_dict.get('language')})")
+                            content = p_dict.get("content_text")
+                            if not content and p_dict.get("file_path"):
+                                content = "Metin içeriği bulunamadı, fiziksel dosyayı indirin."
+                            st.text_area("Content Preview", content or "", height=250, key=f"jw_global_preview_textarea_{asset.get('id')}")
+                            if st.button("Close Preview / Önizlemeyi Kapat", key=f"jw_global_close_prev_{asset.get('id')}"):
+                                st.session_state["preview_global_asset_id"] = None
+                                st.session_state["preview_global_asset_dict"] = None
+                                st.rerun()
 
 
 elif selected_page_key == "📜 History":

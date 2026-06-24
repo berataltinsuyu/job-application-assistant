@@ -130,6 +130,86 @@ Safety policy:
 - No login bypass, CAPTCHA bypass, Cloudflare bypass, proxy evasion, or hidden browser automation is implemented.
 - Manual import stores only user-provided job data.
 
+### Phase 2C - Job Detail Intelligence
+
+Phase 2C adds an intelligence layer to each monitored job, providing detailed application insights before CV/Cover Letter generation is implemented in Phase 2E.
+
+What it does:
+- Analyzes a monitored job posting and generates insights:
+  - **Job Family Detection:** Classifies roles into specific areas like `software_backend`, `frontend`, `fullstack`, `ai_ml_llm`, `data_analytics`, `business_analyst`, `product_project`, `fintech_payment`, `risk_fraud_compliance`, `cybersecurity`, `devops_cloud`, `corporate_applications`, `sales_operations`, or `general`.
+  - **Seniority Assessment:** Evaluates requirements to identify seniority (internship, entry level, junior, mid, senior, lead/manager).
+  - **Role Summary:** Drafts a concise 2-4 sentence summary of the job description.
+  - **Match Reason:** Explains why the job matches the alert profile in practical terms (or gives general context if no profile is selected).
+  - **Strengths & Gaps:** Lists candidate strengths (based on matched keywords and filters) and gaps (based on missing keywords and seniority mismatches).
+  - **CV, Project & Skill Focus:** Recommends specific CV phrasing, generic project categories, and key skills to highlight.
+  - **Application Recommendation:** Recommends action (strong apply, apply, apply with tailored CV, low match, not recommended).
+  - **Risk Notes:** Flags potential risks (e.g., claiming MLOps or direct cybersecurity ownership without support).
+  - **Interview Focus Areas:** Lists likely interview topics to prepare for.
+
+How to analyze a job:
+1. Open any monitored job card in **Job Monitoring Agent**.
+2. Click **Analyze job**. Optionally, choose a different alert profile from the selector dropdown to evaluate the job against a new target profile.
+3. Once completed, the analysis results are displayed inside the **Job Analysis Report** expander panel.
+4. Re-running the analysis updates the existing report for that job.
+
+Scoring & Analysis Rules:
+- All analysis runs **locally and deterministically** by default.
+- Gemini LLM generation is optional and disabled by default. It can be enabled by setting `JOB_INTELLIGENCE_USE_LLM=true` in `.env` (requires a valid `GEMINI_API_KEY`).
+- No external requests are made; URLs are stored as text and not fetched.
+
+Safety Policy:
+- No web scraping is triggered.
+- No automated page fetches or external requests are made.
+
+### Phase 2D - Application Pipeline & Notes
+
+Phase 2D adds an application tracking layer so users can manage the full application lifecycle for monitored jobs, log actions, and view a pipeline overview dashboard.
+
+What it does:
+- Tracks key lifecycle stages: `not_started`, `preparing`, `applied`, `screening`, `interview`, `technical_interview`, `offer`, `rejected`, `withdrawn`, `archived`.
+- Logs job priority: `low`, `medium`, `high`.
+- Logs material status (CV, cover letter): `not_started`, `cv_needed`, `cover_letter_needed`, `ready`, `submitted`.
+- Stores detailed metadata: deadlines, next actions, next action dates, interview dates, contact details, and application notes.
+- Synchronizes status buttons (applied, rejected, archived) with pipeline stages automatically (e.g. clicking "Mark Applied" sets the pipeline stage to "applied" and logs the applied date).
+- Displays a **Pipeline Overview Dashboard** grouping jobs by stage, listing high-priority jobs, and highlighting upcoming actions and deadlines.
+
+How to track/update a job:
+1. Open any monitored job card.
+2. Expand the **Pipeline / Notes** panel.
+3. Edit the stage, priority, deadline, contact details, next actions, and notes.
+4. Click **Save Pipeline** to commit changes.
+5. Badges for the current stage, priority, next action, and materials status are displayed in the job metadata section.
+
+Safety Policy:
+- No web scraping is triggered.
+- No automated external requests are made; URLs remain stored text.
+
+### Phase 2E - Job-to-Application Asset Generator
+
+Phase 2E enables users to generate tailored application materials (CV, Cover Letter, Application Email) directly from any monitored or manually imported job description, incorporating detailed job intelligence context.
+
+What it does:
+- Generates tailored CVs using the existing ATS CV Builder pipeline and templates, aligning experience truthfully to the job description and protecting locked candidate details/proper nouns.
+- Generates customized Cover Letters reusing existing prompt setups with job intelligence context.
+- Generates professional Application Emails, LinkedIn cold messages, and follow-up templates.
+- Persists all generated assets in a new SQLite table `job_application_assets`.
+- Physically saves all generated documents (PDF, DOCX, TXT, JSON) to the `generated_assets/` folder in the project root.
+- Allows users to preview generated contents and download them directly from the Streamlit UI.
+- Automatically synchronizes the pipeline's `application_materials_status` (e.g., updates to `cover_letter_needed` after generating CV, and `ready` once all necessary materials are available).
+
+How to generate materials:
+1. Open any monitored job card.
+2. Expand the **Generate Application Materials / Başvuru Materyali Oluştur** panel.
+3. Upload a CV file (PDF or DOCX format).
+4. Choose the output language, CV template, and tone.
+5. Click **Generate Tailored CV**, **Generate Cover Letter**, or **Generate Application Email**.
+6. View the live preview on screen, and click **Download** to save the generated file to your local computer.
+7. Any previously generated materials for the selected job are listed at the bottom of the panel for quick retrieval and download.
+
+Safety & Limitations:
+- User must upload their CV manually as the source of truth; no unverified claims or fake experience are invented.
+- No web scraping is triggered; job URLs remain stored text.
+
 ---
 
 ## 🛠️ Run & Setup | Kurulum ve Çalıştırma

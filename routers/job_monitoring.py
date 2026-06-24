@@ -1,11 +1,15 @@
 from typing import Any
+import json
+import os
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
-from services import job_monitoring_service
+from services import job_monitoring_service, job_application_pipeline_service, job_application_asset_service
+
 
 
 router = APIRouter(
@@ -190,3 +194,281 @@ def list_runs(
     db: Session = Depends(get_db),
 ):
     return job_monitoring_service.list_search_runs(db, alert_profile_id=alert_profile_id)
+
+
+class JobAnalyzeRequest(BaseModel):
+    alert_profile_id: int | None = None
+
+
+@router.post("/jobs/{job_id}/analyze")
+def analyze_job(job_id: int, payload: JobAnalyzeRequest, db: Session = Depends(get_db)):
+    try:
+        return job_monitoring_service.analyze_job(db, job_id, payload.alert_profile_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Job intelligence analysis failed.") from exc
+
+
+@router.get("/jobs/{job_id}/intelligence")
+def get_job_intelligence(job_id: int, db: Session = Depends(get_db)):
+    try:
+        res = job_monitoring_service.get_job_intelligence(db, job_id)
+        if res is None:
+            raise HTTPException(status_code=404, detail="Intelligence report not found.")
+        return res
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to retrieve job intelligence.") from exc
+
+
+class JobPipelineUpdate(BaseModel):
+    application_stage: str | None = None
+    application_priority: str | None = None
+    application_deadline: str | None = None
+    applied_at: str | None = None
+    next_action: str | None = None
+    next_action_date: str | None = None
+    interview_date: str | None = None
+    contact_person: str | None = None
+    contact_email: str | None = None
+    application_notes: str | None = None
+    application_materials_status: str | None = None
+
+
+@router.get("/jobs/{job_id}/pipeline")
+def get_job_pipeline(job_id: int, db: Session = Depends(get_db)):
+    try:
+        pipeline = job_application_pipeline_service.get_application_pipeline(db, job_id)
+        return {"job_id": job_id, "pipeline": pipeline}
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to retrieve job application pipeline.") from exc
+
+
+@router.patch("/jobs/{job_id}/pipeline")
+def update_job_pipeline(job_id: int, payload: JobPipelineUpdate, db: Session = Depends(get_db)):
+    try:
+        update_data = payload.model_dump(exclude_unset=True)
+        return job_application_pipeline_service.update_application_pipeline(db, job_id, update_data)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to update job application pipeline.") from exc
+
+
+@router.get("/pipeline")
+def list_pipeline_jobs(
+    application_stage: str | None = Query(None),
+    application_priority: str | None = Query(None),
+    status: str | None = Query(None),
+    source: str | None = Query(None),
+    min_match_score: int | None = Query(None, ge=0, le=100),
+    due_before: str | None = Query(None),
+    next_action_before: str | None = Query(None),
+    db: Session = Depends(get_db),
+):
+    try:
+        filters = {
+            "application_stage": application_stage,
+            "application_priority": application_priority,
+            "status": status,
+            "source": source,
+            "min_match_score": min_match_score,
+            "due_before": due_before,
+            "next_action_before": next_action_before,
+        }
+        filters = {k: v for k, v in filters.items() if v is not None}
+        return job_application_pipeline_service.list_pipeline_jobs(db, filters)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to list pipeline jobs.") from exc
+
+
+# Phase 2E - Job-to-Application Asset Generator Endpoints
+
+from services.ats_cv_templates import validate_template_id
+
+@router.post("/jobs/{job_id}/assets/tailored-cv")
+async def create_job_tailored_cv(
+    job_id: int,
+    cv_file: UploadFile = File(...),
+    template_id: str = Form("classic_ats"),
+    language: str = Form("English"),
+    output_format: str = Form("pdf"),
+    one_page: bool = Form(False),
+    enabled_sections: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not validate_template_id(template_id):
+        raise HTTPException(status_code=400, detail=f"Invalid template_id: {template_id}")
+
+    if not cv_file or not cv_file.filename:
+        raise HTTPException(status_code=400, detail="cv_file is required")
+
+    sections_list = None
+    if enabled_sections:
+        try:
+            sections_list = json.loads(enabled_sections)
+            if not isinstance(sections_list, list):
+                sections_list = [s.strip() for s in enabled_sections.split(",") if s.strip()]
+        except Exception:
+            sections_list = [s.strip() for s in enabled_sections.split(",") if s.strip()]
+
+    try:
+        res = await job_application_asset_service.generate_job_tailored_cv(
+            db=db,
+            job_id=job_id,
+            cv_file=cv_file,
+            template_id=template_id,
+            language=language,
+            output_format=output_format,
+            one_page=one_page,
+            enabled_sections=sections_list
+        )
+        return res
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to generate tailored CV.") from exc
+
+
+@router.post("/jobs/{job_id}/assets/cover-letter")
+async def create_job_cover_letter(
+    job_id: int,
+    cv_file: UploadFile = File(...),
+    language: str = Form("English"),
+    tone: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not cv_file or not cv_file.filename:
+        raise HTTPException(status_code=400, detail="cv_file is required")
+
+    try:
+        res = await job_application_asset_service.generate_job_cover_letter(
+            db=db,
+            job_id=job_id,
+            cv_file=cv_file,
+            language=language,
+            tone=tone
+        )
+        return res
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to generate cover letter.") from exc
+
+
+@router.post("/jobs/{job_id}/assets/application-email")
+async def create_job_application_email(
+    job_id: int,
+    cv_file: UploadFile = File(...),
+    language: str = Form("English"),
+    tone: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
+    if not cv_file or not cv_file.filename:
+        raise HTTPException(status_code=400, detail="cv_file is required")
+
+    try:
+        res = await job_application_asset_service.generate_job_application_email(
+            db=db,
+            job_id=job_id,
+            cv_file=cv_file,
+            language=language,
+            tone=tone
+        )
+        return res
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to generate application email.") from exc
+
+
+@router.get("/jobs/{job_id}/assets")
+def get_job_assets(job_id: int, db: Session = Depends(get_db)):
+    # Verify job exists
+    from models import MonitoredJob
+    job = db.query(MonitoredJob).filter(MonitoredJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    try:
+        assets = job_application_asset_service.list_job_assets(db, job_id)
+        return {"job_id": job_id, "assets": assets}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to list assets.") from exc
+
+
+@router.get("/assets")
+def get_all_assets(db: Session = Depends(get_db)):
+    try:
+        from models import JobApplicationAsset
+        assets = db.query(JobApplicationAsset).order_by(JobApplicationAsset.created_at.desc()).all()
+        return {"assets": [job_application_asset_service.serialize_asset(a) for a in assets]}
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to list all assets.") from exc
+
+
+@router.get("/assets/{asset_id}")
+def get_single_asset(asset_id: int, db: Session = Depends(get_db)):
+    try:
+        asset = job_application_asset_service.get_job_asset(db, asset_id)
+        return {"asset": asset}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Failed to get asset.") from exc
+
+
+@router.get("/assets/{asset_id}/download")
+def download_asset(asset_id: int, db: Session = Depends(get_db)):
+    try:
+        asset = job_application_asset_service.get_job_asset(db, asset_id)
+        file_path = asset.get("file_path")
+        if not file_path:
+            raise HTTPException(status_code=404, detail="Physical file path not specified in database")
+
+        # Resolve paths to prevent traversal
+        safe_dir = os.path.abspath("generated_assets")
+        resolved_path = os.path.abspath(file_path)
+        if not resolved_path.startswith(safe_dir + os.sep) and resolved_path != safe_dir:
+            raise HTTPException(status_code=403, detail="Access denied: file path is outside the allowed directory.")
+
+        if not os.path.exists(resolved_path):
+            raise HTTPException(status_code=404, detail="Physical file not found on disk")
+
+        filename = os.path.basename(resolved_path)
+        ext = asset.get("export_format")
+        media_types = {
+            "pdf": "application/pdf",
+            "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "txt": "text/plain",
+            "json": "application/json",
+            "text": "text/plain"
+        }
+        media_type = media_types.get(ext, "application/octet-stream")
+
+        return FileResponse(path=resolved_path, filename=filename, media_type=media_type)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Failed to download asset.") from exc
+
+
+

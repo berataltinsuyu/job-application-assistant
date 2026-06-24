@@ -1,0 +1,13 @@
+Dear Hiring Manager,
+
+I am writing to express my strong interest in the Backend Developer position. As a Computer Engineering student with a solid foundation in .NET technologies and hands-on experience in payment systems development, I am confident that my technical skills and proactive approach align perfectly with the requirements of your team.
+
+During my recent internship at VakıfBank in the Payment Systems Application Development department, I gained practical experience in building and maintaining RESTful API endpoints using .NET Core. My background includes writing complex SQL queries for data validation and backend operations, as well as testing API flows using Postman to ensure high-quality service delivery. Furthermore, my projects, such as the Restaurant POS System and Merchant Application System, have allowed me to master Entity Framework Core, JWT authentication, and the integration of external APIs, demonstrating my ability to handle end-to-end backend logic.
+
+I am particularly drawn to this role because it emphasizes the exact areas where I have focused my development efforts: building robust REST APIs and collaborating with cross-functional teams to translate business requirements into technical solutions. I am highly comfortable working in agile environments and am eager to contribute to your company’s ongoing success by leveraging my technical proficiency and commitment to clean, efficient code.
+
+I would welcome the opportunity to discuss how my background and technical skills can contribute to your development team. Thank you for your time and consideration, and I look forward to the possibility of speaking with you soon.
+
+Sincerely,
+
+Berat Altınsuyu

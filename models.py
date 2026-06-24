@@ -76,3 +76,55 @@ class MonitoredJob(Base):
     status = Column(String(50), nullable=False, default="new")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class JobIntelligenceReport(Base):
+    __tablename__ = "job_intelligence_reports"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("monitored_jobs.id"), nullable=False, index=True, unique=True)
+    job_family = Column(String(100), nullable=False)
+    seniority_assessment = Column(String(100), nullable=False)
+    report_json = Column(Text, nullable=False, default="{}")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class JobApplicationPipeline(Base):
+    __tablename__ = "job_application_pipeline"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("monitored_jobs.id"), nullable=False, index=True, unique=True)
+    application_stage = Column(String(50), nullable=False, default="not_started")
+    application_priority = Column(String(50), nullable=False, default="medium")
+    application_deadline = Column(String(100), nullable=True)
+    applied_at = Column(String(100), nullable=True)
+    next_action = Column(Text, nullable=True)
+    next_action_date = Column(String(100), nullable=True)
+    interview_date = Column(String(100), nullable=True)
+    contact_person = Column(String(255), nullable=True)
+    contact_email = Column(String(255), nullable=True)
+    application_notes = Column(Text, nullable=True)
+    application_materials_status = Column(String(50), nullable=False, default="not_started")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class JobApplicationAsset(Base):
+    __tablename__ = "job_application_assets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_id = Column(Integer, ForeignKey("monitored_jobs.id"), nullable=False, index=True)
+    asset_type = Column(String(50), nullable=False)  # tailored_cv, cover_letter, application_email
+    title = Column(String(255), nullable=True)
+    content_text = Column(Text, nullable=True)
+    structured_json = Column(Text, nullable=True)
+    file_path = Column(Text, nullable=True)
+    export_format = Column(String(50), nullable=True)  # text, json, pdf, docx, txt
+    template_id = Column(String(100), nullable=True)
+    language = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+
