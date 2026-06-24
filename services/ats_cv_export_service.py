@@ -532,9 +532,23 @@ def render_certifications(ats_cv: dict, language: str) -> dict | None:
     for record in records:
         if not isinstance(record, dict):
             continue
+        name = record.get("name")
+        issuer = record.get("issuer")
+        display_issuer = issuer
+        if name and issuer:
+            name_cleaned = str(name).strip()
+            norm_issuer = str(issuer).strip().lower()
+            name_stripped = re.sub(r'[\s\-_—|~]+$', '', name_cleaned)
+            try:
+                pattern = r'\b' + re.escape(norm_issuer) + r'$'
+                if re.search(pattern, name_stripped.lower()):
+                    display_issuer = None
+            except Exception:
+                if name_stripped.lower().endswith(norm_issuer):
+                    display_issuer = None
         line = _join_non_empty([
-            record.get("name"),
-            record.get("issuer"),
+            name,
+            display_issuer,
             record.get("date"),
             record.get("link"),
         ])
@@ -966,6 +980,8 @@ def _dedupe_preserve_order(values: list[str]) -> list[str]:
 
 
 def _cv_for_export_style(ats_cv: dict, template: dict, language: str, export_style: str) -> dict:
+    from services.ats_cv_postprocessing import clean_structured_cv_before_export
+    ats_cv = clean_structured_cv_before_export(ats_cv)
     original_cv = deepcopy(ats_cv)
     if export_style in {"compact", "balanced_one_page"}:
         render_cv = balance_one_page_content(ats_cv, template, language)

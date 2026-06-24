@@ -722,3 +722,204 @@ def unspace_cv_text(text: str) -> str:
         cleaned_lines.append(_clean_character_spacing(line))
     return "\n".join(cleaned_lines)
 
+
+def normalize_text_for_compare(text: str) -> str:
+    if not text:
+        return ""
+    import re
+    t_low = str(text).lower()
+    cleaned = re.sub(r'[^\w\s]', ' ', t_low)
+    cleaned = cleaned.replace('_', ' ')
+    return " ".join(cleaned.split())
+
+
+def are_similar(text1: str, text2: str) -> bool:
+    n1 = normalize_text_for_compare(text1)
+    n2 = normalize_text_for_compare(text2)
+    if not n1 or not n2:
+        return False
+    if n1 == n2:
+        return True
+    w1 = set(n1.split())
+    w2 = set(n2.split())
+    if not w1 or not w2:
+        return False
+    intersection = w1.intersection(w2)
+    union = w1.union(w2)
+    jaccard = len(intersection) / len(union)
+    return jaccard >= 0.8
+
+
+def clean_company_name(company: str, title: str) -> str:
+    if not company or not title:
+        return company
+    company_str = str(company).strip()
+    title_str = str(title).strip()
+
+    # 1. Suffix check (e.g. "Company - Title")
+    for sep in [" - ", " – ", " — ", " | ", "|", " -", " –", " —", " |", "–", "—"]:
+        if sep in company_str:
+            parts = company_str.rsplit(sep, 1)
+            if len(parts) == 2:
+                prefix, suffix = parts
+                if are_similar(suffix.strip(), title_str):
+                    return prefix.strip()
+
+    # 2. Prefix check (e.g. "Title | Company")
+    for sep in [" - ", " – ", " — ", " | ", "|", "- ", "– ", "— ", "| ", "–", "—"]:
+        if sep in company_str:
+            parts = company_str.split(sep, 1)
+            if len(parts) == 2:
+                prefix, suffix = parts
+                if are_similar(prefix.strip(), title_str):
+                    return suffix.strip()
+
+    # 3. General segment split
+    import re
+    pattern = r'(?:\s+[-–—]\s+|\s*\|\s*)'
+    segments = re.split(pattern, company_str)
+    if len(segments) > 1:
+        matching_indices = [i for i, seg in enumerate(segments) if are_similar(seg, title_str)]
+        if len(matching_indices) == 1:
+            match_idx = matching_indices[0]
+            non_matching = [seg.strip() for i, seg in enumerate(segments) if i != match_idx]
+            if non_matching:
+                return " - ".join(non_matching)
+
+    return company_str
+
+
+def clean_project_name(name: str) -> str:
+    if not name:
+        return name
+    name_str = str(name).strip()
+
+    while name_str and name_str[-1] in ("(", "—", "-", "|", "–"):
+        name_str = name_str[:-1].strip()
+
+    open_count = name_str.count("(")
+    close_count = name_str.count(")")
+    if open_count > close_count:
+        last_open_idx = name_str.rfind("(")
+        if last_open_idx != -1:
+            parenthetical = name_str[last_open_idx + 1:].strip()
+            known_labels = {
+                "github", "github link", "repository", "demo", "live demo", "portfolio"
+            }
+            if parenthetical.lower() in known_labels:
+                name_str = name_str + ")"
+
+    return name_str
+
+
+def clean_certification_name(name: str) -> str:
+    if not name:
+        return name
+    name_str = str(name).strip()
+
+    import re
+    # Remove "(Certificate | Issuer)" or similar malformed parenthetical patterns
+    name_str = re.sub(r'\s*\(\s*Cert(?:ificate|ification)?\s*\|[^)]*\)?', '', name_str, flags=re.IGNORECASE)
+    # Remove dangling "(Certificate)" or "(Certification)"
+    name_str = re.sub(r'\s*\(\s*Cert(?:ificate|ification)?\s*\)?', '', name_str, flags=re.IGNORECASE)
+
+    name_str = name_str.strip()
+    while name_str and name_str[-1] in ("(", "—", "-", "|", "–"):
+        name_str = name_str[:-1].strip()
+
+    return name_str
+
+
+def normalize_cert_for_dedupe(name: str) -> str:
+    if not name:
+        return ""
+    import string
+    import re
+    n = str(name).lower()
+    translator = str.maketrans('', '', string.punctuation)
+    n = n.translate(translator)
+    n = re.sub(r'\b(cert|certificate|certification)\b', '', n)
+    return " ".join(n.split())
+
+
+def deduplicate_certifications(certs: list[dict]) -> list[dict]:
+    if not certs:
+        return []
+
+    seen = {}
+    ordered_keys = []
+
+    for cert in certs:
+        if not isinstance(cert, dict):
+            continue
+        name = cert.get("name") or ""
+        norm = normalize_cert_for_dedupe(name)
+        if not norm:
+            continue
+
+        score = 0
+        if name:
+            score += 1
+            if "(" in name and ")" not in name:
+                score -= 2
+            if "|" in name:
+                score -= 2
+        if cert.get("issuer"):
+            score += 2
+        if cert.get("date"):
+            score += 2
+        if cert.get("link"):
+            score += 2
+
+        if norm not in seen:
+            seen[norm] = (cert, score)
+            ordered_keys.append(norm)
+        else:
+            prev_cert, prev_score = seen[norm]
+            if score > prev_score:
+                seen[norm] = (cert, score)
+
+    return [seen[k][0] for k in ordered_keys]
+
+
+def clean_structured_cv_before_export(structured_cv: dict) -> dict:
+    if not isinstance(structured_cv, dict):
+        return structured_cv
+
+    result = deepcopy(structured_cv)
+
+    # 1. Clean Experience Company Names
+    experience = result.get("experience")
+    if isinstance(experience, list):
+        for exp in experience:
+            if isinstance(exp, dict):
+                company = exp.get("company") or ""
+                role = exp.get("role") or ""
+                if company and role:
+                    exp["company"] = clean_company_name(company, role)
+
+    # 2. Clean Project Names
+    projects = result.get("projects")
+    if isinstance(projects, list):
+        for proj in projects:
+            if isinstance(proj, dict):
+                name = proj.get("name") or ""
+                if name:
+                    proj["name"] = clean_project_name(name)
+
+    # 3. Clean and Deduplicate Certifications
+    certifications = result.get("certifications")
+    if isinstance(certifications, list):
+        cleaned_certs = []
+        for cert in certifications:
+            if isinstance(cert, dict):
+                cert_copy = deepcopy(cert)
+                name = cert_copy.get("name") or ""
+                if name:
+                    cert_copy["name"] = clean_certification_name(name)
+                cleaned_certs.append(cert_copy)
+
+        result["certifications"] = deduplicate_certifications(cleaned_certs)
+
+    return result
+

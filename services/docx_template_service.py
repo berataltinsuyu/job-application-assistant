@@ -145,6 +145,9 @@ def render_cv_with_docx_template(
             "message": "Invalid structured CV.",
         }
 
+    from services.ats_cv_postprocessing import clean_structured_cv_before_export
+    structured_cv = clean_structured_cv_before_export(structured_cv)
+
     if not output_path:
         return {
             "success": False,
@@ -491,9 +494,24 @@ def _certification_items(structured_cv: dict) -> list[dict]:
     for record in _list(structured_cv.get("certifications")):
         if not isinstance(record, dict):
             continue
+        name = record.get("name") or record.get("certification")
+        issuer = record.get("issuer") or record.get("organization")
+        display_issuer = issuer
+        if name and issuer:
+            name_cleaned = str(name).strip()
+            norm_issuer = str(issuer).strip().lower()
+            import re
+            name_stripped = re.sub(r'[\s\-_—|~]+$', '', name_cleaned)
+            try:
+                pattern = r'\b' + re.escape(norm_issuer) + r'$'
+                if re.search(pattern, name_stripped.lower()):
+                    display_issuer = None
+            except Exception:
+                if name_stripped.lower().endswith(norm_issuer):
+                    display_issuer = None
         line = _join_non_empty([
-            record.get("name") or record.get("certification"),
-            record.get("issuer") or record.get("organization"),
+            name,
+            display_issuer,
             record.get("date"),
             record.get("link"),
         ], " | ")

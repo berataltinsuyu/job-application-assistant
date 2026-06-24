@@ -20,6 +20,7 @@ from services.ats_cv_postprocessing import (
     restore_preserved_entity_fields_from_source,
     unspace_cv_text,
     _clean_character_spacing,
+    clean_structured_cv_before_export,
 )
 from services.ats_cv_relevance import rank_ats_cv_for_job
 from services.ats_cv_export_service import (
@@ -294,6 +295,8 @@ async def generate_job_tailored_cv(
     ats_cv = _restore_locked_proper_nouns(ats_cv, locked_nouns)
 
     ats_cv = rank_ats_cv_for_job(ats_cv, job.description or "")
+
+    ats_cv = clean_structured_cv_before_export(ats_cv)
 
     ats_cv = _apply_locked_contact_fields(ats_cv, locked_contact_values)
     ats_cv = _restore_locked_proper_nouns(ats_cv, locked_nouns)
