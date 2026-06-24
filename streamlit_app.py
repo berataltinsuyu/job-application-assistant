@@ -59,8 +59,8 @@ TRANSLATIONS = {
         "job_workspace_desc": "İş ilanlarınızı yönetin, arama profillerini takip edin, başvuru sürecini izleyin ve başvuru materyalleri oluşturun.",
         
         # Validation & Warnings
-        "please_upload_cv": "⚠️ Lütfen sol menüden bir CV dosyası yükleyin.",
-        "please_enter_job_desc": "⚠️ Lütfen sol menüye bir iş ilanı metni girin.",
+        "please_upload_cv": "Devam etmek için sol menüden bir CV yükleyin.",
+        "please_enter_job_desc": "Devam etmek için sol menüye bir iş ilanı metni girin.",
         "btn_analyze": "CV Analiz Et",
         "btn_calculate_ats": "ATS Skorunu Hesapla",
         "btn_extract_keywords": "Anahtar Kelimeleri Çıkar",
@@ -253,7 +253,7 @@ TRANSLATIONS = {
         "jm_no_job_assets": "Bu ilan için henüz materyal oluşturulmadı.",
         "jm_search_profile_help": "Search Profile, manual_mock kaynağından güvenli demo sonuçları üretir. Gerçek iş ilanı kaynakları bu fazda çalıştırılmaz.",
         "jm_global_cv_default": "Global CV varsayılan olarak kullanılır",
-        "jm_global_cv_missing": "Sidebar'da global CV yok. Materyal oluşturmak için CV yükleyin veya isteğe bağlı override kullanın.",
+        "jm_global_cv_missing": "Sol menüden henüz CV yüklenmedi. Materyal oluşturmak için CV yükleyin veya isteğe bağlı override kullanın.",
         "jm_add_job_next_step": "Başlık, şirket ve ilan açıklaması yeterlidir. URL yalnızca metin olarak saklanır.",
         "jm_no_runs": "Henüz çalıştırma geçmişi yok.",
         "jm_manual_import": "Manuel İlan Ekle",
@@ -378,14 +378,14 @@ TRANSLATIONS = {
         "docx_preview_limited": "DOCX önizleme sınırlı olabilir. Formatı kontrol etmek için dosyayı indirip açın.",
         "critical_section_warning": "Kritik bölümleri devre dışı bırakmak CV'nin etkisini azaltabilir.",
         "key_section_warning": "Deneyim, Eğitim veya Yetenekler bölümlerini devre dışı bırakmak ATS uygunluğunu azaltabilir.",
-        "contact": "Contact",
-        "summary_section": "Summary",
-        "skills_section": "Skills",
-        "experience_section": "Experience",
-        "projects_section": "Projects",
-        "education_section": "Education",
-        "certifications_section": "Certifications",
-        "languages_section": "Languages",
+        "contact": "İletişim",
+        "summary_section": "Özet",
+        "skills_section": "Yetenekler",
+        "experience_section": "Deneyim",
+        "projects_section": "Projeler",
+        "education_section": "Eğitim",
+        "certifications_section": "Sertifikalar",
+        "languages_section": "Yabancı Diller",
         
         # History
         "history_desc": "Geçmiş başvuru değerlendirmelerinizi, analizleri ve taslakları inceleyin, filtreleyin veya silin.",
@@ -411,7 +411,25 @@ TRANSLATIONS = {
         "docx_not_recommended_for": "Önerilmeyen durumlar",
         "docx_ats_safety": "ATS güvenliği",
         "docx_visual_density": "Görsel yoğunluk",
-        "docx_layout": "Yerleşim"
+        "docx_layout": "Yerleşim",
+        "no_global_cv": "Sol menüden henüz CV yüklenmedi.",
+        "no_global_job_desc": "Sol menüye henüz iş ilanı metni girilmedi.",
+        "input_status": "Girdi Durumu",
+        "contact_fields_missing": "Bazı iletişim alanları CV’den otomatik çıkarılamadı. Oluşturmadan önce elle doldurabilirsiniz.",
+        "db_feat_cv_tools": "CV analizi, ATS puanlaması, iyileştirme önerileri ve bölüm yeniden yazma için ortak CV ve iş ilanı verilerini kullanın.",
+        "db_feat_job_workspace": "İlanları takip edin, pipeline notlarını yönetin, rolleri analiz edin ve kaydedilmiş ilanlardan özel başvuru materyalleri oluşturun.",
+        "db_feat_app_materials": "Ortak girdileri kullanarak kapak yazıları, başvuru e-postaları ve mülakat hazırlık rehberleri oluşturun.",
+        "db_feat_ats_cv_builder": "Yüklenen CV'deki iletişim bilgilerini koruyarak ATS uyumlu CV çıktıları (DOCX/PDF/TXT) oluşturun.",
+        "export_cv": "Dışa Aktar",
+        "professional_summary": "Profesyonel Özet",
+        "career_objective": "Kariyer Hedefi",
+        "technical_summary": "Teknik Özet",
+        "cv_output_lang": "CV Çıktı Dili",
+        "using_global_cv": "✓ Ortak CV kullanılıyor: **{name}**",
+        "using_global_job": "✓ Ortak iş ilanı metni kullanılıyor.",
+        "using_override_cv": "Farklı CV kullanılıyor: {name}",
+        "using_override_job": "Farklı iş ilanı metni kullanılıyor.",
+        "target_title_lbl": "Hedef CV Başlığı"
     },
     "en": {
         "app_title": "💼 AI Job Application Assistant",
@@ -454,8 +472,8 @@ TRANSLATIONS = {
         "job_workspace_desc": "Manage your job listings, track search alerts, view pipeline progress, and generate custom application materials.",
         
         # Validation & Warnings
-        "please_upload_cv": "⚠️ Please upload your CV in the sidebar.",
-        "please_enter_job_desc": "⚠️ Please provide a job description in the sidebar.",
+        "please_upload_cv": "Upload a CV from the sidebar to continue.",
+        "please_enter_job_desc": "Enter a job description in the sidebar to continue.",
         "btn_analyze": "Analyze Match",
         "btn_calculate_ats": "Calculate ATS Score",
         "btn_extract_keywords": "Extract Job Keywords",
@@ -648,7 +666,7 @@ TRANSLATIONS = {
         "jm_no_job_assets": "No assets generated yet for this job.",
         "jm_search_profile_help": "Search Profiles can run the safe manual_mock source for demo data. Real job board sources are not runnable in this phase.",
         "jm_global_cv_default": "Uses global CV by default",
-        "jm_global_cv_missing": "No global CV uploaded in the sidebar. Upload one or use the optional override before generating materials.",
+        "jm_global_cv_missing": "No global CV uploaded in sidebar. Upload one or use the optional override before generating materials.",
         "jm_add_job_next_step": "Title, company, and description are enough to start. URLs are stored as text only.",
         "jm_no_runs": "No run history yet.",
         "jm_manual_import": "Manual Job Import",
@@ -806,7 +824,25 @@ TRANSLATIONS = {
         "docx_not_recommended_for": "Not recommended for",
         "docx_ats_safety": "ATS safety",
         "docx_visual_density": "Visual density",
-        "docx_layout": "Layout"
+        "docx_layout": "Layout",
+        "no_global_cv": "No global CV uploaded in sidebar.",
+        "no_global_job_desc": "No global job description in sidebar.",
+        "input_status": "Input Status",
+        "contact_fields_missing": "Some contact fields could not be extracted automatically. You can fill them before generating.",
+        "db_feat_cv_tools": "Use the global CV and job description for CV analysis, ATS scoring, improvement suggestions, and section rewrites.",
+        "db_feat_job_workspace": "Track jobs, manage pipeline notes, analyze roles, and generate job-specific materials from saved listings.",
+        "db_feat_app_materials": "Generate cover letters, application emails, and interview prep using the shared inputs.",
+        "db_feat_ats_cv_builder": "Build ATS-friendly CV exports while preserving locked contact fields from the uploaded CV.",
+        "export_cv": "Export",
+        "professional_summary": "Professional Summary",
+        "career_objective": "Career Objective",
+        "technical_summary": "Technical Summary",
+        "cv_output_lang": "CV Output Language",
+        "using_global_cv": "✓ Using global CV: **{name}**",
+        "using_global_job": "✓ Using global job description from sidebar.",
+        "using_override_cv": "Using override CV: {name}",
+        "using_override_job": "Using override job description.",
+        "target_title_lbl": "Target Title"
     }
 }
 
@@ -833,11 +869,82 @@ ATS_LOCKED_PROPER_NOUNS = {
     "certifications": [],
 }
 
+TEMPLATE_TRANSLATIONS = {
+    "classic_ats": {
+        "description": "Kurumsal, bankacılık, BT, arka uç, iş analisti ve genel profesyonel başvurular için uygun, güvenli, tek sütunlu ATS uyumlu özgeçmiş şablonu.",
+        "best_for": [
+            "kurumsal", "bankacılık", "BT", "arka uç", "iş analisti", "ERP", "staj", "başlangıç rolleri"
+        ],
+        "ats_notes": [
+            "Öngörülebilir ATS ayrıştırması için tek sütunlu yapı kullanır.",
+            "Özgeçmiş tarayıcılarını şaşırtabilecek simgelerden, grafiklerden ve tablolardan kaçınır.",
+            "Net başlıklar ve standart bölümler kullanır.",
+            "İçeriği anahtar kelime dostu bir düzende tutar."
+        ]
+    },
+    "modern_clean": {
+        "description": "ATS uyumlu kalırken biraz daha modern boşluklara sahip temiz ve profesyonel tek sütunlu bir CV şablonu.",
+        "best_for": [
+            "yazılım geliştirici", "iş analisti", "ürün", "BT uzmanı", "kurumsal başvurular", "teknoloji rolleri"
+        ],
+        "ats_notes": [
+            "Temiz boşluklu tek sütunlu bir yapıyı korur.",
+            "Simgelerden, grafiklerden ve tablolardan kaçınır.",
+            "Tarayıcı uyumluluğu için net başlıklar ve standart bölümler kullanır.",
+            "Modern bir sunum sürdürürken anahtar kelime dostu düzeni destekler."
+        ]
+    },
+    "technical_developer": {
+        "description": "İş deneyiminden önce teknik becerileri ve projeleri öne çıkaran, geliştirici odaklı ATS uyumlu bir CV şablonu.",
+        "best_for": [
+            "arka uç geliştirici", "ön uç geliştirici", "full-stack geliştirici", "yazılım mühendisi", "API geliştirici", "başlangıç seviyesi geliştirici", "stajyer geliştirici"
+        ],
+        "ats_notes": [
+            "Okuma sırasını koruyan tek sütunlu bir yapı kullanır.",
+            "ATS doğruluğunu azaltabilecek simgelerden, grafiklerden ve tablolardan kaçınır.",
+            "Net teknik başlıklar ve standart özgeçmiş bölümleri kullanır.",
+            "Anahtar kelimeleri ve proje kanıtlarını tarayıcıların kolayca okuyabileceği yerlere yerleştirir."
+        ]
+    },
+    "junior_internship": {
+        "description": "Öğrenciler, stajyerler, yeni mezunlar ve başlangıç seviyesindeki adaylar için ATS uyumlu bir CV şablonu. Eğitim, teknik yetenekler, projeler ve staj deneyimini öne çıkarır.",
+        "best_for": [
+            "staj", "yeni mezun", "başlangıç seviyesi geliştirici", "öğrenci", "stajyer"
+        ],
+        "ats_notes": [
+            "Güvenilir ATS ayrıştırması için tek sütunlu yapı kullanır.",
+            "Simgelerden, grafiklerden ve tablolardan kaçınır.",
+            "Başlangıç seviyesi profillere özel net başlıklar ve standart bölümler kullanır.",
+            "Anahtar kelime eşleşmesi için eğitim, yetenekler ve projelere öncelik verir."
+        ]
+    }
+}
+
+def translate_score_reason(text: str) -> str:
+    if st.session_state.ui_lang != "tr":
+        return text
+    if not isinstance(text, str):
+        return text
+    if "The original CV received an estimated score of" in text:
+        try:
+            score = text.split("of ")[1].split(" because")[0]
+        except Exception:
+            score = "0"
+        return f"Orijinal CV için tahmini skor {score}; çünkü bazı hedef anahtar kelimeler ve iş ilanına özel vurgu eksikti."
+    if "The optimized CV received an estimated score of" in text:
+        try:
+            score = text.split("of ")[1].split(" because")[0]
+        except Exception:
+            score = "0"
+        return f"Optimize edilmiş CV için tahmini skor {score}; çünkü desteklenen anahtar kelimeler ve aktarılabilir deneyimler daha görünür hale getirildi."
+    return text
+
 # --- Sidebar UI Language selector ---
-ui_lang_choice = st.sidebar.radio(
-    "UI Language / Arayüz Dili",
+ui_lang_choice = st.sidebar.selectbox(
+    "Arayüz Dili / UI Language",
     ["Türkçe", "English"],
-    index=0 if st.session_state.ui_lang == "tr" else 1
+    index=0 if st.session_state.ui_lang == "tr" else 1,
+    key="ui_lang_choice"
 )
 st.session_state.ui_lang = "tr" if ui_lang_choice == "Türkçe" else "en"
 
@@ -847,8 +954,7 @@ def t(key):
 st.title(t("app_title"))
 
 # --- Sidebar Configuration panel ---
-st.sidebar.markdown("---")
-st.sidebar.subheader(t("sidebar_uploads"))
+st.sidebar.markdown(f"**{t('sidebar_uploads')}**")
 
 global_cv = st.sidebar.file_uploader(
     t("upload_cv"),
@@ -859,7 +965,7 @@ global_cv = st.sidebar.file_uploader(
 global_job_desc = st.sidebar.text_area(
     t("job_desc"),
     value=st.session_state.global_job_text,
-    height=160,
+    height=80,
     key="global_job_desc_input"
 )
 st.session_state.global_job_text = global_job_desc
@@ -915,8 +1021,6 @@ global_language = st.sidebar.selectbox(
     key="global_language"
 )
 
-st.sidebar.markdown("---")
-
 # Navigation Menu Options translated
 menu_map = {
     "📊 Dashboard": "nav_dashboard",
@@ -928,9 +1032,11 @@ menu_map = {
 }
 
 menu_options = [t(menu_map[key]) for key in menu_map.keys()]
+st.sidebar.markdown(f"**{t('nav_title')}**")
 page_choice = st.sidebar.radio(
     t("nav_title"),
-    menu_options
+    menu_options,
+    label_visibility="collapsed"
 )
 
 # Reverse lookup selection
@@ -1042,24 +1148,24 @@ def get_effective_inputs(page_id: str, require_cv=True, require_job=True):
     effective_cv_obj = None
 
     # Status summary
-    st.markdown("##### " + t("nav_title") + " Settings")
+    st.markdown("##### " + t("input_status"))
     col1, col2 = st.columns(2)
     with col1:
         if global_cv is not None:
-            st.caption(f"✓ Using global CV: **{global_cv.name}**")
+            st.caption(t("using_global_cv").format(name=global_cv.name))
             effective_cv_file = {
                 "cv_file": (global_cv.name, global_cv.getvalue(), global_cv.type)
             }
             effective_cv_obj = global_cv
         else:
-            st.caption("⚠️ No global CV uploaded in sidebar.")
+            st.caption("⚠️ " + t("no_global_cv"))
             
     with col2:
         if st.session_state.get("global_job_desc_input", "").strip():
-            st.caption("✓ Using global job description from sidebar.")
+            st.caption(t("using_global_job"))
             effective_job_text = st.session_state.global_job_desc_input.strip()
         else:
-            st.caption("⚠️ No global job description in sidebar.")
+            st.caption("⚠️ " + t("no_global_job_desc"))
 
     # Optional override section
     override_exp = st.expander(t("override_inputs_title"), expanded=False)
@@ -1074,7 +1180,7 @@ def get_effective_inputs(page_id: str, require_cv=True, require_job=True):
                 "cv_file": (override_cv.name, override_cv.getvalue(), override_cv.type)
             }
             effective_cv_obj = override_cv
-            st.info(f"Using override CV: {override_cv.name}")
+            st.info(t("using_override_cv").format(name=override_cv.name))
 
         override_job = st.text_area(
             t("override_job_label"),
@@ -1084,7 +1190,7 @@ def get_effective_inputs(page_id: str, require_cv=True, require_job=True):
         )
         if override_job.strip():
             effective_job_text = override_job.strip()
-            st.info("Using override job description.")
+            st.info(t("using_override_job"))
 
     if require_cv and effective_cv_file is None:
         st.warning(t("please_upload_cv"))
@@ -1372,7 +1478,7 @@ def render_quality_report(report: dict, title: str, score_key: str) -> None:
     label = title
     if score is not None:
         label = f"{title} - {score}/100"
-    with st.expander(label, expanded=bool(report.get("critical_count"))):
+    with st.expander(label, expanded=False):
         if score is not None:
             st.metric(title, score)
         st.write(report.get("summary") or t("looks_clean"))
@@ -1406,36 +1512,56 @@ def quality_badge(asset: dict) -> str:
 
 def render_ats_cv_preview(ats_cv: dict):
     contact = ats_cv.get("contact", {})
-    st.subheader("Contact")
+    st.subheader(t("contact"))
     contact_lines = []
+    contact_keys_mapping = {
+        "full_name": "locked_full_name",
+        "email": "locked_email",
+        "phone": "locked_phone",
+        "location": "locked_location",
+        "linkedin": "locked_linkedin",
+        "github": "locked_github",
+        "portfolio": "locked_portfolio",
+        "target_title": "target_title_lbl",
+    }
     for key in ["full_name", "target_title", "email", "phone", "location", "linkedin", "github", "portfolio"]:
         value = contact.get(key)
         if value:
-            contact_lines.append(f"**{key.replace('_', ' ').title()}:** {value}")
+            lbl = t(contact_keys_mapping.get(key, key))
+            contact_lines.append(f"**{lbl}:** {value}")
     st.markdown("  \n".join(contact_lines) if contact_lines else "-")
 
     summary_sections = [
-        ("Professional Summary", "professional_summary"),
-        ("Career Objective", "career_objective"),
-        ("Technical Summary", "technical_summary"),
+        ("professional_summary", "professional_summary"),
+        ("career_objective", "career_objective"),
+        ("technical_summary", "technical_summary"),
     ]
-    for title, key in summary_sections:
+    for key_lbl, key in summary_sections:
         value = ats_cv.get(key)
         if value:
-            st.subheader(title)
+            st.subheader(t(key_lbl))
             st.write(value)
 
-    st.subheader("Skills")
+    st.subheader(t("skills_section"))
     skills = ats_cv.get("skills", {})
+    skills_group_mapping = {
+        "technical_skills": "Teknik Yetenekler" if st.session_state.ui_lang == "tr" else "Technical Skills",
+        "core_skills": "Temel Yetenekler" if st.session_state.ui_lang == "tr" else "Core Skills",
+        "soft_skills": "Sosyal Beceriler" if st.session_state.ui_lang == "tr" else "Soft Skills",
+        "tools": "Araçlar" if st.session_state.ui_lang == "tr" else "Tools",
+        "databases": "Veritabanları" if st.session_state.ui_lang == "tr" else "Databases",
+        "cloud": "Bulut Teknolojileri" if st.session_state.ui_lang == "tr" else "Cloud",
+    }
     if isinstance(skills, dict):
         for skill_group, items in skills.items():
             if items:
-                st.markdown(f"**{skill_group.replace('_', ' ').title()}**")
+                lbl = skills_group_mapping.get(skill_group, skill_group.replace('_', ' ').title())
+                st.markdown(f"**{lbl}**")
                 st.write(", ".join(items))
     else:
         st.write("-")
 
-    st.subheader("Experience")
+    st.subheader(t("experience_section"))
     for item in ats_cv.get("experience", []):
         role = item.get("role", "")
         company = item.get("company", "")
@@ -1445,7 +1571,7 @@ def render_ats_cv_preview(ats_cv: dict):
             st.markdown(f"**{heading}**")
         write_non_empty_list(item.get("bullets", []))
 
-    st.subheader("Projects")
+    st.subheader(t("projects_section"))
     for item in ats_cv.get("projects", []):
         if item.get("name"):
             st.markdown(f"**{item.get('name')}**")
@@ -1457,7 +1583,7 @@ def render_ats_cv_preview(ats_cv: dict):
         if item.get("link"):
             st.write(item.get("link"))
 
-    st.subheader("Education")
+    st.subheader(t("education_section"))
     for item in ats_cv.get("education", []):
         heading = " | ".join(filter(None, [
             item.get("school", ""),
@@ -1469,7 +1595,7 @@ def render_ats_cv_preview(ats_cv: dict):
             st.markdown(f"**{heading}**")
         write_non_empty_list(item.get("details", []))
 
-    st.subheader("Certifications")
+    st.subheader(t("certifications_section"))
     certifications = ats_cv.get("certifications", [])
     if certifications:
         for item in certifications:
@@ -1483,7 +1609,7 @@ def render_ats_cv_preview(ats_cv: dict):
     else:
         st.write("-")
 
-    st.subheader("Languages")
+    st.subheader(t("languages_section"))
     languages = ats_cv.get("languages", [])
     if languages:
         for item in languages:
@@ -1555,6 +1681,31 @@ st.markdown("""
         border-radius: 4px 16px 16px 4px;
         margin-bottom: 25px;
     }
+    /* Sidebar compactness styles */
+    section[data-testid="stSidebar"] {
+        padding-top: 1rem !important;
+        padding-bottom: 1rem !important;
+    }
+    section[data-testid="stSidebar"] div.stVerticalBlock {
+        gap: 0.4rem !important;
+    }
+    section[data-testid="stSidebar"] .stElementContainer {
+        margin-bottom: 0px !important;
+        padding-bottom: 2px !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] {
+        padding: 0.5rem !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] > div {
+        padding: 0px !important;
+    }
+    section[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"] div {
+        margin-top: 0px !important;
+        margin-bottom: 0px !important;
+    }
+    section[data-testid="stSidebar"] div[role="radiogroup"] {
+        gap: 2px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1602,11 +1753,11 @@ if selected_page_key == "📊 Dashboard":
     st.markdown(f"### {t('db_features')}")
     col_feat1, col_feat2 = st.columns(2)
     with col_feat1:
-        st.info(f"**🔍 {t('nav_cv_tools')}**\n\nUse the global CV and job description for CV analysis, ATS scoring, improvement suggestions, and section rewrites.")
-        st.success(f"**💼 {t('nav_job_workspace')}**\n\nTrack jobs, manage pipeline notes, analyze roles, and generate job-specific materials from saved listings.")
+        st.info(f"**🔍 {t('nav_cv_tools')}**\n\n{t('db_feat_cv_tools')}")
+        st.success(f"**💼 {t('nav_job_workspace')}**\n\n{t('db_feat_job_workspace')}")
     with col_feat2:
-        st.warning(f"**✉️ {t('nav_application_materials')}**\n\nGenerate cover letters, application emails, and interview prep using the shared inputs.")
-        st.info(f"**📄 {t('nav_ats_cv_builder')}**\n\nBuild ATS-friendly CV exports while preserving locked contact fields from the uploaded CV.")
+        st.warning(f"**✉️ {t('nav_application_materials')}**\n\n{t('db_feat_app_materials')}")
+        st.info(f"**📄 {t('nav_ats_cv_builder')}**\n\n{t('db_feat_ats_cv_builder')}")
 
     st.markdown(f"### {t('db_recent_history')}")
     if history_data:
@@ -1835,31 +1986,45 @@ elif selected_page_key == "📄 ATS CV Builder":
         )
         selected_template = template_by_name[selected_template_name]
 
-        st.subheader(t("template_description"))
-        st.write(selected_template.get("description", ""))
-        st.caption(
-            " | ".join(filter(None, [
-                f"Style: {selected_template.get('style_level')}",
-                f"ATS safety: {selected_template.get('ats_safety_level')}",
-                f"Density: {selected_template.get('visual_density')}",
-            ]))
-        )
+        expander_title = "Şablon Detayları" if st.session_state.ui_lang == "tr" else "Template Details"
+        with st.expander(expander_title, expanded=False):
+            t_desc = selected_template.get("description", "")
+            t_best_for = selected_template.get("best_for", [])
+            t_ats_notes = selected_template.get("ats_notes", [])
+            if st.session_state.ui_lang == "tr" and selected_template.get("id") in TEMPLATE_TRANSLATIONS:
+                tpl_t = TEMPLATE_TRANSLATIONS[selected_template.get("id")]
+                t_desc = tpl_t.get("description", t_desc)
+                t_best_for = tpl_t.get("best_for", t_best_for)
+                t_ats_notes = tpl_t.get("ats_notes", t_ats_notes)
 
-        st.subheader(t("best_for"))
-        for item in selected_template.get("best_for", []):
-            st.markdown(f"- {item}")
+            st.markdown(f"**{t('template_description')}**")
+            st.write(t_desc)
+            style_lbl = "Stil" if st.session_state.ui_lang == "tr" else "Style"
+            safety_lbl = "ATS Güvenliği" if st.session_state.ui_lang == "tr" else "ATS Safety"
+            density_lbl = "Yoğunluk" if st.session_state.ui_lang == "tr" else "Density"
+            st.caption(
+                " | ".join(filter(None, [
+                    f"{style_lbl}: {selected_template.get('style_level')}",
+                    f"{safety_lbl}: {selected_template.get('ats_safety_level')}",
+                    f"{density_lbl}: {selected_template.get('visual_density')}",
+                ]))
+            )
 
-        st.subheader(t("section_order"))
-        for index, section in enumerate(selected_template.get("section_order", []), start=1):
-            st.markdown(f"{index}. `{section}`")
+            st.markdown(f"**{t('best_for')}**")
+            for item in t_best_for:
+                st.markdown(f"- {item}")
 
-        st.subheader(t("ats_notes"))
-        for note in selected_template.get("ats_notes", []):
-            st.markdown(f"- {note}")
+            st.markdown(f"**{t('section_order')}**")
+            for index, section in enumerate(selected_template.get("section_order", []), start=1):
+                st.markdown(f"{index}. `{section}`")
+
+            st.markdown(f"**{t('ats_notes')}**")
+            for note in t_ats_notes:
+                st.markdown(f"- {note}")
 
         ats_cv_language_options = ["Turkish", "English"]
         ats_cv_language = st.selectbox(
-            t("output_lang"),
+            t("cv_output_lang"),
             ats_cv_language_options,
             index=ats_cv_language_options.index(global_language) if global_language in ats_cv_language_options else 0,
             key="ats_cv_output_language"
@@ -1876,7 +2041,7 @@ elif selected_page_key == "📄 ATS CV Builder":
         sync_ats_locked_fields_from_uploaded_cv(global_cv)
 
         if global_cv is not None and st.session_state.get("cv_extraction_failed"):
-            st.warning("⚠️ Lütfen dikkat: Özgeçmişten metin/iletişim bilgileri otomatik ayıklanamadı. İletişim alanlarını manuel olarak doldurabilirsiniz. / Note: Could not extract contact fields automatically from the uploaded CV. Please fill them in manually.")
+            st.warning("⚠️ " + t("contact_fields_missing"))
 
         st.subheader(t("locked_contact_fields"))
         locked_contact_values = {}
@@ -1995,13 +2160,20 @@ elif selected_page_key == "📄 ATS CV Builder":
             except Exception:
                 improvement_score = 0
 
-            col_before, col_after, col_improvement = st.columns(3)
-            with col_before:
+            # 1. Score summary metrics
+            col1, col2, col3, col4, col5 = st.columns(5)
+            with col1:
                 st.metric(t("ats_score_before"), before_score)
-            with col_after:
+            with col2:
                 st.metric(t("ats_score_after"), after_score)
-            with col_improvement:
+            with col3:
                 st.metric(t("score_improvement"), improvement_score)
+            with col4:
+                q_score = quality_report.get("quality_score") if isinstance(quality_report, dict) else None
+                st.metric(t("cv_quality_score"), q_score if q_score is not None else "-")
+            with col5:
+                s_score = structure_report.get("structure_score") if isinstance(structure_report, dict) else None
+                st.metric(t("structure_score"), s_score if s_score is not None else "-")
 
             contact = ats_cv.get("contact", {})
             col_role, col_title, col_confidence = st.columns(3)
@@ -2009,20 +2181,13 @@ elif selected_page_key == "📄 ATS CV Builder":
                 st.write(f"**{t('target_role')}**")
                 st.write(metadata.get("target_role") or "-")
             with col_title:
-                st.write("**Target Title**" if st.session_state.ui_lang == "en" else "**Hedef CV Başlığı**")
+                st.write(f"**{t('target_title_lbl')}**")
                 st.write(contact.get("target_title") or "-")
             with col_confidence:
                 st.write(f"**{t('alignment_confidence')}**")
                 st.write(metadata.get("alignment_confidence") or "-")
 
-            quality_col, structure_col = st.columns(2)
-            with quality_col:
-                q_score = quality_report.get("quality_score") if isinstance(quality_report, dict) else None
-                st.metric(t("cv_quality_score"), q_score if q_score is not None else "-")
-            with structure_col:
-                s_score = structure_report.get("structure_score") if isinstance(structure_report, dict) else None
-                st.metric(t("structure_score"), s_score if s_score is not None else "-")
-
+            # 2. Compact expanders
             render_quality_report(quality_report, t("cv_quality_check"), "quality_score")
             render_quality_report(structure_report, t("structure_validation"), "structure_score")
 
@@ -2038,27 +2203,27 @@ elif selected_page_key == "📄 ATS CV Builder":
             with st.expander(t("risky_keywords_not_added"), expanded=False):
                 write_non_empty_list(metadata.get("risky_keywords_not_added", []))
 
-            st.subheader(t("optimization_summary"))
-            st.write(metadata.get("optimization_summary", ""))
+            with st.expander(t("optimization_summary"), expanded=False):
+                st.write(metadata.get("optimization_summary", ""))
 
-            st.subheader(t("ats_score_explanation"))
-            st.caption(t("ats_score_disclaimer"))
             score_explanation = metadata.get("ats_score_explanation", {}) if isinstance(metadata.get("ats_score_explanation"), dict) else {}
-            st.write(f"**{t('before_reason')}:** {score_explanation.get('before_reason') or '-'}")
-            st.write(f"**{t('after_reason')}:** {score_explanation.get('after_reason') or '-'}")
+            with st.expander(t("ats_score_explanation"), expanded=False):
+                st.caption(t("ats_score_disclaimer"))
+                st.write(f"**{t('before_reason')}:** {translate_score_reason(score_explanation.get('before_reason') or '-')}")
+                st.write(f"**{t('after_reason')}:** {translate_score_reason(score_explanation.get('after_reason') or '-')}")
+
             with st.expander(t("improvement_reasons"), expanded=False):
                 write_non_empty_list(score_explanation.get("improvement_reasons", []))
+
             with st.expander(t("remaining_gaps"), expanded=False):
                 write_non_empty_list(score_explanation.get("remaining_gaps", []))
 
             with st.expander(t("adaptation_notes"), expanded=False):
                 write_non_empty_list(metadata.get("adaptation_notes", []))
 
+            # 3. Export Section
             st.markdown("---")
-            st.header(t("generated_ats_cv_preview"))
-            render_ats_cv_preview(ats_cv)
-
-            st.markdown("---")
+            st.header(t("export_cv") if "export_cv" in TRANSLATIONS[st.session_state.ui_lang] else "Export")
             st.subheader(t("export_sections"))
             export_style_label_map = {
                 t("export_style_standard"): "standard",
@@ -2170,6 +2335,12 @@ elif selected_page_key == "📄 ATS CV Builder":
                         file_name=safe_cv_filename("ats_cv", export_template_id, "txt"),
                         mime="text/plain"
                     )
+
+            # 4. Collapsible Preview Section
+            st.markdown("---")
+            preview_title = "Oluşturulan CV Önizlemesi" if st.session_state.ui_lang == "tr" else "Generated CV Preview"
+            with st.expander(preview_title, expanded=False):
+                render_ats_cv_preview(ats_cv)
 
 
 elif selected_page_key == "✉️ Application Materials":
