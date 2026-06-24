@@ -1,10 +1,12 @@
 from copy import deepcopy
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 
 from docx import Document
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Inches, Pt
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
+from docx.shared import Inches, Pt, RGBColor
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
@@ -27,6 +29,8 @@ DOCX_TEMPLATE_CATALOG = [
         "ats_safety_level": "high",
         "visual_density": "medium",
         "supports_docx": True,
+        "supports_pdf": False,
+        "supports_photo": False,
         "experimental": True,
     },
     {
@@ -43,6 +47,62 @@ DOCX_TEMPLATE_CATALOG = [
         "ats_safety_level": "high",
         "visual_density": "medium",
         "supports_docx": True,
+        "supports_pdf": False,
+        "supports_photo": False,
+        "experimental": True,
+    },
+    {
+        "template_id": "modern_professional",
+        "display_name": "Modern Professional",
+        "description": "Polished one-column CV with strong name hierarchy, clean section rules, and balanced spacing.",
+        "best_for": "Product roles, business analyst roles, corporate IT, new graduate applications",
+        "visual_style": "Professional, centered header, subtle accent rules",
+        "layout": "One-column",
+        "strengths": "Clear visual hierarchy, polished section separation, ATS-readable content order",
+        "cautions": "More visual than strict plain ATS; review before highly conservative submissions",
+        "recommended_for": "Product, business analyst, corporate IT, operations, junior professional roles",
+        "not_recommended_for": "Ultra-compact one-page technical submissions with dense content",
+        "ats_safety_level": "high",
+        "visual_density": "medium",
+        "supports_docx": True,
+        "supports_pdf": False,
+        "supports_photo": False,
+        "experimental": True,
+    },
+    {
+        "template_id": "compact_technical",
+        "display_name": "Compact Technical",
+        "description": "One-page-friendly technical CV with tight spacing, strong section rules, and compact skill grouping.",
+        "best_for": "Backend developer, software engineer, data/AI technical roles, ATS-heavy submissions",
+        "visual_style": "Compact, technical, rule-led hierarchy",
+        "layout": "One-column",
+        "strengths": "Dense but readable layout, strong technical keyword visibility, good for project-heavy CVs",
+        "cautions": "Less whitespace than modern templates; best for concise bullet content",
+        "recommended_for": "Backend, software engineering, API, data, AI, DevOps, technical internship roles",
+        "not_recommended_for": "Design-forward or photo-first applications",
+        "ats_safety_level": "high",
+        "visual_density": "high",
+        "supports_docx": True,
+        "supports_pdf": False,
+        "supports_photo": False,
+        "experimental": True,
+    },
+    {
+        "template_id": "visual_photo_optional",
+        "display_name": "Visual Photo Optional",
+        "description": "ATS-conscious one-column CV with an optional modest header photo for markets where photo CVs are acceptable.",
+        "best_for": "Turkish/local applications, photo-acceptable corporate submissions, polished visual CVs",
+        "visual_style": "Photo-capable header, clean rules, corporate spacing",
+        "layout": "One-column with optional header photo",
+        "strengths": "Works with or without photo, keeps main content one-column, restrained visual presentation",
+        "cautions": "Only include a photo where it is expected or acceptable for the target market",
+        "recommended_for": "Turkey/local applications, corporate roles where photo CVs are common",
+        "not_recommended_for": "Photo-blind ATS processes, US/UK applications where photos are discouraged",
+        "ats_safety_level": "medium",
+        "visual_density": "medium",
+        "supports_docx": True,
+        "supports_pdf": False,
+        "supports_photo": True,
         "experimental": True,
     },
 ]
@@ -124,6 +184,8 @@ def render_cv_with_docx_template(
     template_id: str,
     output_path: str,
     metadata: dict | None = None,
+    photo_bytes: bytes | None = None,
+    photo_filename: str = "",
 ) -> dict:
     warnings: list[str] = []
     template = _get_template(template_id)
@@ -164,7 +226,7 @@ def render_cv_with_docx_template(
         document = Document()
         style = _style_for_template(template_id)
         _configure_document(document, style)
-        _render_header(document, structured_cv, style)
+        warnings.extend(_render_header(document, structured_cv, style, photo_bytes, photo_filename))
         _render_sections(document, structured_cv, style)
 
         metadata = metadata if isinstance(metadata, dict) else {}
@@ -223,6 +285,84 @@ def _style_for_template(template_id: str) -> dict:
             "separator_size": "4",  # 1/2 pt thin line
             "align_header": WD_ALIGN_PARAGRAPH.CENTER,
             "modern_style": True,
+            "accent_color": "303030",
+            "heading_color": "303030",
+            "bold_labels": True,
+        }
+    if template_id == "modern_professional":
+        return {
+            "margin": 0.58,
+            "name_size": 24,
+            "title_size": 12,
+            "contact_size": 8.7,
+            "body_size": 9.7,
+            "heading_size": 10.8,
+            "heading_space_before": 9,
+            "heading_space_after": 2.2,
+            "item_space_before": 4.5,
+            "item_space_after": 1.2,
+            "bullet_space_after": 0.7,
+            "separator": True,
+            "separator_color": "8E6BBE",
+            "separator_size": "5",
+            "align_header": WD_ALIGN_PARAGRAPH.CENTER,
+            "modern_style": True,
+            "accent_color": "6F4FA1",
+            "heading_color": "6F4FA1",
+            "bold_labels": True,
+            "date_right_align": True,
+            "date_tab_inch": 6.55,
+        }
+    if template_id == "compact_technical":
+        return {
+            "margin": 0.50,
+            "name_size": 18.5,
+            "title_size": 10.5,
+            "contact_size": 8,
+            "body_size": 8.8,
+            "heading_size": 10,
+            "heading_space_before": 6,
+            "heading_space_after": 1.2,
+            "item_space_before": 2.5,
+            "item_space_after": 0.4,
+            "bullet_space_after": 0.15,
+            "separator": True,
+            "separator_color": "222222",
+            "separator_size": "5",
+            "align_header": WD_ALIGN_PARAGRAPH.LEFT,
+            "modern_style": False,
+            "accent_color": "111111",
+            "heading_color": "111111",
+            "bold_labels": True,
+            "date_right_align": True,
+            "date_tab_inch": 7.0,
+        }
+    if template_id == "visual_photo_optional":
+        return {
+            "margin": 0.58,
+            "name_size": 22,
+            "title_size": 11.8,
+            "contact_size": 8.6,
+            "body_size": 9.5,
+            "heading_size": 10.4,
+            "heading_space_before": 8,
+            "heading_space_after": 1.6,
+            "item_space_before": 4,
+            "item_space_after": 1.0,
+            "bullet_space_after": 0.55,
+            "separator": True,
+            "separator_color": "777777",
+            "separator_size": "5",
+            "align_header": WD_ALIGN_PARAGRAPH.LEFT,
+            "modern_style": True,
+            "accent_color": "1F2933",
+            "heading_color": "1F2933",
+            "bold_labels": True,
+            "date_right_align": True,
+            "date_tab_inch": 6.55,
+            "supports_photo": True,
+            "photo_width": 1.08,
+            "photo_cell_width": 1.25,
         }
     return {
         "margin": 0.75,
@@ -241,6 +381,9 @@ def _style_for_template(template_id: str) -> dict:
         "separator_size": "6",  # 3/4 pt line
         "align_header": WD_ALIGN_PARAGRAPH.LEFT,
         "modern_style": False,
+        "accent_color": "222222",
+        "heading_color": "222222",
+        "bold_labels": True,
     }
 
 
@@ -257,11 +400,25 @@ def _configure_document(document: Document, style: dict) -> None:
     normal_style.font.size = Pt(float(style["body_size"]))
 
 
-def _render_header(document: Document, structured_cv: dict, style: dict) -> None:
+def _render_header(
+    document: Document,
+    structured_cv: dict,
+    style: dict,
+    photo_bytes: bytes | None = None,
+    photo_filename: str = "",
+) -> list[str]:
+    warnings = []
     contact = _dict(structured_cv.get("contact"))
     full_name = _clean(contact.get("full_name"))
     target_title = _clean(contact.get("target_title"))
     contact_line = _contact_line(contact)
+
+    if style.get("supports_photo") and photo_bytes:
+        photo_warning = _render_photo_header(document, style, full_name, target_title, contact_line, photo_bytes, photo_filename)
+        if photo_warning:
+            warnings.append(photo_warning)
+        _add_header_rule(document, style)
+        return warnings
 
     last_p = None
 
@@ -272,6 +429,7 @@ def _render_header(document: Document, structured_cv: dict, style: dict) -> None
         run = paragraph.add_run(full_name)
         run.bold = True
         run.font.size = Pt(float(style["name_size"]))
+        run.font.color.rgb = _rgb(style.get("accent_color"))
         last_p = paragraph
 
     if target_title:
@@ -299,6 +457,70 @@ def _render_header(document: Document, structured_cv: dict, style: dict) -> None
             space="8"
         )
         last_p.paragraph_format.space_after = Pt(12)
+    return warnings
+
+
+def _render_photo_header(
+    document: Document,
+    style: dict,
+    full_name: str,
+    target_title: str,
+    contact_line: str,
+    photo_bytes: bytes,
+    photo_filename: str,
+) -> str:
+    table = document.add_table(rows=1, cols=2)
+    table.autofit = False
+    photo_cell, text_cell = table.rows[0].cells
+    photo_cell.width = Inches(float(style.get("photo_cell_width", 1.25)))
+    text_cell.width = Inches(5.9)
+    photo_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+    text_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+
+    photo_paragraph = photo_cell.paragraphs[0]
+    photo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    try:
+        run = photo_paragraph.add_run()
+        run.add_picture(BytesIO(photo_bytes), width=Inches(float(style.get("photo_width", 1.08))))
+    except Exception:
+        photo_paragraph.add_run("")
+        warning = "Photo could not be rendered; generated CV without the photo."
+    else:
+        warning = ""
+
+    text_cell.paragraphs[0].text = ""
+    if full_name:
+        paragraph = text_cell.paragraphs[0]
+        paragraph.paragraph_format.space_after = Pt(1)
+        run = paragraph.add_run(full_name)
+        run.bold = True
+        run.font.size = Pt(float(style["name_size"]))
+        run.font.color.rgb = _rgb(style.get("accent_color"))
+    if target_title:
+        paragraph = text_cell.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(2)
+        run = paragraph.add_run(target_title)
+        run.bold = True
+        run.font.size = Pt(float(style["title_size"]))
+    if contact_line:
+        paragraph = text_cell.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(2)
+        run = paragraph.add_run(contact_line)
+        run.font.size = Pt(float(style["contact_size"]))
+
+    return warning
+
+
+def _add_header_rule(document: Document, style: dict) -> None:
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_before = Pt(3)
+    paragraph.paragraph_format.space_after = Pt(10)
+    _add_bottom_border(
+        paragraph,
+        color=style.get("separator_color", "CCCCCC"),
+        size=style.get("separator_size", "6"),
+        space="4",
+    )
 
 
 def _render_sections(document: Document, structured_cv: dict, style: dict) -> None:
@@ -342,6 +564,7 @@ def _add_heading(document: Document, text: str, style: dict) -> None:
     run = paragraph.add_run(text.upper())
     run.bold = True
     run.font.size = Pt(float(style["heading_size"]))
+    run.font.color.rgb = _rgb(style.get("heading_color"))
     if style.get("separator"):
         _add_bottom_border(
             paragraph,
@@ -362,6 +585,15 @@ def _add_item_heading(document: Document, text: str, style: dict) -> None:
     if not parts:
         return
 
+    date_part = ""
+    if style.get("date_right_align") and len(parts) >= 2 and _looks_like_date_range(parts[-1]):
+        date_part = parts[-1]
+        parts = parts[:-1]
+        paragraph.paragraph_format.tab_stops.add_tab_stop(
+            Inches(float(style.get("date_tab_inch", 6.55))),
+            WD_TAB_ALIGNMENT.RIGHT,
+        )
+
     # First component (e.g. Job Title, Project Name, School Name) -> Bold
     run = paragraph.add_run(parts[0])
     run.bold = True
@@ -380,12 +612,25 @@ def _add_item_heading(document: Document, text: str, style: dict) -> None:
         if i == 0:
             run.italic = True
 
+    if date_part:
+        date_run = paragraph.add_run("\t" + date_part)
+        date_run.font.size = Pt(float(style["body_size"]))
+
 
 def _add_paragraph(document: Document, text: str, style: dict) -> None:
     if not text:
         return
     paragraph = document.add_paragraph()
     paragraph.paragraph_format.space_after = Pt(float(style["item_space_after"]))
+    if style.get("bold_labels") and ":" in text:
+        label, rest = text.split(":", 1)
+        if 1 <= len(label.split()) <= 4 and len(label) <= 32:
+            label_run = paragraph.add_run(f"{label}:")
+            label_run.bold = True
+            label_run.font.size = Pt(float(style["body_size"]))
+            rest_run = paragraph.add_run(rest)
+            rest_run.font.size = Pt(float(style["body_size"]))
+            return
     run = paragraph.add_run(text)
     run.font.size = Pt(float(style["body_size"]))
 
@@ -581,3 +826,30 @@ def _flatten(value: Any) -> list[str]:
 
 def _label(value: Any) -> str:
     return _clean(value).replace("_", " ").title()
+
+
+def _rgb(value: str | None) -> RGBColor:
+    text = str(value or "222222").strip().lstrip("#")
+    if not re_fullmatch_hex(text):
+        text = "222222"
+    return RGBColor(int(text[0:2], 16), int(text[2:4], 16), int(text[4:6], 16))
+
+
+def re_fullmatch_hex(text: str) -> bool:
+    if len(text) != 6:
+        return False
+    return all(character in "0123456789abcdefABCDEF" for character in text)
+
+
+def _looks_like_date_range(value: str) -> bool:
+    text = _clean(value).lower()
+    if not text:
+        return False
+    date_terms = {
+        "present", "current", "now", "bugün", "bugun", "devam", "ocak", "şubat", "subat",
+        "mart", "nisan", "mayıs", "mayis", "haziran", "temmuz", "ağustos", "agustos",
+        "eylül", "eylul", "ekim", "kasım", "kasim", "aralık", "aralik",
+    }
+    if any(term in text for term in date_terms):
+        return True
+    return any(char.isdigit() for char in text) and any(sep in text for sep in ("-", "–", "/", "."))

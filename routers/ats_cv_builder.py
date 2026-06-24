@@ -309,6 +309,8 @@ async def export_ats_cv_docx(
     export_style: str = Form("standard"),
     docx_render_mode: str = Form("programmatic"),
     docx_template_id: str = Form(""),
+    include_photo: str = Form("false"),
+    cv_photo: UploadFile | None = File(None),
 ):
     ats_cv, template, parsed_one_page, parsed_sections, parsed_export_style = _parse_export_payload(
         ats_cv_json, template_id, language, one_page, enabled_sections, export_style
@@ -317,16 +319,34 @@ async def export_ats_cv_docx(
     resolved_template_id = template["id"]
 
     if docx_render_mode == "template":
-        from services.docx_template_service import render_cv_with_docx_template
+        from services.docx_template_service import get_docx_template_catalog, render_cv_with_docx_template
         import os
         import uuid
         temp_path = f"scratch/temp_export_{uuid.uuid4().hex}.docx"
+        include_photo_bool = _parse_optional_bool(include_photo, "include_photo")
+        photo_bytes = None
+        photo_filename = ""
+        template_info = next(
+            (item for item in get_docx_template_catalog() if item.get("template_id") == docx_template_id),
+            {},
+        )
+        if include_photo_bool and cv_photo and template_info.get("supports_photo"):
+            photo_filename = cv_photo.filename or ""
+            if not _supported_photo_filename(photo_filename):
+                raise HTTPException(status_code=400, detail="cv_photo must be PNG, JPG, or JPEG.")
+            photo_bytes = await cv_photo.read()
         try:
             render_res = render_cv_with_docx_template(
                 structured_cv=ats_cv,
                 template_id=docx_template_id,
                 output_path=temp_path,
-                metadata={"docx_render_mode": "template", "docx_template_id": docx_template_id}
+                metadata={
+                    "docx_render_mode": "template",
+                    "docx_template_id": docx_template_id,
+                    "include_photo": bool(photo_bytes),
+                },
+                photo_bytes=photo_bytes,
+                photo_filename=photo_filename,
             )
             if render_res.get("success"):
                 with open(temp_path, "rb") as f:
@@ -472,6 +492,20 @@ def _parse_bool(value: str) -> bool:
     if normalized in {"false", "0", "no", "off", ""}:
         return False
     raise HTTPException(status_code=400, detail="one_page must be true or false.")
+
+
+def _parse_optional_bool(value: str, field_name: str) -> bool:
+    normalized = str(value).strip().lower()
+    if normalized in {"true", "1", "yes", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "off", ""}:
+        return False
+    raise HTTPException(status_code=400, detail=f"{field_name} must be true or false.")
+
+
+def _supported_photo_filename(filename: str) -> bool:
+    lowered = str(filename or "").strip().lower()
+    return lowered.endswith((".png", ".jpg", ".jpeg"))
 
 
 def _parse_export_style(value: str, one_page: bool) -> str:

@@ -7,7 +7,7 @@ from xml.sax.saxutils import escape
 from docx import Document
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
-from docx.shared import Inches, Pt
+from docx.shared import Inches, Pt, RGBColor
 from fastapi import HTTPException
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
@@ -99,12 +99,14 @@ def render_ats_cv_to_docx(
             run = paragraph.add_run(contact["full_name"])
             run.bold = True
             run.font.size = Pt(template_style["docx_name_size"])
+            run.font.color.rgb = _docx_rgb(template_style.get("accent_color", "111111"))
 
         if _section_enabled("contact", enabled_sections) and contact["target_title"]:
             paragraph = document.add_paragraph()
             run = paragraph.add_run(contact["target_title"])
             run.bold = True
             run.font.size = Pt(template_style["docx_title_size"])
+            run.font.color.rgb = _docx_rgb(template_style.get("title_color", "111111"))
 
         if _section_enabled("contact", enabled_sections):
             for contact_line in contact["contact_lines"]:
@@ -664,6 +666,7 @@ def _add_docx_section(document: Document, section: dict, template_style: dict, l
     run = heading.add_run(_heading_text(section["heading"], language))
     run.bold = True
     run.font.size = Pt(template_style["docx_heading_size"])
+    run.font.color.rgb = _docx_rgb(template_style.get("heading_color", "111111"))
 
     if template_style["heading_separator"]:
         if template_style.get("separator_as_rule"):
@@ -703,7 +706,7 @@ def _add_docx_horizontal_line(document: Document, template_style: dict) -> None:
     bottom.set(qn("w:val"), "single")
     bottom.set(qn("w:sz"), "4")
     bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), "B7B7B7")
+    bottom.set(qn("w:color"), template_style.get("separator_color", "B7B7B7"))
     p_bdr.append(bottom)
     p_pr.append(p_bdr)
 
@@ -713,7 +716,7 @@ def _pdf_horizontal_line(template_style: dict) -> HRFlowable:
         width="100%",
         thickness=0.45,
         lineCap="butt",
-        color=colors.HexColor("#B7B7B7"),
+        color=colors.HexColor(f"#{template_style.get('separator_color', 'B7B7B7')}"),
         spaceBefore=0,
         spaceAfter=template_style["pdf_separator_space_after"],
     )
@@ -761,6 +764,7 @@ def _pdf_styles(template_style: dict) -> dict:
             leading=template_style["pdf_name_size"] + 3,
             alignment=TA_CENTER,
             spaceAfter=3,
+            textColor=colors.HexColor(f"#{template_style.get('accent_color', '111111')}"),
         ),
         "TargetTitle": ParagraphStyle(
             "ATSTargetTitle",
@@ -770,6 +774,7 @@ def _pdf_styles(template_style: dict) -> dict:
             leading=template_style["pdf_title_size"] + 2.5,
             alignment=TA_CENTER,
             spaceAfter=3,
+            textColor=colors.HexColor(f"#{template_style.get('title_color', '111111')}"),
         ),
         "Contact": ParagraphStyle(
             "ATSContact",
@@ -790,6 +795,7 @@ def _pdf_styles(template_style: dict) -> dict:
             alignment=TA_LEFT,
             spaceBefore=template_style["pdf_heading_space_before"],
             spaceAfter=template_style["pdf_heading_space_after"],
+            textColor=colors.HexColor(f"#{template_style.get('heading_color', '111111')}"),
         ),
         "Separator": ParagraphStyle(
             "ATSSeparator",
@@ -1097,6 +1103,13 @@ def _first_existing_path(paths: list[str]) -> str:
     return ""
 
 
+def _docx_rgb(value: str) -> RGBColor:
+    text = str(value or "111111").strip().lstrip("#")
+    if len(text) != 6 or any(character not in "0123456789abcdefABCDEF" for character in text):
+        text = "111111"
+    return RGBColor(int(text[0:2], 16), int(text[2:4], 16), int(text[4:6], 16))
+
+
 def _template_style(template: dict, export_style: str = "standard", density: str = "medium") -> dict:
     template_id = template.get("id", "classic_ats")
     styles = {
@@ -1201,6 +1214,117 @@ def _template_style(template: dict, export_style: str = "standard", density: str
             "pdf_section_spacing": 0,
             "pdf_section_after_spacing": 0.09 * inch,
             "heading_separator": False,
+        },
+        "modern_professional": {
+            "docx_margin": 0.56,
+            "docx_name_size": 23,
+            "docx_title_size": 12,
+            "docx_contact_size": 8.6,
+            "docx_body_size": 9.6,
+            "docx_section_space_before": 8,
+            "docx_item_space_after": 1.0,
+            "docx_bullet_space_after": 0.5,
+            "docx_heading_size": 10.8,
+            "docx_heading_space_after": 0.8,
+            "docx_separator_size": 7,
+            "docx_separator_space_after": 0.7,
+            "pdf_margin": 0.54,
+            "pdf_name_size": 22,
+            "pdf_title_size": 11.6,
+            "pdf_contact_size": 8.4,
+            "pdf_heading_size": 10.4,
+            "pdf_item_heading_size": 9.4,
+            "pdf_body_size": 8.85,
+            "pdf_body_space_after": 0.7,
+            "pdf_bullet_space_after": 0.25,
+            "pdf_heading_space_before": 3.5,
+            "pdf_heading_space_after": 0.7,
+            "pdf_separator_size": 5.8,
+            "pdf_separator_space_after": 0.45,
+            "pdf_contact_after_spacing": 0.08 * inch,
+            "pdf_section_spacing": 0,
+            "pdf_section_after_spacing": 0.04 * inch,
+            "heading_separator": True,
+            "separator_text": "-" * 54,
+            "separator_as_rule": True,
+            "separator_color": "8E6BBE",
+            "accent_color": "6F4FA1",
+            "title_color": "333333",
+            "heading_color": "6F4FA1",
+        },
+        "compact_technical": {
+            "docx_margin": 0.48,
+            "docx_name_size": 18,
+            "docx_title_size": 10.2,
+            "docx_contact_size": 8,
+            "docx_body_size": 8.8,
+            "docx_section_space_before": 5.2,
+            "docx_item_space_after": 0.35,
+            "docx_bullet_space_after": 0.1,
+            "docx_heading_size": 9.8,
+            "docx_heading_space_after": 0.25,
+            "docx_separator_size": 6.5,
+            "docx_separator_space_after": 0.25,
+            "pdf_margin": 0.48,
+            "pdf_name_size": 17.5,
+            "pdf_title_size": 10.2,
+            "pdf_contact_size": 7.8,
+            "pdf_heading_size": 9.6,
+            "pdf_item_heading_size": 8.7,
+            "pdf_body_size": 8.25,
+            "pdf_body_space_after": 0.2,
+            "pdf_bullet_space_after": 0,
+            "pdf_heading_space_before": 2.2,
+            "pdf_heading_space_after": 0.2,
+            "pdf_separator_size": 5.4,
+            "pdf_separator_space_after": 0.1,
+            "pdf_contact_after_spacing": 0.045 * inch,
+            "pdf_section_spacing": 0,
+            "pdf_section_after_spacing": 0.02 * inch,
+            "heading_separator": True,
+            "separator_text": "-" * 58,
+            "separator_as_rule": True,
+            "separator_color": "222222",
+            "accent_color": "111111",
+            "title_color": "111111",
+            "heading_color": "111111",
+        },
+        "visual_photo_optional": {
+            "docx_margin": 0.56,
+            "docx_name_size": 22,
+            "docx_title_size": 11.5,
+            "docx_contact_size": 8.5,
+            "docx_body_size": 9.4,
+            "docx_section_space_before": 7.5,
+            "docx_item_space_after": 0.9,
+            "docx_bullet_space_after": 0.45,
+            "docx_heading_size": 10.4,
+            "docx_heading_space_after": 0.6,
+            "docx_separator_size": 6.8,
+            "docx_separator_space_after": 0.6,
+            "pdf_margin": 0.54,
+            "pdf_name_size": 20,
+            "pdf_title_size": 11.2,
+            "pdf_contact_size": 8.3,
+            "pdf_heading_size": 10.1,
+            "pdf_item_heading_size": 9.2,
+            "pdf_body_size": 8.75,
+            "pdf_body_space_after": 0.6,
+            "pdf_bullet_space_after": 0.25,
+            "pdf_heading_space_before": 3.0,
+            "pdf_heading_space_after": 0.55,
+            "pdf_separator_size": 5.6,
+            "pdf_separator_space_after": 0.4,
+            "pdf_contact_after_spacing": 0.075 * inch,
+            "pdf_section_spacing": 0,
+            "pdf_section_after_spacing": 0.035 * inch,
+            "heading_separator": True,
+            "separator_text": "-" * 54,
+            "separator_as_rule": True,
+            "separator_color": "777777",
+            "accent_color": "1F2933",
+            "title_color": "333333",
+            "heading_color": "1F2933",
         },
     }
     style = deepcopy(styles.get(template_id, styles["classic_ats"]))

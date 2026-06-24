@@ -413,6 +413,11 @@ TRANSLATIONS = {
         "docx_ats_safety": "ATS güvenliği",
         "docx_visual_density": "Görsel yoğunluk",
         "docx_layout": "Yerleşim",
+        "docx_supports_photo": "Fotoğraf desteği",
+        "cv_photo_optional": "CV Fotoğrafı (Opsiyonel)",
+        "include_photo_cv": "Fotoğrafı CV’ye ekle",
+        "photo_template_warning": "Fotoğraf yalnızca fotoğraf destekli Şablon DOCX çıktılarında kullanılır. Diğer çıktılarda yok sayılır.",
+        "photo_template_ready": "Seçili DOCX şablonu fotoğrafı başlık alanına ekleyebilir.",
         "no_global_cv": "Sol menüden henüz CV yüklenmedi.",
         "no_global_job_desc": "Sol menüye henüz iş ilanı metni girilmedi.",
         "input_status": "Girdi Durumu",
@@ -827,6 +832,11 @@ TRANSLATIONS = {
         "docx_ats_safety": "ATS safety",
         "docx_visual_density": "Visual density",
         "docx_layout": "Layout",
+        "docx_supports_photo": "Photo support",
+        "cv_photo_optional": "CV Photo (Optional)",
+        "include_photo_cv": "Include photo in CV",
+        "photo_template_warning": "Photo is only used by photo-capable Template DOCX exports. Other outputs ignore it.",
+        "photo_template_ready": "The selected DOCX template can place the photo in the header.",
         "no_global_cv": "No global CV uploaded in sidebar.",
         "no_global_job_desc": "No global job description in sidebar.",
         "input_status": "Input Status",
@@ -1468,6 +1478,7 @@ def render_docx_template_guidance_expander(template_info: dict) -> None:
         st.markdown(f"**{t('docx_not_recommended_for')}:** {template_info.get('not_recommended_for', '')}")
         st.markdown(f"**{t('docx_ats_safety')}:** {str(template_info.get('ats_safety_level', '')).upper()}")
         st.markdown(f"**{t('docx_visual_density')}:** {str(template_info.get('visual_density', '')).upper()}")
+        st.markdown(f"**{t('docx_supports_photo')}:** {'Yes' if template_info.get('supports_photo') else 'No'}")
 
 
 def render_quality_report(report: dict, title: str, score_key: str) -> None:
@@ -1630,20 +1641,34 @@ def fetch_ats_cv_export(
     export_style: str = "standard",
     docx_render_mode: str = "programmatic",
     docx_template_id: str = "",
+    include_photo: bool = False,
+    photo_file=None,
 ) -> bytes | None:
     try:
+        data = {
+            "ats_cv_json": json.dumps(ats_cv, ensure_ascii=False),
+            "template_id": template_id,
+            "language": language,
+            "one_page": str(one_page).lower(),
+            "enabled_sections": json.dumps(enabled_sections) if enabled_sections is not None else "",
+            "export_style": export_style,
+            "docx_render_mode": docx_render_mode,
+            "docx_template_id": docx_template_id,
+            "include_photo": str(bool(include_photo)).lower(),
+        }
+        files = None
+        if include_photo and photo_file is not None:
+            files = {
+                "cv_photo": (
+                    photo_file.name,
+                    photo_file.getvalue(),
+                    photo_file.type or "application/octet-stream",
+                )
+            }
         response = requests.post(
             f"{API_BASE_URL}/ats-cv/{endpoint}",
-            data={
-                "ats_cv_json": json.dumps(ats_cv, ensure_ascii=False),
-                "template_id": template_id,
-                "language": language,
-                "one_page": str(one_page).lower(),
-                "enabled_sections": json.dumps(enabled_sections) if enabled_sections is not None else "",
-                "export_style": export_style,
-                "docx_render_mode": docx_render_mode,
-                "docx_template_id": docx_template_id,
-            }
+            data=data,
+            files=files,
         )
         if response.status_code == 200:
             return response.content
@@ -2266,6 +2291,20 @@ elif selected_page_key == "📄 ATS CV Builder":
             if not enabled_export_sections:
                 st.warning("Select at least one export section." if st.session_state.ui_lang == "en" else "En az bir dışa aktarma bölümü seçin.")
 
+            photo_col1, photo_col2 = st.columns([2, 1])
+            with photo_col1:
+                ats_cv_photo = st.file_uploader(
+                    t("cv_photo_optional"),
+                    type=["png", "jpg", "jpeg"],
+                    key="ats_cv_optional_photo",
+                )
+            with photo_col2:
+                include_cv_photo = st.checkbox(
+                    t("include_photo_cv"),
+                    value=False,
+                    key="ats_cv_include_optional_photo",
+                )
+
             # DOCX Render Mode selector
             render_mode_options = [t("docx_render_mode_prog"), t("docx_render_mode_tpl")]
             selected_render_mode_label = st.radio(
@@ -2277,6 +2316,7 @@ elif selected_page_key == "📄 ATS CV Builder":
             docx_render_mode = "template" if selected_render_mode_label == t("docx_render_mode_tpl") else "programmatic"
 
             selected_template_id_for_docx = export_template_id
+            selected_template_info = {}
             if docx_render_mode == "template":
                 st.info(t("docx_template_experimental_note"))
                 try:
@@ -2298,12 +2338,25 @@ elif selected_page_key == "📄 ATS CV Builder":
                 else:
                     st.warning("No DOCX templates available. Using default.")
 
+            photo_supported_for_export = (
+                docx_render_mode == "template"
+                and bool(selected_template_info.get("supports_photo"))
+            )
+            if include_cv_photo and ats_cv_photo is not None:
+                if photo_supported_for_export:
+                    st.info(t("photo_template_ready"))
+                else:
+                    st.warning(t("photo_template_warning"))
+
             col_docx, col_pdf, col_txt = st.columns(3)
             can_export = bool(enabled_export_sections)
             docx_bytes = fetch_ats_cv_export(
                 "export-docx", ats_cv, export_template_id, export_language,
                 one_page_export, enabled_export_sections, selected_export_style,
-                docx_render_mode=docx_render_mode, docx_template_id=selected_template_id_for_docx
+                docx_render_mode=docx_render_mode,
+                docx_template_id=selected_template_id_for_docx,
+                include_photo=include_cv_photo and photo_supported_for_export,
+                photo_file=ats_cv_photo if include_cv_photo and photo_supported_for_export else None,
             ) if can_export else None
             pdf_bytes = fetch_ats_cv_export(
                 "export-pdf", ats_cv, export_template_id, export_language,
