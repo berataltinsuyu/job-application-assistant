@@ -27,6 +27,7 @@ from services.ats_cv_export_service import (
     render_ats_cv_to_pdf,
     render_ats_cv_to_docx,
 )
+from services.cv_quality_service import analyze_cv_output_quality, validate_cv_structure
 
 
 from difflib import SequenceMatcher
@@ -246,7 +247,8 @@ async def generate_job_tailored_cv(
     language: str,
     output_format: str,
     one_page: bool,
-    enabled_sections: list[str] | None
+    enabled_sections: list[str] | None,
+    adaptation_level: str = "balanced",
 ) -> dict:
     job = db.query(MonitoredJob).filter(MonitoredJob.id == job_id).first()
     if not job:
@@ -278,7 +280,8 @@ async def generate_job_tailored_cv(
         cv_text=cv_text,
         job_description=job_description,
         template=template,
-        language=language
+        language=language,
+        adaptation_level=adaptation_level,
     )
     ats_cv = ensure_ats_metadata_fields(ats_cv)
     ats_cv = align_target_title(ats_cv, language)
@@ -306,6 +309,18 @@ async def generate_job_tailored_cv(
         enabled_sections=sections_set,
         export_style="standard"
     )
+    structure_report = validate_cv_structure(ats_cv)
+    quality_report = analyze_cv_output_quality(
+        cv_text=text_preview,
+        structured_cv=ats_cv,
+        one_page_requested=one_page,
+    )
+    structured_payload = dict(ats_cv)
+    structured_payload.update({
+        "quality_report": quality_report,
+        "structure_report": structure_report,
+        "adaptation_level": _normalize_adaptation_level(adaptation_level),
+    })
 
     fmt = output_format.lower()
     if fmt == "pdf":
@@ -342,7 +357,7 @@ async def generate_job_tailored_cv(
         fmt = "pdf"
 
     os.makedirs(ASSETS_DIR, exist_ok=True)
-    filename = f"cv_{job_id}_{uuid.uuid4().hex[:8]}.{fmt}"
+    filename = _cv_asset_filename("tailored_cv", template_id, fmt)
     file_path = os.path.join(ASSETS_DIR, filename)
 
     with open(file_path, "wb") as f:
@@ -353,7 +368,7 @@ async def generate_job_tailored_cv(
         asset_type="tailored_cv",
         title=f"Tailored CV - {template_id} ({language})",
         content_text=text_preview,
-        structured_json=json.dumps(ats_cv, ensure_ascii=False),
+        structured_json=json.dumps(structured_payload, ensure_ascii=False),
         file_path=file_path,
         export_format=fmt,
         template_id=template_id,
@@ -370,6 +385,21 @@ async def generate_job_tailored_cv(
         "asset": serialize_asset(asset),
         "download_url_or_path": f"/job-monitoring/assets/{asset.id}/download"
     }
+
+
+def _normalize_adaptation_level(value: str) -> str:
+    normalized = str(value or "balanced").strip().lower()
+    if normalized in {"conservative", "balanced", "strong"}:
+        return normalized
+    return "balanced"
+
+
+def _cv_asset_filename(asset_type: str, template_id: str, extension: str) -> str:
+    safe_asset_type = re.sub(r"[^a-z0-9_]+", "_", str(asset_type or "tailored_cv").lower()).strip("_")
+    safe_template_id = re.sub(r"[^a-z0-9_]+", "_", str(template_id or "classic_ats").lower()).strip("_")
+    safe_extension = re.sub(r"[^a-z0-9]+", "", str(extension or "pdf").lower()) or "pdf"
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    return f"{safe_asset_type}_{safe_template_id}_{timestamp}.{safe_extension}"
 
 
 async def generate_job_cover_letter(

@@ -363,13 +363,15 @@ def generate_ats_cv_json(
     cv_text: str,
     job_description: str,
     template: dict,
-    language: str
+    language: str,
+    adaptation_level: str = "balanced",
 ) -> dict:
     prompt = build_ats_cv_generation_prompt(
         cv_text=cv_text,
         job_description=job_description,
         template=template,
-        language=language
+        language=language,
+        adaptation_level=adaptation_level,
     )
 
     try:
@@ -407,11 +409,14 @@ def build_ats_cv_generation_prompt(
     cv_text: str,
     job_description: str,
     template: dict,
-    language: str
+    language: str,
+    adaptation_level: str = "balanced",
 ) -> str:
     output_language = "Turkish" if language.lower() == "turkish" else "English"
+    normalized_adaptation_level = _normalize_adaptation_level(adaptation_level)
     template_json = json.dumps(template, ensure_ascii=False, indent=2)
     schema_json = json.dumps(get_empty_ats_cv_schema(), ensure_ascii=False, indent=2)
+    adaptation_guidance = _adaptation_level_guidance(normalized_adaptation_level)
 
     return f"""
 You are an expert ATS CV writer and resume parser.
@@ -430,6 +435,12 @@ SELECTED ATS TEMPLATE:
 
 OUTPUT LANGUAGE:
 {output_language}
+
+ADAPTATION LEVEL:
+{normalized_adaptation_level}
+
+ADAPTATION LEVEL GUIDANCE:
+{adaptation_guidance}
 
 Language consistency rules:
 1. Output every generated field in the selected language: {output_language}.
@@ -489,6 +500,8 @@ Truthfulness limits:
 7. If a field cannot be supported from the CV, leave it empty, use an empty list, or omit the unsupported detail inside that field.
 8. Do not claim direct fraud detection, AML investigation, compliance ownership, audit responsibility, risk parameter management, chargeback fraud investigation, regulatory reporting, or risk strategy ownership unless the original CV clearly supports it.
 9. Do not use ownership verbs such as managed, owned, led, directed, designed, executed independently, was responsible for, handled end-to-end, performed official investigations, owned compliance, managed risk operations, led fraud detection, or designed risk parameters unless the original CV explicitly supports that level of responsibility.
+10. Never invent fake companies, fake job titles, fake projects, fake certificates, fake degrees, fake years of direct experience, production ownership, senior ownership, or regulated ownership.
+11. Strong adaptation may increase confidence and target-role keyword usage only where the source CV supports the underlying facts.
 
 Acceptable adaptation examples:
 - "Applied relevant technical experience to support the target role's workflows."
@@ -588,6 +601,36 @@ The JSON object must match this exact top-level shape:
 
 {schema_json}
 """
+
+
+def _normalize_adaptation_level(value: str) -> str:
+    normalized = str(value or "balanced").strip().lower()
+    if normalized in {"conservative", "balanced", "strong"}:
+        return normalized
+    return "balanced"
+
+
+def _adaptation_level_guidance(adaptation_level: str) -> str:
+    if adaptation_level == "conservative":
+        return (
+            "Use mostly directly supported CV content. Keep repositioning minimal. "
+            "Prefer cautious wording and avoid adding transferable claims unless clearly supported. "
+            "This is safest for strict applications."
+        )
+    if adaptation_level == "strong":
+        return (
+            "Use more assertive ATS-focused positioning and target role keywords when the source CV supports them. "
+            "Still do not invent facts. Allowed wording includes hands-on exposure, project-based experience, "
+            "foundation in, transitioning toward, applied related experience in, strong interest in, and AI-focused "
+            "backend development when backend plus AI-related evidence exists. Do not claim fake companies, fake roles, "
+            "fake projects, fake certificates, fake degrees, unsupported years of experience, production ownership, "
+            "senior architect/lead claims, or direct compliance ownership."
+        )
+    return (
+        "Reframe existing experience toward the target job. Add transferable wording when reasonably supported. "
+        "Balance ATS relevance with truthfulness. Allowed wording includes hands-on exposure, project-based experience, "
+        "foundation in, transitioning toward, applied related experience in, and strong interest in when supported."
+    )
 
 
 def extract_job_keywords(job_text: str, language: str) -> dict:

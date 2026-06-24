@@ -18,6 +18,8 @@ The current UI has six main pages:
 - Job Workspace for manual job import, search profiles, source settings, job scoring, job intelligence, pipeline notes, and generated assets.
 - Safe Source Adapter Foundation with `manual_mock`, `manual_import`, and disabled placeholders for future real sources.
 - ATS CV Builder with locked contact fields, preview, and DOCX/PDF/TXT exports.
+- CV Quality Check and Structure Validation for generated ATS/tailored CVs.
+- Adaptation Level controls: Conservative, Balanced, and Strong.
 - CV Tools for CV analysis, ATS score, improvement suggestions, and section rewrite.
 - Application Materials for cover letters, application emails, interview prep, and personalized interview questions.
 - History page for reviewing and deleting previous AI outputs.
@@ -28,6 +30,7 @@ The current UI has six main pages:
 - `routers/`: HTTP API routes for CV analysis, ATS CV generation, job monitoring, manual URL extraction, and history.
 - `services/`: Business logic for AI prompts, source registry, manual URL extraction, job monitoring, scoring, asset generation, and exports.
 - `services/job_sources/`: Safe job source adapter registry. Phase 3A contains only a runnable mock adapter.
+- `services/cv_quality_service.py`: Deterministic quality and structure checks for generated CV output.
 - `models.py`: SQLAlchemy models for history, source settings, monitored jobs, intelligence reports, pipeline records, and generated assets.
 - `database.py`: SQLite session setup and compatibility migrations.
 - `streamlit_app.py`: Consolidated six-page Streamlit UI.
@@ -98,8 +101,9 @@ http://localhost:8501
 8. Analyze the job and review match/intelligence details.
 9. Update pipeline stage, priority, next action, and notes.
 10. Generate a tailored CV, cover letter, and application email.
-11. Preview/download generated assets.
-12. Review outputs in History.
+11. Review CV quality warnings and structure validation.
+12. Preview/download generated assets.
+13. Review outputs in History.
 
 Optional demo data:
 
@@ -114,6 +118,7 @@ The demo seed is idempotent, uses fictional data, does not call Gemini, and does
 - Phase 2A-2E: Job Workspace foundation, manual import, scoring, intelligence, pipeline, generated assets, preview/download, and consolidated Streamlit navigation.
 - Phase 3A: Safe Job Source Adapter Foundation with source settings persistence, registry validation, cooldown metadata, safe run orchestration, and a Sources tab.
 - Final Demo Polish: Demo seed helper, release smoke test, presentation guide, clearer dashboard workflow, and refined empty states.
+- Phase 4A: CV quality checker, structure validator, adaptation-level controls, cleaner generated CV filenames, richer template metadata, and a future DOCX template placeholder folder.
 
 ## Job Sources
 
@@ -144,6 +149,21 @@ The app supports safe manual URL extraction:
 
 This is not crawling, monitoring, or job-board scraping.
 
+## CV Quality And Adaptation
+
+Generated ATS and tailored CV outputs now include deterministic review metadata:
+
+- CV Quality Check flags contact corruption, missing contact fields, overly long summaries, repeated sections, weak bullets, dense skill lines, and suspicious senior/exaggerated claims.
+- Structure Validation flags likely title/company swaps, date text inside title/company fields, school/degree mixing, social URL platform mismatches, duplicated skills, and related field-mixing risks.
+- Adaptation Level controls how assertively the CV is tailored:
+  - Conservative: minimal repositioning and safest wording.
+  - Balanced: default, uses truthful transferable framing.
+  - Strong: more ATS-focused wording while still forbidding invented facts.
+
+Generated CV filenames are lowercase and readable, for example `ats_cv_modern_clean_20260624_164012.pdf` or `tailored_cv_classic_ats_20260624_164012.pdf`.
+
+The folder `templates/docx/` is reserved for future DOCX placeholder rendering. Phase 4A does not include final designer templates, external DOCX files, or font files.
+
 ## Safety Policy
 
 - No real job board scraping is implemented.
@@ -159,6 +179,8 @@ This is not crawling, monitoring, or job-board scraping.
 - Real job-board adapters are placeholders only.
 - AI generation requires a configured Gemini API key.
 - Manual URL extraction can fail on protected or script-heavy pages; paste the description manually in that case.
+- Quality checks are heuristic and deterministic; they help review generated CVs but do not replace human proofreading.
+- The future DOCX template folder is a compatibility foundation only, not a final template rendering system.
 - ATS and match scores are helpful estimates, not official employer ATS results.
 - Generated materials should be reviewed by the user before use.
 
@@ -176,6 +198,7 @@ Regression and release checks:
 venv/bin/python scratch/smoke_test_2e_regression.py
 venv/bin/python scratch/smoke_test_2e_fixes.py
 venv/bin/python scratch/smoke_test_release.py
+venv/bin/python scratch/smoke_test_cv_quality.py
 venv/bin/python scratch/seed_demo_data.py
 ```
 

@@ -364,6 +364,7 @@ async def create_job_tailored_cv(
     output_format: str = Form("pdf"),
     one_page: bool = Form(False),
     enabled_sections: str | None = Form(None),
+    adaptation_level: str = Form("balanced"),
     db: Session = Depends(get_db),
 ):
     if not validate_template_id(template_id):
@@ -390,7 +391,8 @@ async def create_job_tailored_cv(
             language=language,
             output_format=output_format,
             one_page=one_page,
-            enabled_sections=sections_list
+            enabled_sections=sections_list,
+            adaptation_level=adaptation_level,
         )
         return res
     except HTTPException:
@@ -528,4 +530,3 @@ def download_asset(asset_id: int, db: Session = Depends(get_db)):
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Failed to download asset.") from exc
-

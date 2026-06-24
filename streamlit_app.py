@@ -364,6 +364,16 @@ TRANSLATIONS = {
         "export_style_balanced": "Dengeli Tek Sayfa",
         "balanced_one_page_help": "Dengeli Tek Sayfa, önemli bilgileri koruyarak CV’yi ATS uyumlu şekilde tek sayfaya sığdırmaya çalışır.",
         "export_sections": "Dışa Aktarılacak Bölümler",
+        "adaptation_level": "Uyarlama Seviyesi",
+        "adaptation_conservative": "Temkinli",
+        "adaptation_balanced": "Dengeli",
+        "adaptation_strong": "Güçlü",
+        "cv_quality_check": "CV Kalite Kontrolü",
+        "structure_validation": "Yapı Doğrulama",
+        "cv_quality_score": "CV Kalite Skoru",
+        "structure_score": "Yapı Skoru",
+        "needs_review": "İnceleme gerekli",
+        "looks_clean": "Temiz görünüyor. Yine de göndermeden önce kontrol edin.",
         "critical_section_warning": "Kritik bölümleri devre dışı bırakmak CV'nin etkisini azaltabilir.",
         "key_section_warning": "Deneyim, Eğitim veya Yetenekler bölümlerini devre dışı bırakmak ATS uygunluğunu azaltabilir.",
         "contact": "Contact",
@@ -731,6 +741,16 @@ TRANSLATIONS = {
         "export_style_balanced": "Balanced One Page",
         "balanced_one_page_help": "Balanced One Page keeps the CV ATS-friendly while trying to fit content onto one page without removing key information.",
         "export_sections": "Export Sections",
+        "adaptation_level": "Adaptation Level",
+        "adaptation_conservative": "Conservative",
+        "adaptation_balanced": "Balanced",
+        "adaptation_strong": "Strong",
+        "cv_quality_check": "CV Quality Check",
+        "structure_validation": "Structure Validation",
+        "cv_quality_score": "CV Quality Score",
+        "structure_score": "Structure Score",
+        "needs_review": "Needs review",
+        "looks_clean": "Looks clean. Still review before sending.",
         "critical_section_warning": "Disabling critical sections may reduce the CV's effectiveness.",
         "key_section_warning": "Disabling Experience, Education, or Skills may reduce ATS relevance.",
         "contact": "Contact",
@@ -1259,6 +1279,77 @@ def write_non_empty_list(items):
     for item in items:
         st.markdown(f"- {item}")
 
+
+def adaptation_level_options():
+    return [
+        (t("adaptation_conservative"), "conservative"),
+        (t("adaptation_balanced"), "balanced"),
+        (t("adaptation_strong"), "strong"),
+    ]
+
+
+def safe_cv_filename(asset_type: str, template_id: str, extension: str) -> str:
+    safe_asset_type = re.sub(r"[^a-z0-9_]+", "_", str(asset_type or "ats_cv").lower()).strip("_")
+    safe_template_id = re.sub(r"[^a-z0-9_]+", "_", str(template_id or "classic_ats").lower()).strip("_")
+    safe_extension = re.sub(r"[^a-z0-9]+", "", str(extension or "pdf").lower()) or "pdf"
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    return f"{safe_asset_type}_{safe_template_id}_{timestamp}.{safe_extension}"
+
+
+def unwrap_asset_structured_json(asset: dict) -> dict:
+    structured = asset.get("structured_json") if isinstance(asset, dict) else {}
+    return structured if isinstance(structured, dict) else {}
+
+
+def get_asset_quality_report(asset: dict) -> dict:
+    structured = unwrap_asset_structured_json(asset)
+    return structured.get("quality_report") if isinstance(structured.get("quality_report"), dict) else {}
+
+
+def get_asset_structure_report(asset: dict) -> dict:
+    structured = unwrap_asset_structured_json(asset)
+    return structured.get("structure_report") if isinstance(structured.get("structure_report"), dict) else {}
+
+
+def render_quality_report(report: dict, title: str, score_key: str) -> None:
+    report = report if isinstance(report, dict) else {}
+    score = report.get(score_key)
+    issues = report.get("issues", []) if isinstance(report.get("issues"), list) else []
+    label = title
+    if score is not None:
+        label = f"{title} - {score}/100"
+    with st.expander(label, expanded=bool(report.get("critical_count"))):
+        if score is not None:
+            st.metric(title, score)
+        st.write(report.get("summary") or t("looks_clean"))
+        if not issues:
+            st.success(t("looks_clean"))
+            return
+        for issue in issues:
+            severity = issue.get("severity", "info")
+            message = f"**{severity.upper()} / {issue.get('category', 'general')}:** {issue.get('message', '')}"
+            fix = issue.get("suggested_fix")
+            if fix:
+                message += f"\n\n{fix}"
+            if severity == "critical":
+                st.warning(message)
+            elif severity == "warning":
+                st.info(message)
+            else:
+                st.caption(message)
+
+
+def quality_badge(asset: dict) -> str:
+    report = get_asset_quality_report(asset)
+    if not report:
+        return ""
+    score = report.get("quality_score")
+    critical_count = int(report.get("critical_count") or 0)
+    if critical_count:
+        return f" | {t('needs_review')} | Q:{score}"
+    return f" | Q:{score}"
+
+
 def render_ats_cv_preview(ats_cv: dict):
     contact = ats_cv.get("contact", {})
     st.subheader("Contact")
@@ -1688,6 +1779,13 @@ elif selected_page_key == "📄 ATS CV Builder":
 
         st.subheader(t("template_description"))
         st.write(selected_template.get("description", ""))
+        st.caption(
+            " | ".join(filter(None, [
+                f"Style: {selected_template.get('style_level')}",
+                f"ATS safety: {selected_template.get('ats_safety_level')}",
+                f"Density: {selected_template.get('visual_density')}",
+            ]))
+        )
 
         st.subheader(t("best_for"))
         for item in selected_template.get("best_for", []):
@@ -1708,6 +1806,14 @@ elif selected_page_key == "📄 ATS CV Builder":
             index=ats_cv_language_options.index(global_language) if global_language in ats_cv_language_options else 0,
             key="ats_cv_output_language"
         )
+        adaptation_options = adaptation_level_options()
+        selected_adaptation_label = st.selectbox(
+            t("adaptation_level"),
+            [label for label, _ in adaptation_options],
+            index=1,
+            key="ats_cv_adaptation_level_label",
+        )
+        selected_adaptation_level = dict(adaptation_options).get(selected_adaptation_label, "balanced")
 
         sync_ats_locked_fields_from_uploaded_cv(global_cv)
 
@@ -1784,6 +1890,7 @@ elif selected_page_key == "📄 ATS CV Builder":
                             "job_description": st.session_state.global_job_text,
                             "template_id": selected_template.get("id"),
                             "language": ats_cv_language,
+                            "adaptation_level": selected_adaptation_level,
                             "locked_proper_nouns_json": locked_proper_nouns_json,
                         }
                         ats_cv_generate_data.update(locked_contact_values)
@@ -1798,6 +1905,7 @@ elif selected_page_key == "📄 ATS CV Builder":
                             st.session_state.ats_cv_builder_result = result
                             st.session_state.ats_cv_builder_language = result.get("language", ats_cv_language)
                             st.session_state.ats_cv_builder_template_id = selected_template.get("id")
+                            st.session_state.ats_cv_builder_adaptation_level = result.get("adaptation_level", selected_adaptation_level)
                             st.success(t("status_complete"))
                         else:
                             st.error(f"Error {response.status_code}: {response.text}")
@@ -1816,6 +1924,8 @@ elif selected_page_key == "📄 ATS CV Builder":
                 or selected_template.get("id")
             )
             export_language = st.session_state.get("ats_cv_builder_language", ats_cv_language)
+            quality_report = stored_result.get("quality_report", {})
+            structure_report = stored_result.get("structure_report", {})
 
             if not validation.get("is_valid", False):
                 st.warning(", ".join(validation.get("errors", [])))
@@ -1846,6 +1956,17 @@ elif selected_page_key == "📄 ATS CV Builder":
             with col_confidence:
                 st.write(f"**{t('alignment_confidence')}**")
                 st.write(metadata.get("alignment_confidence") or "-")
+
+            quality_col, structure_col = st.columns(2)
+            with quality_col:
+                q_score = quality_report.get("quality_score") if isinstance(quality_report, dict) else None
+                st.metric(t("cv_quality_score"), q_score if q_score is not None else "-")
+            with structure_col:
+                s_score = structure_report.get("structure_score") if isinstance(structure_report, dict) else None
+                st.metric(t("structure_score"), s_score if s_score is not None else "-")
+
+            render_quality_report(quality_report, t("cv_quality_check"), "quality_score")
+            render_quality_report(structure_report, t("structure_validation"), "structure_score")
 
             with st.expander(t("used_keywords"), expanded=False):
                 st.write(", ".join(metadata.get("job_keywords_used", [])) or "-")
@@ -1939,7 +2060,7 @@ elif selected_page_key == "📄 ATS CV Builder":
                     st.download_button(
                         label=t("download_docx_cv"),
                         data=docx_bytes,
-                        file_name=f"ats_cv_{export_template_id}.docx",
+                        file_name=safe_cv_filename("ats_cv", export_template_id, "docx"),
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
             with col_pdf:
@@ -1947,7 +2068,7 @@ elif selected_page_key == "📄 ATS CV Builder":
                     st.download_button(
                         label=t("download_pdf_cv"),
                         data=pdf_bytes,
-                        file_name=f"ats_cv_{export_template_id}.pdf",
+                        file_name=safe_cv_filename("ats_cv", export_template_id, "pdf"),
                         mime="application/pdf"
                     )
             with col_txt:
@@ -1955,7 +2076,7 @@ elif selected_page_key == "📄 ATS CV Builder":
                     st.download_button(
                         label=t("download_txt_cv"),
                         data=txt_bytes,
-                        file_name=f"ats_cv_{export_template_id}.txt",
+                        file_name=safe_cv_filename("ats_cv", export_template_id, "txt"),
                         mime="text/plain"
                     )
 
@@ -2529,6 +2650,14 @@ elif selected_page_key == "💼 Job Workspace":
                         template_options = ["classic_ats", "modern_clean", "creative_visual"]
                     template_select = st.selectbox(t("jm_template_select"), template_options, key=f"jw_tmpl_sel_{job.get('id')}")
                     one_page_select = st.checkbox("One-Page CV" if lang_select == "English" else "Tek Sayfa CV", value=False, key=f"jw_onepage_sel_{job.get('id')}")
+                    jw_adaptation_options = adaptation_level_options()
+                    jw_adaptation_label = st.selectbox(
+                        t("adaptation_level"),
+                        [label for label, _ in jw_adaptation_options],
+                        index=1,
+                        key=f"jw_adaptation_sel_{job.get('id')}",
+                    )
+                    jw_adaptation_level = dict(jw_adaptation_options).get(jw_adaptation_label, "balanced")
                     tone_select = st.selectbox(t("jm_tone_select"), ["professional", "friendly", "concise"], key=f"jw_tone_sel_{job.get('id')}")
                     
                     btn_col1, btn_col2, btn_col3 = st.columns(3)
@@ -2541,6 +2670,7 @@ elif selected_page_key == "💼 Job Workspace":
                                 "language": lang_select,
                                 "output_format": "pdf",
                                 "one_page": str(one_page_select).lower(),
+                                "adaptation_level": jw_adaptation_level,
                             }
                             with st.spinner("Generating tailored CV..."):
                                 res = api_json("POST", f"/job-monitoring/jobs/{job.get('id')}/assets/tailored-cv", timeout=90, files=effective_cv_file, data=data)
@@ -2582,7 +2712,7 @@ elif selected_page_key == "💼 Job Workspace":
                             a_lang = asset.get("language")
                             a_created = asset.get("created_at", "")[:16].replace("T", " ")
                             a_fmt = asset.get("export_format") or "txt"
-                            asset_label = f"📄 {a_type.upper()} | {a_lang} | {a_fmt.upper()} | {a_created}"
+                            asset_label = f"📄 {a_type.upper()} | {a_lang} | {a_fmt.upper()} | {a_created}{quality_badge(asset)}"
                             
                             col_a1, col_a2, col_a3 = st.columns([3, 1, 1])
                             with col_a1:
@@ -2619,6 +2749,9 @@ elif selected_page_key == "💼 Job Workspace":
                                         if not content and p_dict.get("file_path"):
                                             content = "Metin içeriği bulunamadı, fiziksel dosyayı indirin."
                                         st.text_area("Content Preview", content or "", height=250, key=f"jw_preview_textarea_{asset.get('id')}")
+                                        if p_dict.get("asset_type") == "tailored_cv":
+                                            render_quality_report(get_asset_quality_report(p_dict), t("cv_quality_check"), "quality_score")
+                                            render_quality_report(get_asset_structure_report(p_dict), t("structure_validation"), "structure_score")
                                         if st.button("Close Preview / Önizlemeyi Kapat", key=f"jw_close_prev_{asset.get('id')}"):
                                             st.session_state["preview_asset_id"] = None
                                             st.session_state["preview_asset_dict"] = None
@@ -3054,7 +3187,7 @@ elif selected_page_key == "💼 Job Workspace":
                 job_title = job_obj.get("title") or "Unknown Job"
                 job_company = job_obj.get("company") or "Unknown Company"
                 
-                asset_label = f"📄 {a_type.upper()} | {job_title} - {job_company} | {a_lang} | {a_fmt.upper()} | {a_created}"
+                asset_label = f"📄 {a_type.upper()} | {job_title} - {job_company} | {a_lang} | {a_fmt.upper()} | {a_created}{quality_badge(asset)}"
                 
                 col_a1, col_a2, col_a3 = st.columns([3, 1, 1])
                 with col_a1:
@@ -3091,6 +3224,9 @@ elif selected_page_key == "💼 Job Workspace":
                             if not content and p_dict.get("file_path"):
                                 content = "Metin içeriği bulunamadı, fiziksel dosyayı indirin."
                             st.text_area("Content Preview", content or "", height=250, key=f"jw_global_preview_textarea_{asset.get('id')}")
+                            if p_dict.get("asset_type") == "tailored_cv":
+                                render_quality_report(get_asset_quality_report(p_dict), t("cv_quality_check"), "quality_score")
+                                render_quality_report(get_asset_structure_report(p_dict), t("structure_validation"), "structure_score")
                             if st.button("Close Preview / Önizlemeyi Kapat", key=f"jw_global_close_prev_{asset.get('id')}"):
                                 st.session_state["preview_global_asset_id"] = None
                                 st.session_state["preview_global_asset_dict"] = None

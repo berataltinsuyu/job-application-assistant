@@ -4,11 +4,25 @@ from copy import deepcopy
 ATS_CV_TEMPLATES = [
     {
         "id": "classic_ats",
+        "template_id": "classic_ats",
         "name": "Classic ATS",
+        "display_name": "Classic ATS",
         "description": (
             "A safe, single-column ATS-friendly resume template suitable for corporate, "
             "banking, IT, backend, business analyst, and general professional applications."
         ),
+        "style_level": "classic",
+        "ats_safety_level": "high",
+        "supports_one_page": True,
+        "supports_docx": True,
+        "supports_pdf": True,
+        "supports_txt": True,
+        "visual_density": "medium",
+        "recommended_use_cases": [
+            "General ATS-safe applications",
+            "Corporate and banking roles",
+            "Junior and internship applications",
+        ],
         "best_for": [
             "corporate",
             "banking",
@@ -38,11 +52,25 @@ ATS_CV_TEMPLATES = [
     },
     {
         "id": "modern_clean",
+        "template_id": "modern_clean",
         "name": "Modern Clean",
+        "display_name": "Modern Clean",
         "description": (
             "A clean and professional one-column CV template with slightly more modern "
             "spacing while remaining ATS compatible."
         ),
+        "style_level": "modern",
+        "ats_safety_level": "high",
+        "supports_one_page": True,
+        "supports_docx": True,
+        "supports_pdf": True,
+        "supports_txt": True,
+        "visual_density": "medium",
+        "recommended_use_cases": [
+            "Technology roles",
+            "Business analyst roles",
+            "Modern but conservative applications",
+        ],
         "best_for": [
             "software developer",
             "business analyst",
@@ -71,11 +99,25 @@ ATS_CV_TEMPLATES = [
     },
     {
         "id": "technical_developer",
+        "template_id": "technical_developer",
         "name": "Technical Developer",
+        "display_name": "Technical Developer",
         "description": (
             "An ATS-friendly developer-focused CV template that highlights technical "
             "skills and projects before work experience."
         ),
+        "style_level": "technical",
+        "ats_safety_level": "high",
+        "supports_one_page": True,
+        "supports_docx": True,
+        "supports_pdf": True,
+        "supports_txt": True,
+        "visual_density": "high",
+        "recommended_use_cases": [
+            "Backend and frontend developer roles",
+            "API and software engineering roles",
+            "Project-heavy technical applications",
+        ],
         "best_for": [
             "backend developer",
             "frontend developer",
@@ -104,12 +146,26 @@ ATS_CV_TEMPLATES = [
     },
     {
         "id": "junior_internship",
+        "template_id": "junior_internship",
         "name": "Junior / Internship Focus",
+        "display_name": "Junior / Internship Focus",
         "description": (
             "An ATS-friendly CV template for students, interns, fresh graduates, and "
             "junior candidates. It highlights education, technical skills, projects, "
             "and internship experience."
         ),
+        "style_level": "compact",
+        "ats_safety_level": "high",
+        "supports_one_page": True,
+        "supports_docx": True,
+        "supports_pdf": True,
+        "supports_txt": True,
+        "visual_density": "medium",
+        "recommended_use_cases": [
+            "Internship applications",
+            "Fresh graduate applications",
+            "Education and project-led profiles",
+        ],
         "best_for": [
             "internship",
             "fresh graduate",

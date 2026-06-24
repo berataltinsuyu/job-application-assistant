@@ -2,6 +2,7 @@ import json
 import re
 import traceback
 import uuid
+from datetime import datetime
 from difflib import SequenceMatcher
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
@@ -29,6 +30,7 @@ from services.ats_cv_templates import (
     get_ats_cv_templates,
     validate_template_id,
 )
+from services.cv_quality_service import analyze_cv_output_quality, validate_cv_structure
 from services.file_parser_service import extract_text_from_cv
 from services.llm_service import GEMINI_MODEL, generate_ats_cv_json
 
@@ -140,6 +142,7 @@ async def generate_ats_cv(
     locked_github: str = Form(""),
     locked_portfolio: str = Form(""),
     locked_proper_nouns_json: str = Form(""),
+    adaptation_level: str = Form("balanced"),
     db: Session = Depends(get_db),
 ):
     request_id = _generate_request_id()
@@ -194,7 +197,8 @@ async def generate_ats_cv(
             cv_text=cv_text,
             job_description=job_description,
             template=template,
-            language=language
+            language=language,
+            adaptation_level=adaptation_level,
         )
         _log_generate_checkpoint(
             request_id,
@@ -216,6 +220,20 @@ async def generate_ats_cv(
 
         _log_generate_checkpoint(request_id, "before validation")
         is_valid, errors = validate_ats_cv_schema(ats_cv)
+        text_preview = build_plain_text_preview(
+            ats_cv=ats_cv,
+            template=template,
+            language=language,
+            one_page=False,
+            enabled_sections=None,
+            export_style="standard",
+        )
+        structure_report = validate_cv_structure(ats_cv)
+        quality_report = analyze_cv_output_quality(
+            cv_text=text_preview,
+            structured_cv=ats_cv,
+            one_page_requested=False,
+        )
 
         _log_generate_checkpoint(request_id, "before history save", validation_ok=is_valid)
         history = ApplicationHistory(
@@ -226,11 +244,14 @@ async def generate_ats_cv(
                 {
                     "template": template,
                     "language": language,
+                    "adaptation_level": _normalize_adaptation_level(adaptation_level),
                     "ats_cv": ats_cv,
                     "validation": {
                         "is_valid": is_valid,
                         "errors": errors,
                     },
+                    "quality_report": quality_report,
+                    "structure_report": structure_report,
                 },
                 ensure_ascii=False
             )
@@ -243,11 +264,14 @@ async def generate_ats_cv(
         return {
             "template": template,
             "language": language,
+            "adaptation_level": _normalize_adaptation_level(adaptation_level),
             "ats_cv": ats_cv,
             "validation": {
                 "is_valid": is_valid,
                 "errors": errors,
             },
+            "quality_report": quality_report,
+            "structure_report": structure_report,
         }
     except HTTPException as exc:
         _log_generate_exception(request_id)
@@ -285,7 +309,7 @@ async def export_ats_cv_docx(
         content=docx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={
-            "Content-Disposition": f'attachment; filename="ats_cv_{template["id"]}.docx"'
+            "Content-Disposition": f'attachment; filename="{_cv_export_filename("ats_cv", template["id"], "docx")}"'
         },
     )
 
@@ -310,7 +334,7 @@ async def export_ats_cv_pdf(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="ats_cv_{template["id"]}.pdf"'
+            "Content-Disposition": f'attachment; filename="{_cv_export_filename("ats_cv", template["id"], "pdf")}"'
         },
     )
 
@@ -333,7 +357,7 @@ async def export_ats_cv_txt(
         content=text.encode("utf-8"),
         media_type="text/plain; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="ats_cv_{template["id"]}.txt"'
+            "Content-Disposition": f'attachment; filename="{_cv_export_filename("ats_cv", template["id"], "txt")}"'
         },
     )
 
@@ -405,6 +429,21 @@ def _parse_export_style(value: str, one_page: bool) -> str:
     if normalized == "compact":
         return "compact"
     raise HTTPException(status_code=400, detail="export_style must be standard, compact, or balanced_one_page.")
+
+
+def _normalize_adaptation_level(value: str) -> str:
+    normalized = str(value or "balanced").strip().lower()
+    if normalized in {"conservative", "balanced", "strong"}:
+        return normalized
+    return "balanced"
+
+
+def _cv_export_filename(asset_type: str, template_id: str, extension: str) -> str:
+    safe_asset_type = re.sub(r"[^a-z0-9_]+", "_", str(asset_type or "ats_cv").lower()).strip("_")
+    safe_template_id = re.sub(r"[^a-z0-9_]+", "_", str(template_id or "classic_ats").lower()).strip("_")
+    safe_extension = re.sub(r"[^a-z0-9]+", "", str(extension or "pdf").lower()) or "pdf"
+    timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    return f"{safe_asset_type}_{safe_template_id}_{timestamp}.{safe_extension}"
 
 
 def _parse_enabled_sections(value: str) -> set[str]:

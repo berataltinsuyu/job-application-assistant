@@ -34,11 +34,13 @@ venv/bin/python scratch/seed_demo_data.py
 8. In Add Job, manually add a job. Keep simple fields visible and advanced fields collapsed.
 9. In Jobs, expand a job card, rescore or analyze it, and review the intelligence report.
 10. Update pipeline stage, priority, next action, and notes.
-11. Generate Tailored CV.
-12. Generate Cover Letter.
-13. Generate Application Email.
-14. Preview and download generated assets.
-15. Open History and show previous outputs.
+11. Select an Adaptation Level: Conservative, Balanced, or Strong.
+12. Generate Tailored CV.
+13. Review the CV Quality Check and Structure Validation scores/warnings.
+14. Generate Cover Letter.
+15. Generate Application Email.
+16. Preview and download generated assets.
+17. Open History and show previous outputs.
 
 ## What To Say
 
@@ -47,6 +49,9 @@ venv/bin/python scratch/seed_demo_data.py
 - "Only `manual_mock` is runnable as a source today. `manual_import` is manual-only, and real job-board sources are disabled placeholders."
 - "Manual URL extraction is allowed only when the user clicks Extract for a single URL. It is not crawling or monitoring."
 - "Generated materials are drafts and should be reviewed before sending."
+- "CV Quality Check and Structure Validation are deterministic review helpers; they flag contact corruption, field mixing, and unsupported senior claims."
+- "Adaptation Level controls how assertively the generated CV is tailored while still forbidding invented facts."
+- "The DOCX template folder is prepared for future placeholder rendering, but Phase 4A does not add final designer templates."
 
 ## Known Limitations
 
@@ -54,6 +59,8 @@ venv/bin/python scratch/seed_demo_data.py
 - Some websites block manual extraction; paste the job description manually when that happens.
 - Gemini-backed generation requires `GEMINI_API_KEY`.
 - Scores are estimates, not official ATS results.
+- Quality checks are heuristic and should guide review, not replace proofreading.
+- Future DOCX template support is only a folder/documentation foundation in this phase.
 
 ## Troubleshooting
 
@@ -62,6 +69,7 @@ venv/bin/python scratch/seed_demo_data.py
 - AI generation fails: verify `GEMINI_API_KEY`.
 - No jobs visible: run `scratch/seed_demo_data.py`, add a manual job, or run a `manual_mock` Search Profile.
 - No assets visible: upload a CV, open a job, and generate materials from the expanded job card.
+- Quality report missing on old assets: regenerate the tailored CV so the new metadata is stored.
 
 ## Safety Note
 
