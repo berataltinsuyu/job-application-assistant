@@ -4,6 +4,10 @@ This folder is reserved for future template-based DOCX rendering.
 
 No external DOCX templates, downloaded assets, or font files are included in Phase 4A. Current CV exports still use the existing programmatic rendering pipeline.
 
+Phase 4B-1 adds a small service foundation in `services/docx_template_service.py`.
+The service provides two experimental built-in renderers, `ats_classic_docx` and `ats_modern_docx`, generated locally with `python-docx`.
+These are not integrated into Streamlit, Job Workspace, or ATS CV Builder yet.
+
 Future template-based rendering may use placeholder replacement with a library such as `docxtpl`.
 
 Planned placeholders:

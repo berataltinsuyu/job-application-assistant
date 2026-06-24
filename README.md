@@ -119,6 +119,7 @@ The demo seed is idempotent, uses fictional data, does not call Gemini, and does
 - Phase 3A: Safe Job Source Adapter Foundation with source settings persistence, registry validation, cooldown metadata, safe run orchestration, and a Sources tab.
 - Final Demo Polish: Demo seed helper, release smoke test, presentation guide, clearer dashboard workflow, and refined empty states.
 - Phase 4A: CV quality checker, structure validator, adaptation-level controls, cleaner generated CV filenames, richer template metadata, and a future DOCX template placeholder folder.
+- Phase 4B-1: Standalone DOCX template service foundation with local `python-docx` renderers; UI integration is not included yet.
 
 ## Job Sources
 
@@ -162,7 +163,7 @@ Generated ATS and tailored CV outputs now include deterministic review metadata:
 
 Generated CV filenames are lowercase and readable, for example `ats_cv_modern_clean_20260624_164012.pdf` or `tailored_cv_classic_ats_20260624_164012.pdf`.
 
-The folder `templates/docx/` is reserved for future DOCX placeholder rendering. Phase 4A does not include final designer templates, external DOCX files, or font files.
+The folder `templates/docx/` is reserved for future DOCX placeholder rendering. Phase 4B-1 adds local built-in DOCX rendering foundations generated programmatically with `python-docx`, but does not add UI controls, external DOCX templates, designer templates, or font files.
 
 ## Safety Policy
 
