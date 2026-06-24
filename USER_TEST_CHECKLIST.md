@@ -1,6 +1,6 @@
 # USER TEST CHECKLIST
 
-This checklist provides a guide for validating the Job Application Assistant with a real CV and job description.
+This checklist provides a guide for validating the Job Application Assistant with a real CV and job description, focused on generating tailored application materials.
 
 ## 1. Setup
 - [ ] Start the FastAPI backend: `venv/bin/python main.py`
@@ -20,16 +20,16 @@ This checklist provides a guide for validating the Job Application Assistant wit
 - [ ] Export as **TXT**. Check content hierarchy.
 - [ ] Inspect the **CV Quality Score** and **Structure Validation** panels. Check that warnings make sense and score calculation is correct.
 
-## 3. Job Workspace Test
-- [ ] Navigate to the **Job Workspace** page.
+## 3. Job Prep Workspace Test
+- [ ] Navigate to the **Job Prep Workspace** page.
 - [ ] Go to the **Add Job** tab and add a job manually.
 - [ ] Switch to the **Jobs** tab, click **Analyze**, and verify the match score.
-- [ ] Update the job status in the **Pipeline** tab (e.g. from "new" to "applied").
 - [ ] Expand the job card and generate a **Tailored CV as PDF**.
 - [ ] Generate a **Tailored CV as DOCX Programmatic** and **Tailored CV as DOCX Template** (Modern or Classic).
 - [ ] Generate a **Cover Letter** (try different tones).
 - [ ] Generate an **Application Email**.
 - [ ] Go to the **Assets** tab (or job drawer) to preview and download all generated assets. Confirm previews display correctly and downloads function.
+- [ ] Optionally open **Pipeline (Optional)** and verify status/notes can still be saved without making tracking the main workflow.
 
 ## 4. What to Inspect Manually
 - [ ] **Name Spacing:** Ensure names are not character-spaced (e.g. "B E R A T").

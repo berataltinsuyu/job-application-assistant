@@ -43,20 +43,20 @@ TRANSLATIONS = {
         "nav_personalized_interview": "🎯 Kişiselleştirilmiş Mülakat",
         "nav_job_monitoring": "🛰️ İş İlanı Takip Agentı",
         "nav_history": "📜 Geçmiş",
-        "nav_job_workspace": "💼 İş Alanı",
+        "nav_job_workspace": "💼 İlan Hazırlık Alanı",
         "nav_cv_tools": "🔍 CV Araçları",
         "nav_application_materials": "✉️ Başvuru Materyalleri",
         "override_inputs_title": "⚙️ Genel Dosyaları Geçersiz Kıl / Özel Giriş Kullan (İsteğe Bağlı)",
         "override_cv_label": "Bu sayfa için farklı bir CV yükle (İsteğe Bağlı):",
         "override_job_label": "Bu sayfa için farklı bir iş ilanı girin (İsteğe Bağlı):",
         # Job Workspace tab labels
-        "tab_jobs": "İlanlar",
         "tab_add_job": "İlan Ekle",
-        "tab_search_profiles": "Arama Profilleri",
-        "tab_sources": "Kaynaklar",
-        "tab_pipeline": "Pipeline",
-        "tab_assets": "Materyaller",
-        "job_workspace_desc": "İş ilanlarınızı yönetin, arama profillerini takip edin, başvuru sürecini izleyin ve başvuru materyalleri oluşturun.",
+        "tab_jobs": "İlanlar",
+        "tab_assets": "Çıktılar",
+        "tab_search_profiles": "Mock Arama (Gelişmiş)",
+        "tab_sources": "Kaynaklar (Gelişmiş)",
+        "tab_pipeline": "Pipeline (Opsiyonel)",
+        "job_workspace_desc": "Bu alanı iş ilanını eklemek, uygunluğu analiz etmek ve ilana özel başvuru dokümanları üretmek için kullanın.",
         
         # Validation & Warnings
         "please_upload_cv": "Devam etmek için sol menüden bir CV yükleyin.",
@@ -84,18 +84,19 @@ TRANSLATIONS = {
         "download_txt_cv": "TXT İndir",
         
         # Dashboard
-        "dashboard_desc": "Uyum puanlarını, analizleri takip edin ve geçmiş başvurularınızı yönetin.",
+        "dashboard_desc": "CV ve iş ilanını kullanarak ATS uyumlu özelleştirilmiş CV, kapak yazısı, recruiter e-postası ve mülakat hazırlığı çıktıları üreten yapay zekâ destekli başvuru dokümanı aracı.",
         "db_operations": "Toplam İşlem",
         "db_latest_match": "Son Uyum Skoru",
         "db_latest_ats": "Son ATS Skoru",
         "db_features": "🚀 Özellikler Genel Bakış",
-        "db_demo_workflow": "Demo Akışı",
+        "db_demo_workflow": "CV + İş İlanı → Başvuru Dokümanları",
         "db_demo_step_1": "1. CV yükleyin.",
         "db_demo_step_2": "2. İş açıklamasını yapıştırın veya tek tıklamayla manuel linkten çıkarmayı deneyin.",
-        "db_demo_step_3": "3. Job Workspace içinde manuel ilan ekleyin.",
-        "db_demo_step_4": "4. İlanı analiz edin ve eşleşme skorunu inceleyin.",
-        "db_demo_step_5": "5. Pipeline aşamasını, önceliği ve notları güncelleyin.",
-        "db_demo_step_6": "6. Özelleştirilmiş CV, kapak yazısı ve başvuru e-postası oluşturun.",
+        "db_demo_step_3": "3. Uygunluk ve ATS analizini inceleyin.",
+        "db_demo_step_4": "4. ATS uyumlu özelleştirilmiş CV oluşturun.",
+        "db_demo_step_5": "5. Kapak yazısı oluşturun.",
+        "db_demo_step_6": "6. Recruiter/başvuru e-postası ve mülakat hazırlığı üretin.",
+        "db_demo_step_7": "7. Çıktıları DOCX/PDF/TXT olarak indirin.",
         "db_recent_history": "⏱️ Son İşlem Geçmişi",
         "db_no_history": "Geçmişte işlem bulunmamaktadır. Sol menüyü kullanarak ilk analizini başlat!",
         
@@ -202,7 +203,7 @@ TRANSLATIONS = {
         "missing_key_warning": "Gerçek iş ilanı araması için geçerli bir API anahtarı gereklidir. Lütfen .env dosyasına API anahtarlarınızı ekleyin.",
 
         # Job Monitoring Agent
-        "job_monitoring_desc": "Düşük frekanslı iş ilanı alarmları oluşturun, güvenli mock takip çalıştırın, ilanları profilinize göre puanlayın ve kaydedilen/reddedilen/başvurulan fırsatları takip edin. Gerçek ilan kaynağı adaptörleri sonraki fazlarda eklenecektir.",
+        "job_monitoring_desc": "Gelişmiş demo araçlarıyla mock ilan çalıştırmaları yapın ve kayıtlı ilanları başvuru dokümanı üretimi için puanlayın. Gerçek ilan kaynağı adaptörleri sonraki fazlarda eklenecektir.",
         "jm_alert_form": "Alarm Profili",
         "jm_alert_name": "Alarm adı",
         "jm_keywords": "Anahtar kelimeler",
@@ -247,17 +248,17 @@ TRANSLATIONS = {
         "jm_run_complete": "Mock takip çalışması tamamlandı.",
         "jm_status_updated": "İlan durumu güncellendi.",
         "jm_no_alerts": "Henüz alarm profili yok.",
-        "jm_no_jobs": "Henüz izlenen ilan yok. Add Job sekmesinden manuel ilan ekleyin veya Search Profiles sekmesinde manual_mock çalıştırın.",
-        "jm_no_pipeline_jobs": "Henüz pipeline kaydı yok. Bir ilan ekleyip Jobs sekmesinden aşama, öncelik ve notları kaydedin.",
+        "jm_no_jobs": "Henüz ilan yok. İlan Ekle sekmesinden hedef ilanınızı yapıştırın veya gelişmiş mock arama ile demo veri oluşturun.",
+        "jm_no_pipeline_jobs": "Henüz opsiyonel pipeline notu yok. Bir ilan ekleyip İlanlar sekmesinden durum, öncelik ve notları kaydedebilirsiniz.",
         "jm_no_assets": "Henüz materyal oluşturulmadı. Bir ilan açın, global CV yükleyin ve Generate Materials bölümünden başlayın.",
         "jm_no_job_assets": "Bu ilan için henüz materyal oluşturulmadı.",
-        "jm_search_profile_help": "Search Profile, manual_mock kaynağından güvenli demo sonuçları üretir. Gerçek iş ilanı kaynakları bu fazda çalıştırılmaz.",
+        "jm_search_profile_help": "Gelişmiş demo aracı: manual_mock kaynağından güvenli örnek ilanlar üretir. Gerçek iş ilanı kaynakları bu fazda çalıştırılmaz.",
         "jm_global_cv_default": "Global CV varsayılan olarak kullanılır",
         "jm_global_cv_missing": "Sol menüden henüz CV yüklenmedi. Materyal oluşturmak için CV yükleyin veya isteğe bağlı override kullanın.",
         "jm_add_job_next_step": "Başlık, şirket ve ilan açıklaması yeterlidir. URL yalnızca metin olarak saklanır.",
         "jm_no_runs": "Henüz çalıştırma geçmişi yok.",
         "jm_manual_import": "Manuel İlan Ekle",
-        "jm_manual_import_desc": "Gerçek bir iş ilanını manuel olarak yapıştırın. Uygulama ilanı kaydeder, seçilen alert profiline göre puanlar ve durumunu takip etmenizi sağlar. URL yalnızca metin olarak saklanır; bu fazda ilan sitelerinden otomatik veri çekilmez.",
+        "jm_manual_import_desc": "Hedef iş ilanını manuel olarak yapıştırın. Uygulama ilanı kaydeder, uygunluk skorunu hesaplar ve ilana özel başvuru dokümanları üretmenizi sağlar. URL yalnızca metin olarak saklanır; bu fazda ilan sitelerinden otomatik veri çekilmez.",
         "jm_select_alert_optional": "Puanlama için alert profili seçin (isteğe bağlı)",
         "jm_no_alert_selected": "Alert profili yok",
         "jm_job_title": "İlan başlığı",
@@ -274,7 +275,7 @@ TRANSLATIONS = {
         "jm_rescore_profile": "Yeniden puanlama profili",
         "jm_rescored": "İlan yeniden puanlandı.",
         "jm_source_filter": "Kaynak filtresi",
-        "jm_sources_phase3a_note": "Phase 3A kaynak adaptör altyapısını hazırlar. Şu anda yalnızca manual_mock çalıştırılabilir. Gerçek iş ilanı kaynakları henüz uygulanmamıştır.",
+        "jm_sources_phase3a_note": "Mock kaynak çalıştırma, kaynak ayarları ve opsiyonel pipeline notları test ve gelecekteki ilan kaynağı entegrasyonları için gelişmiş araçlar olarak tutulur. Şu anda yalnızca manual_mock çalıştırılabilir.",
         "jm_source_settings_saved": "Kaynak ayarları kaydedildi.",
         "jm_source_test": "Kaynağı Test Et",
         "jm_source_update": "Ayarları Kaydet",
@@ -302,7 +303,7 @@ TRANSLATIONS = {
         "jm_select_alert_for_analysis": "Analiz için alert profili seçin",
         "jm_use_associated_alert": "İlanın mevcut alert profilini kullan",
         "jm_analysis_complete": "İlan analizi tamamlandı.",
-        "jm_pipeline_title": "Başvuru Takip Süreci",
+        "jm_pipeline_title": "Opsiyonel Başvuru Notları",
         "jm_pipeline_stage": "Süreç Aşaması",
         "jm_pipeline_priority": "Öncelik",
         "jm_pipeline_materials": "Belgelerin Durumu",
@@ -314,9 +315,9 @@ TRANSLATIONS = {
         "jm_pipeline_contact_person": "İletişim Kişisi",
         "jm_pipeline_contact_email": "İletişim E-postası",
         "jm_pipeline_notes": "Başvuru Notları",
-        "jm_save_pipeline": "Süreci Kaydet",
-        "jm_pipeline_updated": "Başvuru süreci güncellendi.",
-        "jm_pipeline_overview": "Süreç Genel Bakış",
+        "jm_save_pipeline": "Notları Kaydet",
+        "jm_pipeline_updated": "Opsiyonel başvuru notları güncellendi.",
+        "jm_pipeline_overview": "Notlar Genel Bakış",
         "jm_upcoming_actions": "Yaklaşan Adımlar",
         "jm_upcoming_deadlines": "Yaklaşan Son Başvurular",
         "jm_high_priority": "Yüksek Öncelikli İlanlar",
@@ -417,7 +418,7 @@ TRANSLATIONS = {
         "input_status": "Girdi Durumu",
         "contact_fields_missing": "Bazı iletişim alanları CV’den otomatik çıkarılamadı. Oluşturmadan önce elle doldurabilirsiniz.",
         "db_feat_cv_tools": "CV analizi, ATS puanlaması, iyileştirme önerileri ve bölüm yeniden yazma için ortak CV ve iş ilanı verilerini kullanın.",
-        "db_feat_job_workspace": "İlanları takip edin, pipeline notlarını yönetin, rolleri analiz edin ve kaydedilmiş ilanlardan özel başvuru materyalleri oluşturun.",
+        "db_feat_job_workspace": "İş ilanını ekleyin, uygunluğu analiz edin ve kaydedilmiş ilandan özel başvuru dokümanları oluşturun.",
         "db_feat_app_materials": "Ortak girdileri kullanarak kapak yazıları, başvuru e-postaları ve mülakat hazırlık rehberleri oluşturun.",
         "db_feat_ats_cv_builder": "Yüklenen CV'deki iletişim bilgilerini koruyarak ATS uyumlu CV çıktıları (DOCX/PDF/TXT) oluşturun.",
         "export_cv": "Dışa Aktar",
@@ -456,20 +457,20 @@ TRANSLATIONS = {
         "nav_personalized_interview": "🎯 Personalized Interview",
         "nav_job_monitoring": "🛰️ Job Monitoring Agent",
         "nav_history": "📜 History",
-        "nav_job_workspace": "💼 Job Workspace",
+        "nav_job_workspace": "💼 Job Prep Workspace",
         "nav_cv_tools": "🔍 CV Tools",
         "nav_application_materials": "✉️ Application Materials",
         "override_inputs_title": "⚙️ Override Global CV / Job Description (Optional)",
         "override_cv_label": "Upload a different CV for this page (Optional):",
         "override_job_label": "Enter a different job description for this page (Optional):",
         # Job Workspace tab labels
-        "tab_jobs": "Jobs",
         "tab_add_job": "Add Job",
-        "tab_search_profiles": "Search Profiles",
-        "tab_sources": "Sources",
-        "tab_pipeline": "Pipeline",
+        "tab_jobs": "Jobs",
         "tab_assets": "Assets",
-        "job_workspace_desc": "Manage your job listings, track search alerts, view pipeline progress, and generate custom application materials.",
+        "tab_search_profiles": "Mock Search (Advanced)",
+        "tab_sources": "Sources (Advanced)",
+        "tab_pipeline": "Pipeline (Optional)",
+        "job_workspace_desc": "Use this workspace to add a job posting, analyze fit, and generate tailored application materials.",
         
         # Validation & Warnings
         "please_upload_cv": "Upload a CV from the sidebar to continue.",
@@ -497,18 +498,19 @@ TRANSLATIONS = {
         "download_txt_cv": "Download TXT",
         
         # Dashboard
-        "dashboard_desc": "Track match scores, resume feedback, and manage your past applications.",
+        "dashboard_desc": "AI-assisted job application document generator that turns a CV and job description into ATS-friendly tailored CVs, cover letters, recruiter emails, and interview prep materials.",
         "db_operations": "Total Operations",
         "db_latest_match": "Latest Match Score",
         "db_latest_ats": "Latest ATS Score",
         "db_features": "🚀 Features Overview",
-        "db_demo_workflow": "Demo Workflow",
+        "db_demo_workflow": "CV + Job Description → Tailored Application Materials",
         "db_demo_step_1": "1. Upload a CV.",
         "db_demo_step_2": "2. Paste a job description or manually extract one link with a click.",
-        "db_demo_step_3": "3. Add a job in Job Workspace.",
-        "db_demo_step_4": "4. Analyze the job and review the match score.",
-        "db_demo_step_5": "5. Update pipeline stage, priority, and notes.",
-        "db_demo_step_6": "6. Generate a tailored CV, cover letter, and application email.",
+        "db_demo_step_3": "3. Analyze match and ATS alignment.",
+        "db_demo_step_4": "4. Generate an ATS-friendly tailored CV.",
+        "db_demo_step_5": "5. Generate a cover letter.",
+        "db_demo_step_6": "6. Generate a recruiter/application email and interview prep.",
+        "db_demo_step_7": "7. Download the outputs as DOCX/PDF/TXT.",
         "db_recent_history": "⏱️ Recent History Highlights",
         "db_no_history": "No operations found in history. Start analyzing your first application using the side menu!",
         
@@ -615,7 +617,7 @@ TRANSLATIONS = {
         "missing_key_warning": "Real job search requires a valid API key. Please configure your API keys in your .env file.",
 
         # Job Monitoring Agent
-        "job_monitoring_desc": "Create low-frequency job alerts, run safe mock monitoring, score jobs against your profile, and track saved/rejected/applied opportunities. Real job board adapters will be added in later phases.",
+        "job_monitoring_desc": "Use advanced demo tools for mock job runs and score saved postings for application material generation. Real job board adapters will be added in later phases.",
         "jm_alert_form": "Alert Profile",
         "jm_alert_name": "Alert name",
         "jm_keywords": "Keywords",
@@ -660,17 +662,17 @@ TRANSLATIONS = {
         "jm_run_complete": "Mock monitoring run completed.",
         "jm_status_updated": "Job status updated.",
         "jm_no_alerts": "No alert profiles yet.",
-        "jm_no_jobs": "No monitored jobs yet. Add one manually in Add Job or run a Search Profile with manual_mock.",
-        "jm_no_pipeline_jobs": "No pipeline records yet. Add a job, then save stage, priority, and notes from the Jobs tab.",
+        "jm_no_jobs": "No jobs yet. Paste a target posting in Add Job or use the advanced mock search for demo data.",
+        "jm_no_pipeline_jobs": "No optional pipeline notes yet. Add a job, then save status, priority, and notes from the Jobs tab if useful.",
         "jm_no_assets": "No assets generated yet. Open a job, upload a global CV, and use Generate Materials.",
         "jm_no_job_assets": "No assets generated yet for this job.",
-        "jm_search_profile_help": "Search Profiles can run the safe manual_mock source for demo data. Real job board sources are not runnable in this phase.",
+        "jm_search_profile_help": "Advanced demo tool: run the safe manual_mock source for sample postings. Real job board sources are not runnable in this phase.",
         "jm_global_cv_default": "Uses global CV by default",
         "jm_global_cv_missing": "No global CV uploaded in sidebar. Upload one or use the optional override before generating materials.",
         "jm_add_job_next_step": "Title, company, and description are enough to start. URLs are stored as text only.",
         "jm_no_runs": "No run history yet.",
         "jm_manual_import": "Manual Job Import",
-        "jm_manual_import_desc": "Paste a real job posting manually. The app will store it, score it against a selected alert profile, and let you track its status. The URL is stored only as text; the app does not scrape job boards in this phase.",
+        "jm_manual_import_desc": "Paste the target job posting manually. The app stores it, scores fit, and lets you generate tailored application materials. The URL is stored only as text; the app does not scrape job boards in this phase.",
         "jm_select_alert_optional": "Select alert profile for scoring (optional)",
         "jm_no_alert_selected": "No alert profile",
         "jm_job_title": "Job title",
@@ -687,7 +689,7 @@ TRANSLATIONS = {
         "jm_rescore_profile": "Rescore profile",
         "jm_rescored": "Job rescored.",
         "jm_source_filter": "Source filter",
-        "jm_sources_phase3a_note": "Phase 3A prepares the source adapter system. Only manual_mock is runnable. Real job board adapters are not implemented yet.",
+        "jm_sources_phase3a_note": "Advanced tools such as mock source runs, source settings, and optional pipeline notes are available for testing and future job-board integrations. Only manual_mock is runnable today.",
         "jm_source_settings_saved": "Source settings saved.",
         "jm_source_test": "Test Source",
         "jm_source_update": "Save Settings",
@@ -715,7 +717,7 @@ TRANSLATIONS = {
         "jm_select_alert_for_analysis": "Select alert profile for analysis",
         "jm_use_associated_alert": "Use job's current alert profile",
         "jm_analysis_complete": "Job analysis completed.",
-        "jm_pipeline_title": "Application Pipeline",
+        "jm_pipeline_title": "Optional Application Notes",
         "jm_pipeline_stage": "Application Stage",
         "jm_pipeline_priority": "Priority",
         "jm_pipeline_materials": "Materials Status",
@@ -727,9 +729,9 @@ TRANSLATIONS = {
         "jm_pipeline_contact_person": "Contact Person",
         "jm_pipeline_contact_email": "Contact Email",
         "jm_pipeline_notes": "Application Notes",
-        "jm_save_pipeline": "Save Pipeline",
-        "jm_pipeline_updated": "Application pipeline updated.",
-        "jm_pipeline_overview": "Pipeline Overview",
+        "jm_save_pipeline": "Save Notes",
+        "jm_pipeline_updated": "Optional application notes updated.",
+        "jm_pipeline_overview": "Notes Overview",
         "jm_upcoming_actions": "Upcoming Actions",
         "jm_upcoming_deadlines": "Upcoming Deadlines",
         "jm_high_priority": "High Priority Jobs",
@@ -830,7 +832,7 @@ TRANSLATIONS = {
         "input_status": "Input Status",
         "contact_fields_missing": "Some contact fields could not be extracted automatically. You can fill them before generating.",
         "db_feat_cv_tools": "Use the global CV and job description for CV analysis, ATS scoring, improvement suggestions, and section rewrites.",
-        "db_feat_job_workspace": "Track jobs, manage pipeline notes, analyze roles, and generate job-specific materials from saved listings.",
+        "db_feat_job_workspace": "Add a job posting, analyze fit, and generate job-specific application materials from saved listings.",
         "db_feat_app_materials": "Generate cover letters, application emails, and interview prep using the shared inputs.",
         "db_feat_ats_cv_builder": "Build ATS-friendly CV exports while preserving locked contact fields from the uploaded CV.",
         "export_cv": "Export",
@@ -1748,6 +1750,7 @@ if selected_page_key == "📊 Dashboard":
         f"- {t('db_demo_step_4')}",
         f"- {t('db_demo_step_5')}",
         f"- {t('db_demo_step_6')}",
+        f"- {t('db_demo_step_7')}",
     ]))
 
     st.markdown(f"### {t('db_features')}")
@@ -2548,7 +2551,7 @@ elif selected_page_key == "✉️ Application Materials":
 
 elif selected_page_key == "💼 Job Workspace":
     st.header(t("nav_job_workspace"))
-    st.write(t("job_workspace_desc") if "job_workspace_desc" in TRANSLATIONS[st.session_state.ui_lang] else "Manage your job listings, track search alerts, view pipeline progress, and generate custom application materials.")
+    st.write(t("job_workspace_desc") if "job_workspace_desc" in TRANSLATIONS[st.session_state.ui_lang] else "Use this workspace to add a job posting, analyze fit, and generate tailored application materials.")
 
     alerts = api_json("GET", "/job-monitoring/alerts") or []
     sources_payload = api_json("GET", "/job-monitoring/sources", timeout=30) or {}
@@ -2559,13 +2562,13 @@ elif selected_page_key == "💼 Job Workspace":
         if source.get("enabled") and source.get("runnable") and source.get("status") == "active"
     ]
 
-    tab_jobs, tab_add, tab_profiles, tab_sources, tab_pipeline, tab_assets = st.tabs([
-        t("tab_jobs") if "tab_jobs" in TRANSLATIONS[st.session_state.ui_lang] else "Jobs",
+    tab_add, tab_jobs, tab_assets, tab_profiles, tab_sources, tab_pipeline = st.tabs([
         t("tab_add_job") if "tab_add_job" in TRANSLATIONS[st.session_state.ui_lang] else "Add Job",
-        t("tab_search_profiles") if "tab_search_profiles" in TRANSLATIONS[st.session_state.ui_lang] else "Search Profiles",
-        t("tab_sources") if "tab_sources" in TRANSLATIONS[st.session_state.ui_lang] else "Sources",
-        t("tab_pipeline") if "tab_pipeline" in TRANSLATIONS[st.session_state.ui_lang] else "Pipeline",
-        t("tab_assets") if "tab_assets" in TRANSLATIONS[st.session_state.ui_lang] else "Assets"
+        t("tab_jobs") if "tab_jobs" in TRANSLATIONS[st.session_state.ui_lang] else "Jobs",
+        t("tab_assets") if "tab_assets" in TRANSLATIONS[st.session_state.ui_lang] else "Assets",
+        t("tab_search_profiles") if "tab_search_profiles" in TRANSLATIONS[st.session_state.ui_lang] else "Mock Search (Advanced)",
+        t("tab_sources") if "tab_sources" in TRANSLATIONS[st.session_state.ui_lang] else "Sources (Advanced)",
+        t("tab_pipeline") if "tab_pipeline" in TRANSLATIONS[st.session_state.ui_lang] else "Pipeline (Optional)"
     ])
 
     # Helper function to read asset file bytes safely
@@ -2808,8 +2811,8 @@ elif selected_page_key == "💼 Job Workspace":
                             st.markdown(f"**Strengths:** {', '.join(report.get('candidate_strengths', []))}")
                             st.markdown(f"**Gaps:** {', '.join(report.get('candidate_gaps', []))}")
                             
-                    # Pipeline / Notes Section
-                    st.markdown("#### 📅 Pipeline / Notes")
+                    # Optional application notes section
+                    st.markdown(f"#### 📅 {t('jm_pipeline_title')}")
                     p_stage = pipeline_data.get("application_stage", "not_started") if pipeline_data else "not_started"
                     p_priority = pipeline_data.get("application_priority", "medium") if pipeline_data else "medium"
                     p_mat = pipeline_data.get("application_materials_status", "not_started") if pipeline_data else "not_started"
@@ -3159,9 +3162,10 @@ elif selected_page_key == "💼 Job Workspace":
                 st.success(f"{t('jm_manual_job_added')} Match: {result.get('match_score', 0)}%")
                 st.rerun()
 
-    # --- Tab 3: Search Profiles ---
+    # --- Tab 4: Advanced Mock Search ---
     with tab_profiles:
-        st.subheader("Job Search Profile Form / İş Arama Profili")
+        st.subheader("Advanced Mock Search / Gelişmiş Mock Arama")
+        st.info(t("jm_sources_phase3a_note"))
         st.caption(t("jm_search_profile_help"))
         
         with st.form("jw_create_search_profile_form"):
@@ -3247,7 +3251,7 @@ elif selected_page_key == "💼 Job Workspace":
                 st.rerun()
 
         st.markdown("---")
-        st.subheader("Existing Search Profiles / Mevcut Profiller")
+        st.subheader("Existing Mock Search Profiles / Mevcut Mock Arama Profilleri")
         if not alerts:
             st.info(t("jm_no_alerts"))
         else:
@@ -3301,7 +3305,7 @@ elif selected_page_key == "💼 Job Workspace":
                 ]
                 st.dataframe(run_rows, use_container_width=True)
 
-    # --- Tab 4: Sources ---
+    # --- Tab 5: Advanced Sources ---
     with tab_sources:
         st.subheader(t("tab_sources"))
         st.info(t("jm_sources_phase3a_note"))
@@ -3406,9 +3410,10 @@ elif selected_page_key == "💼 Job Workspace":
                             elif test_result:
                                 st.warning(test_result.get("message"))
 
-    # --- Tab 5: Pipeline ---
+    # --- Tab 6: Optional Pipeline Notes ---
     with tab_pipeline:
-        st.subheader("Application Pipeline / Başvuru Takip")
+        st.subheader(t("jm_pipeline_title"))
+        st.caption(t("jm_sources_phase3a_note"))
         pipeline_jobs = api_json("GET", "/job-monitoring/pipeline") or []
         if not pipeline_jobs:
             st.info(t("jm_no_pipeline_jobs"))

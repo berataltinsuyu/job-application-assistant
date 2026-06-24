@@ -1,11 +1,11 @@
 # Job Application Assistant
 
-An AI-assisted job application workspace for reviewing a CV against a job description, tracking applications, and generating application materials. The project uses a FastAPI backend with a consolidated Streamlit UI.
+AI-assisted job application document generator that turns a CV and job description into ATS-friendly tailored CVs, cover letters, recruiter emails, and interview prep materials. The project uses a FastAPI backend with a consolidated Streamlit UI.
 
 The current UI has six main pages:
 
 - Dashboard
-- Job Workspace
+- Job Prep Workspace
 - ATS CV Builder
 - CV Tools
 - Application Materials
@@ -13,10 +13,10 @@ The current UI has six main pages:
 
 ## Key Features
 
-- Global CV upload reused across ATS CV Builder, CV Tools, Application Materials, and Job Workspace material generation.
+- Global CV upload reused across ATS CV Builder, CV Tools, Application Materials, and Job Prep Workspace material generation.
 - Global job description input with optional safe manual URL extraction.
-- Job Workspace for manual job import, search profiles, source settings, job scoring, job intelligence, pipeline notes, and generated assets.
-- Safe Source Adapter Foundation with `manual_mock`, `manual_import`, and disabled placeholders for future real sources.
+- Job Prep Workspace for adding a posting, scoring fit, reviewing job intelligence, generating tailored application materials, and optionally keeping status notes.
+- Advanced mock/source tools with `manual_mock`, `manual_import`, and disabled placeholders for future real sources.
 - ATS CV Builder with locked contact fields, preview, and DOCX/PDF/TXT exports.
 - CV Quality Check and Structure Validation for generated ATS/tailored CVs.
 - Adaptation Level controls: Conservative, Balanced, and Strong.
@@ -95,14 +95,14 @@ http://localhost:8501
 2. Start Streamlit.
 3. Upload a CV in the sidebar.
 4. Paste a job description, or open the collapsed "Extract from URL" helper and click Extract for one user-provided URL.
-5. Open Job Workspace.
-6. Create or use a Search Profile with `manual_mock`.
-7. Add a job manually in Add Job.
-8. Analyze the job and review match/intelligence details.
-9. Update pipeline stage, priority, next action, and notes.
-10. Generate a tailored CV, cover letter, and application email.
-11. Review CV quality warnings and structure validation.
-12. Preview/download generated assets.
+5. Open Job Prep Workspace.
+6. Add the target posting manually in Add Job.
+7. Analyze the job and review match/intelligence details.
+8. Generate a tailored CV, cover letter, and application email.
+9. Use Application Materials for interview prep.
+10. Review CV quality warnings and structure validation.
+11. Preview/download generated assets.
+12. Optionally use advanced mock search, source settings, or pipeline notes for demos/testing.
 13. Review outputs in History.
 
 Optional demo data:
@@ -115,12 +115,12 @@ The demo seed is idempotent, uses fictional data, does not call Gemini, and does
 
 ## Phase Summary
 
-- Phase 2A-2E: Job Workspace foundation, manual import, scoring, intelligence, pipeline, generated assets, preview/download, and consolidated Streamlit navigation.
+- Phase 2A-2E: Job Prep Workspace foundation, manual import, scoring, intelligence, optional pipeline notes, generated assets, preview/download, and consolidated Streamlit navigation.
 - Phase 3A: Safe Job Source Adapter Foundation with source settings persistence, registry validation, cooldown metadata, safe run orchestration, and a Sources tab.
 - Final Demo Polish: Demo seed helper, release smoke test, presentation guide, clearer dashboard workflow, and refined empty states.
 - Phase 4A: CV quality checker, structure validator, adaptation-level controls, cleaner generated CV filenames, richer template metadata, and a future DOCX template placeholder folder.
 - Phase 4B-1: Standalone DOCX template service foundation with local `python-docx` renderers.
-- Phase 4B-2: Template DOCX UI Integration in both the ATS CV Builder page and the Job Workspace tailored CV generation workflow. Programmatic DOCX remains the default and fallback. Built-in templates: ATS Classic DOCX and ATS Modern DOCX generated completely locally.
+- Phase 4B-2: Template DOCX UI Integration in both the ATS CV Builder page and the Job Prep Workspace tailored CV generation workflow. Programmatic DOCX remains the default and fallback. Built-in templates: ATS Classic DOCX and ATS Modern DOCX generated completely locally.
 - Phase 4C: Visual Polish & Preview Guidance for the built-in DOCX templates (Classic vs Modern), rendering layout corrections, interactive template select guidelines in the UI, and CV quality/structure validation tuning to minimize false positives and guardrail adaptation levels against fake claims.
 
 
@@ -217,5 +217,5 @@ To perform manual testing with a real CV and job description, follow the checkli
 
 - Add reviewed, terms-aware source adapters only after a safety review.
 - Improve generated asset templates and export formatting.
-- Add richer filtering and pipeline reporting.
+- Add richer filtering and optional status-note reporting.
 - Add optional notification or scheduling workflows only with explicit user controls and strict rate limits.

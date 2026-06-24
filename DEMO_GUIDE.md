@@ -1,6 +1,6 @@
 # Demo Guide
 
-This guide is for a short live presentation of the Job Application Assistant.
+This guide is for a short live presentation of the Job Application Assistant as a CV + job description to tailored application materials generator.
 
 ## Start
 
@@ -24,34 +24,34 @@ venv/bin/python scratch/seed_demo_data.py
 
 ## Demo Steps
 
-1. Open Streamlit and show the six-page sidebar: Dashboard, Job Workspace, ATS CV Builder, CV Tools, Application Materials, History.
+1. Open Streamlit and show the six-page sidebar: Dashboard, Job Prep Workspace, ATS CV Builder, CV Tools, Application Materials, History.
 2. Upload a CV in the sidebar.
 3. Paste a job description, or open "Extract from URL" and click Extract for one user-provided URL.
 4. Explain that extraction is manual, single-request, and falls back to paste if blocked.
-5. Open Job Workspace.
-6. In Search Profiles, create a profile with role families, suggested keywords, custom keywords, and `manual_mock`.
-7. Run the profile and show mock jobs.
-8. In Add Job, manually add a job. Keep simple fields visible and advanced fields collapsed.
-9. In Jobs, expand a job card, rescore or analyze it, and review the intelligence report.
-10. Update pipeline stage, priority, next action, and notes.
-11. Select an Adaptation Level: Conservative, Balanced, or Strong.
-12. Generate Tailored CV.
-13. Review the CV Quality Check and Structure Validation scores/warnings.
-14. Generate Cover Letter.
-15. Generate Application Email.
-16. Preview and download generated assets.
-17. Open History and show previous outputs.
+5. Open Job Prep Workspace.
+6. In Add Job, manually add the target posting. Keep simple fields visible and advanced fields collapsed.
+7. In Jobs, expand the job card, rescore or analyze it, and review the intelligence report.
+8. Select an Adaptation Level: Conservative, Balanced, or Strong.
+9. Generate Tailored CV.
+10. Review the CV Quality Check and Structure Validation scores/warnings.
+11. Generate Cover Letter.
+12. Generate Application Email.
+13. Open Application Materials and generate interview prep.
+14. Preview and download generated assets.
+15. Optionally show Mock Search, Sources, or Pipeline as advanced testing/future-integration tools.
+16. Open History and show previous outputs.
 
 ## What To Say
 
-- "The app uses one global CV and one global job description across the workspace."
-- "Job Workspace is the main operational screen: search profiles, manual import, source settings, pipeline, and assets are all in one place."
+- "The app turns one CV and one job description into tailored application documents."
+- "Job Prep Workspace is for adding a posting, analyzing fit, and generating application materials."
+- "Mock Search, Sources, and Pipeline are advanced tools for demo data, source settings, and optional notes."
 - "Only `manual_mock` is runnable as a source today. `manual_import` is manual-only, and real job-board sources are disabled placeholders."
 - "Manual URL extraction is allowed only when the user clicks Extract for a single URL. It is not crawling or monitoring."
 - "Generated materials are drafts and should be reviewed before sending."
 - "CV Quality Check and Structure Validation are deterministic review helpers; they flag contact corruption, field mixing, and unsupported senior claims."
 - "Adaptation Level controls how assertively the generated CV is tailored while still forbidding invented facts."
-- "Template DOCX is available in both ATS CV Builder and Job Workspace CV generation. Classic and Modern styles are rendered locally and programmatically with built-in styling, including bottom borders and dedicated layout properties."
+- "Template DOCX is available in both ATS CV Builder and Job Prep Workspace CV generation. Classic and Modern styles are rendered locally and programmatically with built-in styling, including bottom borders and dedicated layout properties."
 
 ## Known Limitations
 
