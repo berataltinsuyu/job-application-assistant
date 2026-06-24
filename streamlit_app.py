@@ -29,7 +29,7 @@ TRANSLATIONS = {
         
         # Navigation items
         "nav_dashboard": "📊 Panel",
-        "nav_job_url": "🔗 URL ile İlan Çekme Devre Dışı",
+        "nav_job_url": "Linkten İlan Çıkar",
         "nav_cv_analysis": "🔍 CV Analizi",
         "nav_ats_score": "🎯 ATS Skoru",
         "nav_ats_cv_builder": "📄 ATS CV Oluşturucu",
@@ -89,13 +89,20 @@ TRANSLATIONS = {
         "db_latest_match": "Son Uyum Skoru",
         "db_latest_ats": "Son ATS Skoru",
         "db_features": "🚀 Özellikler Genel Bakış",
+        "db_demo_workflow": "Demo Akışı",
+        "db_demo_step_1": "1. CV yükleyin.",
+        "db_demo_step_2": "2. İş açıklamasını yapıştırın veya tek tıklamayla manuel linkten çıkarmayı deneyin.",
+        "db_demo_step_3": "3. Job Workspace içinde manuel ilan ekleyin.",
+        "db_demo_step_4": "4. İlanı analiz edin ve eşleşme skorunu inceleyin.",
+        "db_demo_step_5": "5. Pipeline aşamasını, önceliği ve notları güncelleyin.",
+        "db_demo_step_6": "6. Özelleştirilmiş CV, kapak yazısı ve başvuru e-postası oluşturun.",
         "db_recent_history": "⏱️ Son İşlem Geçmişi",
         "db_no_history": "Geçmişte işlem bulunmamaktadır. Sol menüyü kullanarak ilk analizini başlat!",
         
         # Pages specific
-        "job_url_desc": "URL ile ilan çekme devre dışıdır. Lütfen iş ilanı metnini manuel olarak yapıştırın.",
+        "job_url_desc": "İsteğe bağlı olarak tek bir bağlantıdan ilan metnini çıkarmayı deneyin. Başarısız olursa manuel yapıştırın.",
         "job_url_label": "İş İlanı URL'sini Girin:",
-        "btn_extract_job": "İlan Detaylarını Çıkar",
+        "btn_extract_job": "Çıkar",
         "set_active_job": "Aktif İş İlanı Olarak Ayarla",
         "extraction_success": "İş ilanı başarıyla çıkarıldı!",
         "extraction_save_success": "İş ilanı kaydedildi! Sol menüdeki kutuya aktarıldı.",
@@ -103,7 +110,7 @@ TRANSLATIONS = {
         # Status & Spinners
         "status_complete": "İşlem tamamlandı!",
         "status_error": "Bir hata oluştu:",
-        "spinner_job": "İş ilanı sayfası getiriliyor ve taranıyor...",
+        "spinner_job": "İlan açıklaması çıkarılıyor...",
         "spinner_analyze": "CV ve İş İlanı uyumu analiz ediliyor...",
         "spinner_ats": "ATS tarayıcısı çalıştırılıyor...",
         "spinner_keywords": "İş ilanı işleniyor...",
@@ -240,7 +247,14 @@ TRANSLATIONS = {
         "jm_run_complete": "Mock takip çalışması tamamlandı.",
         "jm_status_updated": "İlan durumu güncellendi.",
         "jm_no_alerts": "Henüz alarm profili yok.",
-        "jm_no_jobs": "Henüz izlenen ilan yok. Bir alarm oluşturup mock takip çalıştırın.",
+        "jm_no_jobs": "Henüz izlenen ilan yok. Add Job sekmesinden manuel ilan ekleyin veya Search Profiles sekmesinde manual_mock çalıştırın.",
+        "jm_no_pipeline_jobs": "Henüz pipeline kaydı yok. Bir ilan ekleyip Jobs sekmesinden aşama, öncelik ve notları kaydedin.",
+        "jm_no_assets": "Henüz materyal oluşturulmadı. Bir ilan açın, global CV yükleyin ve Generate Materials bölümünden başlayın.",
+        "jm_no_job_assets": "Bu ilan için henüz materyal oluşturulmadı.",
+        "jm_search_profile_help": "Search Profile, manual_mock kaynağından güvenli demo sonuçları üretir. Gerçek iş ilanı kaynakları bu fazda çalıştırılmaz.",
+        "jm_global_cv_default": "Global CV varsayılan olarak kullanılır",
+        "jm_global_cv_missing": "Sidebar'da global CV yok. Materyal oluşturmak için CV yükleyin veya isteğe bağlı override kullanın.",
+        "jm_add_job_next_step": "Başlık, şirket ve ilan açıklaması yeterlidir. URL yalnızca metin olarak saklanır.",
         "jm_no_runs": "Henüz çalıştırma geçmişi yok.",
         "jm_manual_import": "Manuel İlan Ekle",
         "jm_manual_import_desc": "Gerçek bir iş ilanını manuel olarak yapıştırın. Uygulama ilanı kaydeder, seçilen alert profiline göre puanlar ve durumunu takip etmenizi sağlar. URL yalnızca metin olarak saklanır; bu fazda ilan sitelerinden otomatik veri çekilmez.",
@@ -253,6 +267,7 @@ TRANSLATIONS = {
         "jm_posted_date": "Yayın tarihi",
         "jm_job_description": "İlan açıklaması",
         "jm_add_manual_job": "Manuel ilan ekle",
+        "jm_extract_desc_from_url": "Linkten ilan açıklaması çıkar",
         "jm_manual_job_added": "Manuel ilan kaydedildi.",
         "jm_duplicate_updated": "Bu ilan zaten vardı; mevcut kayıt güncellendi, yeni kopya oluşturulmadı.",
         "jm_rescore": "Yeniden puanla",
@@ -381,7 +396,7 @@ TRANSLATIONS = {
         
         # Navigation items
         "nav_dashboard": "📊 Dashboard",
-        "nav_job_url": "🔗 URL Fetching Disabled",
+        "nav_job_url": "Extract from URL",
         "nav_cv_analysis": "🔍 CV Analysis",
         "nav_ats_score": "🎯 ATS Score",
         "nav_ats_cv_builder": "📄 ATS CV Builder",
@@ -441,13 +456,20 @@ TRANSLATIONS = {
         "db_latest_match": "Latest Match Score",
         "db_latest_ats": "Latest ATS Score",
         "db_features": "🚀 Features Overview",
+        "db_demo_workflow": "Demo Workflow",
+        "db_demo_step_1": "1. Upload a CV.",
+        "db_demo_step_2": "2. Paste a job description or manually extract one link with a click.",
+        "db_demo_step_3": "3. Add a job in Job Workspace.",
+        "db_demo_step_4": "4. Analyze the job and review the match score.",
+        "db_demo_step_5": "5. Update pipeline stage, priority, and notes.",
+        "db_demo_step_6": "6. Generate a tailored CV, cover letter, and application email.",
         "db_recent_history": "⏱️ Recent History Highlights",
         "db_no_history": "No operations found in history. Start analyzing your first application using the side menu!",
         
         # Pages specific
-        "job_url_desc": "URL fetching is disabled. Please paste the job description manually.",
+        "job_url_desc": "Optionally try extracting job text from one link. If it fails, paste the description manually.",
         "job_url_label": "Enter Job Posting URL:",
-        "btn_extract_job": "Extract Job Details",
+        "btn_extract_job": "Extract",
         "set_active_job": "Set as Active Job Description",
         "extraction_success": "Job description extracted successfully!",
         "extraction_save_success": "Job description saved! You can view it on the sidebar now.",
@@ -455,7 +477,7 @@ TRANSLATIONS = {
         # Status & Spinners
         "status_complete": "Operation completed!",
         "status_error": "An error occurred:",
-        "spinner_job": "Fetching and parsing job page...",
+        "spinner_job": "Extracting job description...",
         "spinner_analyze": "Analyzing CV and Job compatibility...",
         "spinner_ats": "Running ATS scanner...",
         "spinner_keywords": "Processing job description...",
@@ -592,7 +614,14 @@ TRANSLATIONS = {
         "jm_run_complete": "Mock monitoring run completed.",
         "jm_status_updated": "Job status updated.",
         "jm_no_alerts": "No alert profiles yet.",
-        "jm_no_jobs": "No monitored jobs yet. Create an alert and run mock monitoring.",
+        "jm_no_jobs": "No monitored jobs yet. Add one manually in Add Job or run a Search Profile with manual_mock.",
+        "jm_no_pipeline_jobs": "No pipeline records yet. Add a job, then save stage, priority, and notes from the Jobs tab.",
+        "jm_no_assets": "No assets generated yet. Open a job, upload a global CV, and use Generate Materials.",
+        "jm_no_job_assets": "No assets generated yet for this job.",
+        "jm_search_profile_help": "Search Profiles can run the safe manual_mock source for demo data. Real job board sources are not runnable in this phase.",
+        "jm_global_cv_default": "Uses global CV by default",
+        "jm_global_cv_missing": "No global CV uploaded in the sidebar. Upload one or use the optional override before generating materials.",
+        "jm_add_job_next_step": "Title, company, and description are enough to start. URLs are stored as text only.",
         "jm_no_runs": "No run history yet.",
         "jm_manual_import": "Manual Job Import",
         "jm_manual_import_desc": "Paste a real job posting manually. The app will store it, score it against a selected alert profile, and let you track its status. The URL is stored only as text; the app does not scrape job boards in this phase.",
@@ -605,6 +634,7 @@ TRANSLATIONS = {
         "jm_posted_date": "Posted date",
         "jm_job_description": "Job description",
         "jm_add_manual_job": "Add manual job",
+        "jm_extract_desc_from_url": "Extract description from URL",
         "jm_manual_job_added": "Manual job saved.",
         "jm_duplicate_updated": "This job already existed; the existing record was updated instead of duplicated.",
         "jm_rescore": "Rescore",
@@ -777,6 +807,51 @@ global_job_desc = st.sidebar.text_area(
     key="global_job_desc_input"
 )
 st.session_state.global_job_text = global_job_desc
+
+with st.sidebar.expander(t("nav_job_url"), expanded=False):
+    st.caption(t("job_url_desc"))
+    sidebar_job_url = st.text_input(t("job_url_label"), placeholder="https://...", key="sidebar_job_url")
+    if st.button(t("btn_extract_job"), key="sidebar_btn_extract_job"):
+        if not sidebar_job_url.strip():
+            st.warning("Geçerli bir http/https URL girin." if st.session_state.ui_lang == "tr" else "Enter a valid http/https URL.")
+        else:
+            with st.spinner(t("spinner_job")):
+                result = None
+                try:
+                    response = requests.post(
+                        f"{API_BASE_URL}/extract-job-description",
+                        json={"url": sidebar_job_url, "language": "Turkish" if st.session_state.ui_lang == "tr" else "English"},
+                        timeout=15,
+                    )
+                    if response.status_code == 200:
+                        result = response.json()
+                    else:
+                        st.warning(
+                            "Bu sayfa otomatik çıkarılamadı. Lütfen ilan açıklamasını manuel yapıştırın."
+                            if st.session_state.ui_lang == "tr"
+                            else "Could not extract this page automatically. Please paste the job description manually."
+                        )
+                except Exception:
+                    st.warning(
+                        "Bu sayfa otomatik çıkarılamadı. Lütfen ilan açıklamasını manuel yapıştırın."
+                        if st.session_state.ui_lang == "tr"
+                        else "Could not extract this page automatically. Please paste the job description manually."
+                    )
+            if result and result.get("success"):
+                extracted_text = result.get("text") or result.get("extracted_text") or ""
+                st.session_state["global_job_desc_input"] = extracted_text
+                st.session_state.global_job_text = extracted_text
+                if result.get("title"):
+                    st.caption(result.get("title"))
+                st.success(t("extraction_success"))
+                st.rerun()
+            elif result:
+                fallback_msg = (
+                    "Bu sayfa otomatik çıkarılamadı. Lütfen ilan açıklamasını manuel yapıştırın."
+                    if st.session_state.ui_lang == "tr"
+                    else "Could not extract this page automatically. Please paste the job description manually."
+                )
+                st.warning(result.get("message") or fallback_msg)
 
 global_language = st.sidebar.selectbox(
     t("output_lang"),
@@ -1364,6 +1439,16 @@ if selected_page_key == "📊 Dashboard":
         st.markdown(f'<div class="metric-card"><h3 style="margin:0;">{t("db_latest_match")}</h3><h1 style="color:#10B981;margin:5px 0 0 0;">{latest_match_score}</h1></div>', unsafe_allow_html=True)
     with col3:
         st.markdown(f'<div class="metric-card"><h3 style="margin:0;">{t("db_latest_ats")}</h3><h1 style="color:#06B6D4;margin:5px 0 0 0;">{latest_ats_score}</h1></div>', unsafe_allow_html=True)
+
+    st.markdown(f"### {t('db_demo_workflow')}")
+    st.write("\n".join([
+        f"- {t('db_demo_step_1')}",
+        f"- {t('db_demo_step_2')}",
+        f"- {t('db_demo_step_3')}",
+        f"- {t('db_demo_step_4')}",
+        f"- {t('db_demo_step_5')}",
+        f"- {t('db_demo_step_6')}",
+    ]))
 
     st.markdown(f"### {t('db_features')}")
     col_feat1, col_feat2 = st.columns(2)
@@ -2198,7 +2283,7 @@ elif selected_page_key == "💼 Job Workspace":
                 stage_str = stage_labels.get(stage_val, stage_val)
                 priority_str = priority_labels.get(priority_val, priority_val)
                 
-                card_title = f"{score}% | {title} - {company} [{job_status}] | Stage: {stage_str} | Priority: {priority_str}"
+                card_title = f"{title} - {company} | {score}% | {job_status} | {stage_str} | {priority_str}"
                 with st.expander(card_title, expanded=False):
                     # Job Details Section
                     st.markdown("#### 📋 Job Details")
@@ -2416,12 +2501,12 @@ elif selected_page_key == "💼 Job Workspace":
                     effective_cv_file = None
                     
                     if global_cv is not None:
-                        st.write(f"Using global CV: {global_cv.name}")
+                        st.write(f"{t('jm_global_cv_default')}: {global_cv.name}")
                         effective_cv_file = {
                             "cv_file": (global_cv.name, global_cv.getvalue(), global_cv.type)
                         }
                     else:
-                        st.warning("⚠️ No global CV uploaded in sidebar. Please upload in sidebar or override below.")
+                        st.warning(t("jm_global_cv_missing"))
                         
                     override_exp = st.expander(t("override_inputs_title"), expanded=False)
                     with override_exp:
@@ -2484,7 +2569,7 @@ elif selected_page_key == "💼 Job Workspace":
                     assets_res = api_json("GET", f"/job-monitoring/jobs/{job.get('id')}/assets", timeout=30)
                     job_assets = assets_res.get("assets", []) if assets_res else []
                     if not job_assets:
-                        st.caption("No assets generated yet for this job.")
+                        st.caption(t("jm_no_job_assets"))
                     else:
                         job_assets.sort(key=lambda x: x.get("created_at", ""), reverse=True)
                         limit_assets = job_assets[:5]
@@ -2543,10 +2628,45 @@ elif selected_page_key == "💼 Job Workspace":
     with tab_add:
         st.subheader(t("jm_manual_import"))
         st.write(t("jm_manual_import_desc"))
+        st.caption(t("jm_add_job_next_step"))
         
         alert_options = [(t("jm_no_alert_selected"), None)] + [
             (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
         ]
+
+        with st.expander(t("jm_extract_desc_from_url"), expanded=False):
+            st.caption(t("job_url_desc"))
+            helper_url = st.text_input(
+                t("job_url_label"),
+                value=st.session_state.get("jw_add_job_url", ""),
+                placeholder="https://...",
+                key="jw_add_job_extract_url",
+            )
+            if st.button(t("btn_extract_job"), key="jw_add_job_extract_btn"):
+                if not helper_url.strip():
+                    st.warning("Geçerli bir http/https URL girin." if st.session_state.ui_lang == "tr" else "Enter a valid http/https URL.")
+                else:
+                    with st.spinner(t("spinner_job")):
+                        result = api_json(
+                            "POST",
+                            "/extract-job-description",
+                            json={"url": helper_url, "language": "Turkish" if st.session_state.ui_lang == "tr" else "English"},
+                            timeout=15,
+                        )
+                    if result and result.get("success"):
+                        st.session_state["jw_add_job_url"] = result.get("url") or helper_url
+                        st.session_state["jw_add_job_description"] = result.get("text") or result.get("extracted_text") or ""
+                        if result.get("title"):
+                            st.caption(result.get("title"))
+                        st.success(t("extraction_success"))
+                        st.rerun()
+                    elif result:
+                        fallback_msg = (
+                            "Bu sayfa otomatik çıkarılamadı. Lütfen ilan açıklamasını manuel yapıştırın."
+                            if st.session_state.ui_lang == "tr"
+                            else "Could not extract this page automatically. Please paste the job description manually."
+                        )
+                        st.warning(result.get("message") or fallback_msg)
         
         with st.form("jw_manual_import_form"):
             selected_alert_label = st.selectbox(
@@ -2603,6 +2723,7 @@ elif selected_page_key == "💼 Job Workspace":
     # --- Tab 3: Search Profiles ---
     with tab_profiles:
         st.subheader("Job Search Profile Form / İş Arama Profili")
+        st.caption(t("jm_search_profile_help"))
         
         with st.form("jw_create_search_profile_form"):
             alert_name = st.text_input(t("jm_alert_name"), placeholder="e.g. Backend roles, AI/ML roles...")
@@ -2851,7 +2972,7 @@ elif selected_page_key == "💼 Job Workspace":
         st.subheader("Application Pipeline / Başvuru Takip")
         pipeline_jobs = api_json("GET", "/job-monitoring/pipeline") or []
         if not pipeline_jobs:
-            st.info(t("jm_no_jobs"))
+            st.info(t("jm_no_pipeline_jobs"))
         else:
             stages_count = {}
             high_priority_jobs = []
@@ -2910,7 +3031,7 @@ elif selected_page_key == "💼 Job Workspace":
         assets_res = api_json("GET", "/job-monitoring/assets", timeout=30)
         all_assets = assets_res.get("assets", []) if assets_res else []
         if not all_assets:
-            st.info("No assets generated yet.")
+            st.info(t("jm_no_assets"))
         else:
             all_assets.sort(key=lambda x: x.get("created_at", ""), reverse=True)
             

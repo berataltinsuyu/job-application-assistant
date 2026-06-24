@@ -1,296 +1,189 @@
-# Job Application Assistant | İş Başvuru Asistanı
+# Job Application Assistant
 
-An advanced AI assistant designed to optimize CVs, analyze job compatibility, compute ATS scores, and generate interview preparation materials. Now supports PDF exports and a bilingual user interface.
+An AI-assisted job application workspace for reviewing a CV against a job description, tracking applications, and generating application materials. The project uses a FastAPI backend with a consolidated Streamlit UI.
 
-CV dosyaları ve iş ilanları üzerinden uyum analizi, ATS puanlaması, kapak yazısı, başvuru e-postaları ve kişiselleştirilmiş mülakat hazırlığı yapan yapay zeka destekli başvuru asistanı. Artık PDF rapor çıktısı almayı ve çift dilli arayüzü desteklemektedir.
+The current UI has six main pages:
 
----
+- Dashboard
+- Job Workspace
+- ATS CV Builder
+- CV Tools
+- Application Materials
+- History
 
-## 🚀 Features | Özellikler
+## Key Features
 
-- **PDF, TXT, & JSON Exports**: Download all reports and documents as JSON, TXT, and PDF / Tüm rapor ve taslakları JSON, TXT ve PDF formatında indirme.
-- **Job Workspace**: Search profiles, safe mock source runs, manual job import, scoring, job intelligence, pipeline tracking, and generated application assets / Arama profilleri, güvenli mock kaynak çalıştırma, manuel ilan ekleme, puanlama, ilan analizi, başvuru takibi ve oluşturulan başvuru materyalleri.
-- **Safe Source Registry**: Phase 3A source settings, cooldown controls, and disabled placeholders for future reviewed adapters / Phase 3A kaynak ayarları, bekleme süresi kontrolleri ve gelecekte incelenecek adaptörler için devre dışı placeholder kaynaklar.
-- **ATS Compatibilty**: Compute score, format warnings & keyword gaps / ATS uyumluluk puanı ve eksik anahtar kelimeler.
-- **CV Optimization**: Rewrite sections and draft tailored CV improvements / CV iyileştirme önerileri ve bölüm bazlı yeniden yazma.
-- **Outreach & Letter**: Generate cover letters and application email drafts / Kapak yazısı ve iş başvurusu e-posta taslakları oluşturma.
-- **Interview Prep**: CV-specific personalized coach QA guides / Adaya ve pozisyona özel mülakat soruları hazırlama.
-- **Dashboard & History**: Sleek sidebar layout & log records / Gelişmiş gösterge paneli ve geçmiş işlemleri yönetme.
+- Global CV upload reused across ATS CV Builder, CV Tools, Application Materials, and Job Workspace material generation.
+- Global job description input with optional safe manual URL extraction.
+- Job Workspace for manual job import, search profiles, source settings, job scoring, job intelligence, pipeline notes, and generated assets.
+- Safe Source Adapter Foundation with `manual_mock`, `manual_import`, and disabled placeholders for future real sources.
+- ATS CV Builder with locked contact fields, preview, and DOCX/PDF/TXT exports.
+- CV Tools for CV analysis, ATS score, improvement suggestions, and section rewrite.
+- Application Materials for cover letters, application emails, interview prep, and personalized interview questions.
+- History page for reviewing and deleting previous AI outputs.
 
----
+## Architecture Overview
 
-## ATS CV Builder
+- `main.py`: FastAPI application setup and router registration.
+- `routers/`: HTTP API routes for CV analysis, ATS CV generation, job monitoring, manual URL extraction, and history.
+- `services/`: Business logic for AI prompts, source registry, manual URL extraction, job monitoring, scoring, asset generation, and exports.
+- `services/job_sources/`: Safe job source adapter registry. Phase 3A contains only a runnable mock adapter.
+- `models.py`: SQLAlchemy models for history, source settings, monitored jobs, intelligence reports, pipeline records, and generated assets.
+- `database.py`: SQLite session setup and compatibility migrations.
+- `streamlit_app.py`: Consolidated six-page Streamlit UI.
+- `scratch/`: Local smoke tests and demo utilities.
 
-The app includes an ATS CV Builder foundation with predefined ATS-friendly templates.
+## Tech Stack
 
-Current templates:
-- Classic ATS
-- Modern Clean
-- Technical Developer
-- Junior / Internship Focus
+- Python
+- FastAPI
+- Streamlit
+- SQLAlchemy
+- SQLite
+- Google Gemini API for AI-generated analysis/materials
+- python-docx / reportlab / PyMuPDF-related export helpers
+- requests and BeautifulSoup for the manual, user-triggered URL extraction flow only
 
-ATS CV Builder now supports:
-- Template-based ATS CV generation
-- Structured preview
-- DOCX export
-- PDF export
-- ATS-friendly one-column templates
-- Template-aware section order
-- ATS score before/after estimates
-- Keyword optimization summary
-- Polished template-specific DOCX/PDF rendering
-- Balanced one-page export optimization
-- ATS score explanation
-- Export section controls
+## Setup
 
-DOCX export is recommended when users want to edit the CV after generation.
-The ATS score is an estimated relevance score, not an official ATS result.
-
----
-
-## Phase 2A - Job Monitoring Agent
-
-Phase 2A adds a generic, ethical foundation for low-frequency job monitoring.
-
-What it does:
-- Creates reusable job alert profiles with keywords, location, seniority, job type, work model, excluded keywords, sources, active/passive state, and a minimum match score.
-- Runs safe mock/manual monitoring through the `manual_mock` source adapter.
-- Scores normalized job records deterministically against each alert profile.
-- Stores monitored jobs, run history, match summaries, matched keywords, missing keywords, and job workflow status.
-- Lets users mark monitored jobs as `new`, `saved`, `rejected`, `applied`, or `archived`.
-
-How to create an alert profile:
-1. Open **Job Monitoring Agent** in the Streamlit sidebar.
-2. Enter an alert name and comma-separated keywords.
-3. Optionally add location, seniority, job type, work model, and excluded keywords.
-4. Keep the source as `manual_mock` for Phase 2A.
-5. Choose a minimum match score, then create the alert.
-
-How to run mock/manual monitoring:
-1. In the existing alert profiles list, click **Run now**.
-2. The backend calls only `ManualMockJobSourceAdapter`.
-3. Matching jobs are stored and shown in the job results section.
-4. Re-running the same alert updates existing jobs by `alert_profile_id + source + source_job_id` instead of creating duplicates.
-
-How match scoring works:
-- The scorer checks alert keywords against the mock job title and description.
-- Location, seniority, job type, and work model add deterministic filter-based score contributions when provided.
-- Excluded keywords reduce the score when found in the title or description.
-- Scores are clamped from 0 to 100.
-- Gemini or other LLMs are not used for Phase 2A job monitoring scores.
-
-Current limitations:
-- No real scraping is implemented yet.
-- Only the `manual_mock` source adapter exists in Phase 2A.
-- ATS CV Builder, cover letter, and application email actions are placeholders until later phases.
-
-Future phases:
-- Add carefully reviewed real source adapters.
-- Connect monitored jobs to tailored CV, cover letter, and application email generation.
-- Add scheduling, notifications, and richer filtering only after safety constraints are defined.
-
-Safety policy:
-- Future source adapters must respect public access, robots.txt, rate limits, and source terms.
-- Do not bypass login, CAPTCHA, Cloudflare, paywalls, or access controls.
-- Do not use proxies, evasion techniques, hidden browser automation, or aggressive polling.
-- Keep monitoring low-frequency and user-controlled.
-
-### Phase 3A - Safe Job Source Adapter Foundation
-
-Phase 3A adds the source adapter foundation required before any real job-board integration is considered.
-
-Purpose:
-- Store source settings in `job_source_settings`.
-- List available sources through `/job-monitoring/sources`.
-- Allow safe source enable/disable and cooldown updates.
-- Route Search Profile runs through a source registry and cooldown guard.
-- Keep manual mock runs and manual job import working without external fetching.
-
-Available sources:
-- `manual_mock`: enabled by default, runnable, local mock data only, no external URL fetching.
-- `manual_import`: enabled by default, manual-only, not runnable as a monitoring source.
-- `company_careers_placeholder`: disabled, not implemented.
-- `techcareer_placeholder`: disabled, not implemented.
-- `youthall_placeholder`: disabled, not implemented.
-- `linkedin_placeholder`: disabled, not implemented.
-- `kariyer_placeholder`: disabled, not implemented.
-
-How source settings work:
-- Settings are seeded automatically if missing.
-- `enabled`, `cooldown_minutes`, and `config_json` can be updated through the API or the Job Workspace **Sources** tab.
-- `runnable` and implementation status are controlled by the registry, not by user config.
-- Not-implemented placeholders cannot be enabled in Phase 3A.
-
-Cooldown behavior:
-- Before a source run, the registry checks whether the source is enabled, runnable, implemented, and outside its cooldown window.
-- Blocked sources are skipped with a clear warning in run history.
-- If all selected sources are skipped, the run is marked failed without attempting any external access.
-
-Why real sources are not implemented yet:
-- Phase 3A is infrastructure only.
-- Real adapters will be added in future phases only after reviewing public access, robots.txt, provider terms, rate limits, and safety constraints.
-- URLs are not fetched automatically. Users must paste job descriptions manually for real postings.
-
-Phase 3A safety policy:
-- No real job board fetching.
-- No LinkedIn, Kariyer.net, Techcareer, Youthall, Indeed, or company career page requests.
-- No URL fetching or scraping.
-- No browser automation.
-- No CAPTCHA, Cloudflare, login, paywall, or access-control bypass.
-- No proxies or evasion logic.
-- Source adapters must explicitly declare whether they fetch external URLs.
-
-### Phase 2B - Manual Job Import
-
-Phase 2B makes the Job Monitoring Agent useful with real postings while still avoiding scraping.
-
-How to create an alert profile:
-1. Open **Job Monitoring Agent**.
-2. Create an alert with keywords, optional filters, excluded keywords, and a minimum match score.
-3. Keep `manual_mock` as the alert source for mock monitoring.
-
-How to manually add a job posting:
-1. Open **Manual Job Import** inside the Job Monitoring Agent page.
-2. Optionally select an alert profile for scoring.
-3. Paste the job title, company, location, work model, seniority, job type, source label, URL, posted date, and job description.
-4. Click **Add manual job**.
-
-Manual job scoring:
-- If an alert profile is selected, the existing deterministic matcher scores the pasted title and description against alert keywords and filters.
-- If no alert profile is selected, the job is stored with a `0` score and the summary states that no alert profile was selected.
-- Manual jobs can be rescored later against any existing alert profile from the job card.
-
-Duplicate handling:
-- Manual imports generate a deterministic `source_job_id` from title, company, URL, and description content.
-- Repeating the same manual import updates the existing monitored job instead of creating a duplicate.
-- Existing job workflow status is preserved when a duplicate is updated.
-
-Current limitation:
-- The app does not fetch URL content automatically.
-- URLs are stored only as user-provided text.
-- Users must paste the job description manually.
-
-Safety policy:
-- No real scraping is implemented in Phase 2B.
-- No login bypass, CAPTCHA bypass, Cloudflare bypass, proxy evasion, or hidden browser automation is implemented.
-- Manual import stores only user-provided job data.
-
-### Phase 2C - Job Detail Intelligence
-
-Phase 2C adds an intelligence layer to each monitored job, providing detailed application insights before CV/Cover Letter generation is implemented in Phase 2E.
-
-What it does:
-- Analyzes a monitored job posting and generates insights:
-  - **Job Family Detection:** Classifies roles into specific areas like `software_backend`, `frontend`, `fullstack`, `ai_ml_llm`, `data_analytics`, `business_analyst`, `product_project`, `fintech_payment`, `risk_fraud_compliance`, `cybersecurity`, `devops_cloud`, `corporate_applications`, `sales_operations`, or `general`.
-  - **Seniority Assessment:** Evaluates requirements to identify seniority (internship, entry level, junior, mid, senior, lead/manager).
-  - **Role Summary:** Drafts a concise 2-4 sentence summary of the job description.
-  - **Match Reason:** Explains why the job matches the alert profile in practical terms (or gives general context if no profile is selected).
-  - **Strengths & Gaps:** Lists candidate strengths (based on matched keywords and filters) and gaps (based on missing keywords and seniority mismatches).
-  - **CV, Project & Skill Focus:** Recommends specific CV phrasing, generic project categories, and key skills to highlight.
-  - **Application Recommendation:** Recommends action (strong apply, apply, apply with tailored CV, low match, not recommended).
-  - **Risk Notes:** Flags potential risks (e.g., claiming MLOps or direct cybersecurity ownership without support).
-  - **Interview Focus Areas:** Lists likely interview topics to prepare for.
-
-How to analyze a job:
-1. Open any monitored job card in **Job Monitoring Agent**.
-2. Click **Analyze job**. Optionally, choose a different alert profile from the selector dropdown to evaluate the job against a new target profile.
-3. Once completed, the analysis results are displayed inside the **Job Analysis Report** expander panel.
-4. Re-running the analysis updates the existing report for that job.
-
-Scoring & Analysis Rules:
-- All analysis runs **locally and deterministically** by default.
-- Gemini LLM generation is optional and disabled by default. It can be enabled by setting `JOB_INTELLIGENCE_USE_LLM=true` in `.env` (requires a valid `GEMINI_API_KEY`).
-- No external requests are made; URLs are stored as text and not fetched.
-
-Safety Policy:
-- No web scraping is triggered.
-- No automated page fetches or external requests are made.
-
-### Phase 2D - Application Pipeline & Notes
-
-Phase 2D adds an application tracking layer so users can manage the full application lifecycle for monitored jobs, log actions, and view a pipeline overview dashboard.
-
-What it does:
-- Tracks key lifecycle stages: `not_started`, `preparing`, `applied`, `screening`, `interview`, `technical_interview`, `offer`, `rejected`, `withdrawn`, `archived`.
-- Logs job priority: `low`, `medium`, `high`.
-- Logs material status (CV, cover letter): `not_started`, `cv_needed`, `cover_letter_needed`, `ready`, `submitted`.
-- Stores detailed metadata: deadlines, next actions, next action dates, interview dates, contact details, and application notes.
-- Synchronizes status buttons (applied, rejected, archived) with pipeline stages automatically (e.g. clicking "Mark Applied" sets the pipeline stage to "applied" and logs the applied date).
-- Displays a **Pipeline Overview Dashboard** grouping jobs by stage, listing high-priority jobs, and highlighting upcoming actions and deadlines.
-
-How to track/update a job:
-1. Open any monitored job card.
-2. Expand the **Pipeline / Notes** panel.
-3. Edit the stage, priority, deadline, contact details, next actions, and notes.
-4. Click **Save Pipeline** to commit changes.
-5. Badges for the current stage, priority, next action, and materials status are displayed in the job metadata section.
-
-Safety Policy:
-- No web scraping is triggered.
-- No automated external requests are made; URLs remain stored text.
-
-### Phase 2E - Job-to-Application Asset Generator
-
-Phase 2E enables users to generate tailored application materials (CV, Cover Letter, Application Email) directly from any monitored or manually imported job description, incorporating detailed job intelligence context.
-
-What it does:
-- Generates tailored CVs using the existing ATS CV Builder pipeline and templates, aligning experience truthfully to the job description and protecting locked candidate details/proper nouns.
-- Generates customized Cover Letters reusing existing prompt setups with job intelligence context.
-- Generates professional Application Emails, LinkedIn cold messages, and follow-up templates.
-- Persists all generated assets in a new SQLite table `job_application_assets`.
-- Physically saves all generated documents (PDF, DOCX, TXT, JSON) to the `generated_assets/` folder in the project root.
-- Allows users to preview generated contents and download them directly from the Streamlit UI.
-- Automatically synchronizes the pipeline's `application_materials_status` (e.g., updates to `cover_letter_needed` after generating CV, and `ready` once all necessary materials are available).
-
-How to generate materials:
-1. Open any monitored job card.
-2. Expand the **Generate Application Materials / Başvuru Materyali Oluştur** panel.
-3. Upload a CV file (PDF or DOCX format).
-4. Choose the output language, CV template, and tone.
-5. Click **Generate Tailored CV**, **Generate Cover Letter**, or **Generate Application Email**.
-6. View the live preview on screen, and click **Download** to save the generated file to your local computer.
-7. Any previously generated materials for the selected job are listed at the bottom of the panel for quick retrieval and download.
-
-Safety & Limitations:
-- User must upload their CV manually as the source of truth; no unverified claims or fake experience are invented.
-- No web scraping is triggered; job URLs remain stored text.
-
----
-
-## 🛠️ Run & Setup | Kurulum ve Çalıştırma
-
-### 1. Installation | Kurulum
+Create a virtual environment and install dependencies:
 
 ```bash
-git clone https://github.com/berataltinsuyu/job-application-assistant.git
-cd job-application-assistant
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+python -m venv venv
+venv/bin/pip install -r requirements.txt
 ```
 
-### 2. Configuration | Yapılandırma
+Create a `.env` file when using AI features:
 
-Create a `.env` file in the root directory / Proje dizininde bir `.env` dosyası oluşturun:
-```env
+```bash
 GEMINI_API_KEY=your_api_key_here
-SERPAPI_API_KEY=your_serpapi_key_here
-JOOBLE_API_KEY=your_jooble_key_here
-ADZUNA_APP_ID=your_adzuna_app_id_here
-ADZUNA_APP_KEY=your_adzuna_app_key_here
+API_BASE_URL=http://127.0.0.1:8000
 ```
 
-> [!NOTE]
-> Real job search supports SerpAPI Google Jobs, Jooble API, and Adzuna API. Configure the respective environment keys to activate each search provider. LinkedIn URLs are handled on a best-effort basis and may require manual job description input due to access restrictions. / Gerçek iş ilanı araması; SerpAPI Google Jobs, Jooble API ve Adzuna API sağlayıcılarını destekler. Sağlayıcıları aktif etmek için ilgili API anahtarlarını ekleyin. LinkedIn URL'leri en iyi çaba esasına göre işlenir ve kısıtlamalar nedeniyle manuel ilan girişi gerektirebilir.
+`GEMINI_API_KEY` is required for AI generation. Local source registry checks, demo seeding, and release smoke tests do not require Gemini.
 
-### 3. Start Backend | Backend'i Başlatma
+## Run Backend
 
 ```bash
-uvicorn main:app --reload
+venv/bin/python -m uvicorn main:app --reload
 ```
 
-### 4. Start Frontend | Streamlit'i Başlatma
+Backend default URL:
+
+```text
+http://127.0.0.1:8000
+```
+
+## Run Streamlit
 
 ```bash
-streamlit run streamlit_app.py
+venv/bin/streamlit run streamlit_app.py
 ```
+
+Streamlit default URL:
+
+```text
+http://localhost:8501
+```
+
+## Demo Flow
+
+1. Start the backend.
+2. Start Streamlit.
+3. Upload a CV in the sidebar.
+4. Paste a job description, or open the collapsed "Extract from URL" helper and click Extract for one user-provided URL.
+5. Open Job Workspace.
+6. Create or use a Search Profile with `manual_mock`.
+7. Add a job manually in Add Job.
+8. Analyze the job and review match/intelligence details.
+9. Update pipeline stage, priority, next action, and notes.
+10. Generate a tailored CV, cover letter, and application email.
+11. Preview/download generated assets.
+12. Review outputs in History.
+
+Optional demo data:
+
+```bash
+venv/bin/python scratch/seed_demo_data.py
+```
+
+The demo seed is idempotent, uses fictional data, does not call Gemini, and does not fetch URLs.
+
+## Phase Summary
+
+- Phase 2A-2E: Job Workspace foundation, manual import, scoring, intelligence, pipeline, generated assets, preview/download, and consolidated Streamlit navigation.
+- Phase 3A: Safe Job Source Adapter Foundation with source settings persistence, registry validation, cooldown metadata, safe run orchestration, and a Sources tab.
+- Final Demo Polish: Demo seed helper, release smoke test, presentation guide, clearer dashboard workflow, and refined empty states.
+
+## Job Sources
+
+Current sources:
+
+- `manual_mock`: enabled, runnable, local mock data only.
+- `manual_import`: enabled, manual-only, not runnable as a monitoring source.
+
+Disabled placeholders:
+
+- `company_careers_placeholder`
+- `techcareer_placeholder`
+- `youthall_placeholder`
+- `linkedin_placeholder`
+- `kariyer_placeholder`
+
+Placeholders are disabled and `not_implemented`. They cannot run or fetch external URLs.
+
+## Manual URL Extraction
+
+The app supports safe manual URL extraction:
+
+- The user pastes one job posting URL.
+- The user explicitly clicks Extract.
+- The backend performs one normal HTTP GET with a timeout.
+- If readable HTML is available, extracted text can populate the global job description or manual import description.
+- If the page is blocked, unsupported, non-HTML, or unavailable, the UI shows a clean fallback asking the user to paste manually.
+
+This is not crawling, monitoring, or job-board scraping.
+
+## Safety Policy
+
+- No real job board scraping is implemented.
+- Search Profile source adapters do not fetch LinkedIn, Kariyer.net, Techcareer, Youthall, Indeed, company career pages, or other job-board URLs.
+- Job URLs are stored as text unless the user explicitly uses the manual URL extraction helper.
+- No browser automation is used for job extraction.
+- No login bypass, CAPTCHA bypass, Cloudflare bypass, proxy, evasion, or hidden background scheduler is implemented.
+- Source adapters must explicitly declare whether they fetch external URLs.
+- Future adapters should only be added after reviewing public access, robots.txt, source terms, and rate limits.
+
+## Current Limitations
+
+- Real job-board adapters are placeholders only.
+- AI generation requires a configured Gemini API key.
+- Manual URL extraction can fail on protected or script-heavy pages; paste the description manually in that case.
+- ATS and match scores are helpful estimates, not official employer ATS results.
+- Generated materials should be reviewed by the user before use.
+
+## Validation
+
+Compile:
+
+```bash
+venv/bin/python -m compileall services routers streamlit_app.py main.py models.py database.py
+```
+
+Regression and release checks:
+
+```bash
+venv/bin/python scratch/smoke_test_2e_regression.py
+venv/bin/python scratch/smoke_test_2e_fixes.py
+venv/bin/python scratch/smoke_test_release.py
+venv/bin/python scratch/seed_demo_data.py
+```
+
+`scratch/smoke_test_release.py` is offline and does not require Gemini or network access.
+
+## Future Roadmap
+
+- Add reviewed, terms-aware source adapters only after a safety review.
+- Improve generated asset templates and export formatting.
+- Add richer filtering and pipeline reporting.
+- Add optional notification or scheduling workflows only with explicit user controls and strict rate limits.
