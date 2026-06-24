@@ -374,6 +374,8 @@ TRANSLATIONS = {
         "structure_score": "Yapı Skoru",
         "needs_review": "İnceleme gerekli",
         "looks_clean": "Temiz görünüyor. Yine de göndermeden önce kontrol edin.",
+        "quality_metadata_missing": "Bu eski çıktı için kalite metadatası bulunmuyor.",
+        "docx_preview_limited": "DOCX önizleme sınırlı olabilir. Formatı kontrol etmek için dosyayı indirip açın.",
         "critical_section_warning": "Kritik bölümleri devre dışı bırakmak CV'nin etkisini azaltabilir.",
         "key_section_warning": "Deneyim, Eğitim veya Yetenekler bölümlerini devre dışı bırakmak ATS uygunluğunu azaltabilir.",
         "contact": "Contact",
@@ -767,6 +769,8 @@ TRANSLATIONS = {
         "structure_score": "Structure Score",
         "needs_review": "Needs review",
         "looks_clean": "Looks clean. Still review before sending.",
+        "quality_metadata_missing": "Quality metadata is not available for this older asset.",
+        "docx_preview_limited": "DOCX preview may be limited. Please download and open the file to review formatting.",
         "critical_section_warning": "Disabling critical sections may reduce the CV's effectiveness.",
         "key_section_warning": "Disabling Experience, Education, or Skills may reduce ATS relevance.",
         "contact": "Contact",
@@ -1360,6 +1364,9 @@ def render_docx_template_guidance_expander(template_info: dict) -> None:
 
 def render_quality_report(report: dict, title: str, score_key: str) -> None:
     report = report if isinstance(report, dict) else {}
+    if not report or score_key not in report:
+        st.warning(t("quality_metadata_missing"))
+        return
     score = report.get(score_key)
     issues = report.get("issues", []) if isinstance(report.get("issues"), list) else []
     label = title
@@ -2871,9 +2878,11 @@ elif selected_page_key == "💼 Job Workspace":
                                 if p_dict:
                                     with st.container():
                                         st.info(f"**Previewing:** {p_dict.get('asset_type').upper()} ({p_dict.get('language')})")
+                                        if p_dict.get("export_format", "").lower() == "docx":
+                                            st.warning(t("docx_preview_limited"))
                                         content = p_dict.get("content_text")
                                         if not content and p_dict.get("file_path"):
-                                            content = "Metin içeriği bulunamadı, fiziksel dosyayı indirin."
+                                            content = "Text content not found, please download the file." if st.session_state.ui_lang == "en" else "Metin içeriği bulunamadı, fiziksel dosyayı indirin."
                                         st.text_area("Content Preview", content or "", height=250, key=f"jw_preview_textarea_{asset.get('id')}")
                                         if p_dict.get("asset_type") == "tailored_cv":
                                             render_quality_report(get_asset_quality_report(p_dict), t("cv_quality_check"), "quality_score")
@@ -3346,9 +3355,11 @@ elif selected_page_key == "💼 Job Workspace":
                     if p_dict:
                         with st.container():
                             st.info(f"**Previewing:** {p_dict.get('asset_type').upper()} ({p_dict.get('language')})")
+                            if p_dict.get("export_format", "").lower() == "docx":
+                                st.warning(t("docx_preview_limited"))
                             content = p_dict.get("content_text")
                             if not content and p_dict.get("file_path"):
-                                content = "Metin içeriği bulunamadı, fiziksel dosyayı indirin."
+                                content = "Text content not found, please download the file." if st.session_state.ui_lang == "en" else "Metin içeriği bulunamadı, fiziksel dosyayı indirin."
                             st.text_area("Content Preview", content or "", height=250, key=f"jw_global_preview_textarea_{asset.get('id')}")
                             if p_dict.get("asset_type") == "tailored_cv":
                                 render_quality_report(get_asset_quality_report(p_dict), t("cv_quality_check"), "quality_score")

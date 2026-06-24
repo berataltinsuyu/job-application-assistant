@@ -204,10 +204,14 @@ venv/bin/python scratch/smoke_test_2e_regression.py
 venv/bin/python scratch/smoke_test_2e_fixes.py
 venv/bin/python scratch/smoke_test_release.py
 venv/bin/python scratch/smoke_test_cv_quality.py
+venv/bin/python scratch/smoke_test_cv_export_qa.py
 venv/bin/python scratch/seed_demo_data.py
 ```
 
-`scratch/smoke_test_release.py` is offline and does not require Gemini or network access.
+`scratch/smoke_test_release.py` and `scratch/smoke_test_cv_export_qa.py` are offline and do not require Gemini or network access.
+The export QA covers DOCX (programmatic and templates), ReportLab PDF, TXT, filename validation, and metadata compatibility checks.
+
+To perform manual testing with a real CV and job description, follow the checklist in [USER_TEST_CHECKLIST.md](file:///Users/berataltinsuyu/Desktop/job-application-assistant/USER_TEST_CHECKLIST.md).
 
 ## Future Roadmap
 

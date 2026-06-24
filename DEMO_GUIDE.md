@@ -71,6 +71,11 @@ venv/bin/python scratch/seed_demo_data.py
 - No assets visible: upload a CV, open a job, and generate materials from the expanded job card.
 - Quality report missing on old assets: regenerate the tailored CV so the new metadata is stored.
 
+## Testing & Quality Assurance
+
+- **User Test Checklist:** Follow [USER_TEST_CHECKLIST.md](file:///Users/berataltinsuyu/Desktop/job-application-assistant/USER_TEST_CHECKLIST.md) to manually test the application with a real CV and job description.
+- **Export QA Smoke Test:** Run `venv/bin/python scratch/smoke_test_cv_export_qa.py` to verify that export formatting, safe filenames, and metadata compatibility pass offline.
+
 ## Safety Note
 
 Manual URL extraction performs one user-triggered request for one pasted URL. The app does not crawl search results, fetch monitored job URLs automatically, bypass login/CAPTCHA/Cloudflare, use browser automation, or use proxies/evasion.
