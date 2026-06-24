@@ -44,6 +44,24 @@ class JobStatusUpdate(BaseModel):
     status: str
 
 
+class ManualJobCreate(BaseModel):
+    alert_profile_id: int | None = None
+    title: str = Field(..., min_length=1, max_length=255)
+    company: str = Field(..., min_length=1, max_length=255)
+    location: str = ""
+    work_model: str = ""
+    seniority: str = ""
+    job_type: str = ""
+    description: str = Field(..., min_length=1)
+    url: str = ""
+    source: str = "manual_import"
+    posted_at: str = ""
+
+
+class JobRescoreRequest(BaseModel):
+    alert_profile_id: int
+
+
 @router.get("/alerts")
 def list_alerts(
     include_inactive: bool = Query(True),
@@ -105,6 +123,7 @@ def list_jobs(
     alert_profile_id: int | None = Query(None),
     status: str | None = Query(None),
     source: str | None = Query(None),
+    min_match_score: int | None = Query(None, ge=0, le=100),
     db: Session = Depends(get_db),
 ):
     try:
@@ -113,9 +132,37 @@ def list_jobs(
             alert_profile_id=alert_profile_id,
             status=status,
             source=source,
+            min_match_score=min_match_score,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/jobs/manual")
+def create_manual_job(payload: ManualJobCreate, db: Session = Depends(get_db)):
+    try:
+        return job_monitoring_service.create_manual_job(db, payload.model_dump())
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Manual job import failed.") from exc
+
+
+@router.post("/jobs/{job_id}/rescore")
+def rescore_job(job_id: int, payload: JobRescoreRequest, db: Session = Depends(get_db)):
+    try:
+        job = job_monitoring_service.rescore_job(db, job_id, payload.alert_profile_id)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail="Job rescore failed.") from exc
+    if not job:
+        raise HTTPException(status_code=404, detail="Monitored job not found.")
+    return job
 
 
 @router.get("/jobs/{job_id}")

@@ -5,6 +5,7 @@ import requests
 import streamlit as st
 from datetime import datetime
 from fpdf import FPDF
+from urllib.parse import urlencode
 
 from services.ats_cv_postprocessing import (
     extract_contact_fields_from_cv_text,
@@ -212,6 +213,27 @@ TRANSLATIONS = {
         "jm_no_alerts": "Henüz alarm profili yok.",
         "jm_no_jobs": "Henüz izlenen ilan yok. Bir alarm oluşturup mock takip çalıştırın.",
         "jm_no_runs": "Henüz çalıştırma geçmişi yok.",
+        "jm_manual_import": "Manuel İlan Ekle",
+        "jm_manual_import_desc": "Gerçek bir iş ilanını manuel olarak yapıştırın. Uygulama ilanı kaydeder, seçilen alert profiline göre puanlar ve durumunu takip etmenizi sağlar. URL yalnızca metin olarak saklanır; bu fazda ilan sitelerinden otomatik veri çekilmez.",
+        "jm_select_alert_optional": "Puanlama için alert profili seçin (isteğe bağlı)",
+        "jm_no_alert_selected": "Alert profili yok",
+        "jm_job_title": "İlan başlığı",
+        "jm_company": "Şirket",
+        "jm_source": "Kaynak",
+        "jm_job_url": "İlan URL",
+        "jm_posted_date": "Yayın tarihi",
+        "jm_job_description": "İlan açıklaması",
+        "jm_add_manual_job": "Manuel ilan ekle",
+        "jm_manual_job_added": "Manuel ilan kaydedildi.",
+        "jm_duplicate_updated": "Bu ilan zaten vardı; mevcut kayıt güncellendi, yeni kopya oluşturulmadı.",
+        "jm_rescore": "Yeniden puanla",
+        "jm_rescore_profile": "Yeniden puanlama profili",
+        "jm_rescored": "İlan yeniden puanlandı.",
+        "jm_source_filter": "Kaynak filtresi",
+        "jm_alert_filter": "Alert profili filtresi",
+        "jm_min_score_filter": "Minimum skor filtresi",
+        "jm_all_sources": "Tüm kaynaklar",
+        "jm_all_alerts": "Tüm alert profilleri",
 
         # ATS CV Builder
         "ats_cv_builder": "ATS CV Oluşturucu",
@@ -473,6 +495,27 @@ TRANSLATIONS = {
         "jm_no_alerts": "No alert profiles yet.",
         "jm_no_jobs": "No monitored jobs yet. Create an alert and run mock monitoring.",
         "jm_no_runs": "No run history yet.",
+        "jm_manual_import": "Manual Job Import",
+        "jm_manual_import_desc": "Paste a real job posting manually. The app will store it, score it against a selected alert profile, and let you track its status. The URL is stored only as text; the app does not scrape job boards in this phase.",
+        "jm_select_alert_optional": "Select alert profile for scoring (optional)",
+        "jm_no_alert_selected": "No alert profile",
+        "jm_job_title": "Job title",
+        "jm_company": "Company",
+        "jm_source": "Source",
+        "jm_job_url": "Job URL",
+        "jm_posted_date": "Posted date",
+        "jm_job_description": "Job description",
+        "jm_add_manual_job": "Add manual job",
+        "jm_manual_job_added": "Manual job saved.",
+        "jm_duplicate_updated": "This job already existed; the existing record was updated instead of duplicated.",
+        "jm_rescore": "Rescore",
+        "jm_rescore_profile": "Rescore profile",
+        "jm_rescored": "Job rescored.",
+        "jm_source_filter": "Source filter",
+        "jm_alert_filter": "Alert profile filter",
+        "jm_min_score_filter": "Minimum score filter",
+        "jm_all_sources": "All sources",
+        "jm_all_alerts": "All alert profiles",
 
         # ATS CV Builder
         "ats_cv_builder": "ATS CV Builder",
@@ -2135,12 +2178,90 @@ elif selected_page_key == "🛰️ Job Monitoring Agent":
                             st.rerun()
 
     st.markdown("---")
+    with st.expander(t("jm_manual_import"), expanded=False):
+        st.write(t("jm_manual_import_desc"))
+        alert_options = [(t("jm_no_alert_selected"), None)] + [
+            (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
+        ]
+        with st.form("job_monitoring_manual_import_form"):
+            selected_alert_label = st.selectbox(
+                t("jm_select_alert_optional"),
+                [label for label, _ in alert_options],
+            )
+            selected_alert_id = dict(alert_options).get(selected_alert_label)
+
+            manual_title = st.text_input(t("jm_job_title"))
+            manual_company = st.text_input(t("jm_company"))
+            manual_location = st.text_input(t("jm_location"))
+
+            col_work, col_type, col_seniority = st.columns(3)
+            with col_work:
+                work_model_choice = st.selectbox(t("jm_work_model"), ["", "Remote", "Hybrid", "On-site", "Custom"])
+                work_model_custom = st.text_input("Custom work model", key="jm_manual_work_model_custom") if work_model_choice == "Custom" else ""
+            with col_type:
+                job_type_choice = st.selectbox(t("jm_job_type"), ["", "Full-time", "Internship", "Contract", "Part-time", "Custom"])
+                job_type_custom = st.text_input("Custom job type", key="jm_manual_job_type_custom") if job_type_choice == "Custom" else ""
+            with col_seniority:
+                seniority_choice = st.selectbox(t("jm_seniority"), ["", "Intern", "Junior", "Entry level", "Mid", "Senior", "Custom"])
+                seniority_custom = st.text_input("Custom seniority", key="jm_manual_seniority_custom") if seniority_choice == "Custom" else ""
+
+            manual_source = st.text_input(t("jm_source"), value="manual_import")
+            manual_url = st.text_input(t("jm_job_url"), placeholder="https://...")
+            manual_posted_at = st.text_input(t("jm_posted_date"), placeholder="YYYY-MM-DD")
+            manual_description = st.text_area(t("jm_job_description"), height=220)
+            add_manual_job = st.form_submit_button(t("jm_add_manual_job"))
+
+        if add_manual_job:
+            payload = {
+                "alert_profile_id": selected_alert_id,
+                "title": manual_title,
+                "company": manual_company,
+                "location": manual_location,
+                "work_model": work_model_custom if work_model_choice == "Custom" else work_model_choice,
+                "seniority": seniority_custom if seniority_choice == "Custom" else seniority_choice,
+                "job_type": job_type_custom if job_type_choice == "Custom" else job_type_choice,
+                "description": manual_description,
+                "url": manual_url,
+                "source": manual_source or "manual_import",
+                "posted_at": manual_posted_at,
+            }
+            result = api_json("POST", "/job-monitoring/jobs/manual", json=payload)
+            if result:
+                if result.get("duplicate"):
+                    st.info(t("jm_duplicate_updated"))
+                st.success(f"{t('jm_manual_job_added')} Match: {result.get('match_score', 0)}%")
+                st.rerun()
+
+    st.markdown("---")
     st.subheader(t("jm_job_results"))
     status_options = [t("jm_all_statuses"), "new", "saved", "rejected", "applied", "archived"]
-    status_filter = st.selectbox(t("jm_status_filter"), status_options)
-    jobs_path = "/job-monitoring/jobs"
+    filter_col1, filter_col2, filter_col3, filter_col4 = st.columns(4)
+    with filter_col1:
+        status_filter = st.selectbox(t("jm_status_filter"), status_options)
+    with filter_col2:
+        source_filter = st.selectbox(t("jm_source_filter"), [t("jm_all_sources"), "manual_mock", "manual_import"])
+    with filter_col3:
+        alert_filter_options = [(t("jm_all_alerts"), None)] + [
+            (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
+        ]
+        selected_alert_filter = st.selectbox(t("jm_alert_filter"), [label for label, _ in alert_filter_options])
+        selected_alert_filter_id = dict(alert_filter_options).get(selected_alert_filter)
+    with filter_col4:
+        min_score_filter = st.slider(t("jm_min_score_filter"), 0, 100, 0)
+
+    query_params = {}
     if status_filter != t("jm_all_statuses"):
-        jobs_path += f"?status={status_filter}"
+        query_params["status"] = status_filter
+    if source_filter != t("jm_all_sources"):
+        query_params["source"] = source_filter
+    if selected_alert_filter_id is not None:
+        query_params["alert_profile_id"] = selected_alert_filter_id
+    if min_score_filter > 0:
+        query_params["min_match_score"] = min_score_filter
+
+    jobs_path = "/job-monitoring/jobs"
+    if query_params:
+        jobs_path += f"?{urlencode(query_params)}"
     jobs = api_json("GET", jobs_path) or []
 
     if not jobs:
@@ -2167,7 +2288,37 @@ elif selected_page_key == "🛰️ Job Monitoring Agent":
                 st.write(f"**{t('missing_keywords')}:** {', '.join(job.get('missing_keywords', [])) or 'N/A'}")
                 st.write(job.get("match_summary") or "")
                 if job.get("description"):
-                    st.caption(job.get("description"))
+                    description = job.get("description")
+                    st.caption(description[:500] + ("..." if len(description) > 500 else ""))
+
+                if alerts:
+                    rescore_options = [
+                        (f"#{alert.get('id')} - {alert.get('name')}", alert.get("id")) for alert in alerts
+                    ]
+                    current_alert_id = job.get("alert_profile_id")
+                    current_index = next(
+                        (idx for idx, (_, alert_id) in enumerate(rescore_options) if alert_id == current_alert_id),
+                        0,
+                    )
+                    rescore_col1, rescore_col2 = st.columns([3, 1])
+                    with rescore_col1:
+                        selected_rescore_label = st.selectbox(
+                            t("jm_rescore_profile"),
+                            [label for label, _ in rescore_options],
+                            index=current_index,
+                            key=f"jm_rescore_profile_{job.get('id')}",
+                        )
+                    with rescore_col2:
+                        if st.button(t("jm_rescore"), key=f"jm_rescore_{job.get('id')}"):
+                            selected_rescore_id = dict(rescore_options).get(selected_rescore_label)
+                            result = api_json(
+                                "POST",
+                                f"/job-monitoring/jobs/{job.get('id')}/rescore",
+                                json={"alert_profile_id": selected_rescore_id},
+                            )
+                            if result:
+                                st.success(f"{t('jm_rescored')} Match: {result.get('match_score', 0)}%")
+                                st.rerun()
 
                 status_cols = st.columns(4)
                 status_actions = [

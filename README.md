@@ -95,6 +95,41 @@ Safety policy:
 - Do not use proxies, evasion techniques, hidden browser automation, or aggressive polling.
 - Keep monitoring low-frequency and user-controlled.
 
+### Phase 2B - Manual Job Import
+
+Phase 2B makes the Job Monitoring Agent useful with real postings while still avoiding scraping.
+
+How to create an alert profile:
+1. Open **Job Monitoring Agent**.
+2. Create an alert with keywords, optional filters, excluded keywords, and a minimum match score.
+3. Keep `manual_mock` as the alert source for mock monitoring.
+
+How to manually add a job posting:
+1. Open **Manual Job Import** inside the Job Monitoring Agent page.
+2. Optionally select an alert profile for scoring.
+3. Paste the job title, company, location, work model, seniority, job type, source label, URL, posted date, and job description.
+4. Click **Add manual job**.
+
+Manual job scoring:
+- If an alert profile is selected, the existing deterministic matcher scores the pasted title and description against alert keywords and filters.
+- If no alert profile is selected, the job is stored with a `0` score and the summary states that no alert profile was selected.
+- Manual jobs can be rescored later against any existing alert profile from the job card.
+
+Duplicate handling:
+- Manual imports generate a deterministic `source_job_id` from title, company, URL, and description content.
+- Repeating the same manual import updates the existing monitored job instead of creating a duplicate.
+- Existing job workflow status is preserved when a duplicate is updated.
+
+Current limitation:
+- The app does not fetch URL content automatically.
+- URLs are stored only as user-provided text.
+- Users must paste the job description manually.
+
+Safety policy:
+- No real scraping is implemented in Phase 2B.
+- No login bypass, CAPTCHA bypass, Cloudflare bypass, proxy evasion, or hidden browser automation is implemented.
+- Manual import stores only user-provided job data.
+
 ---
 
 ## 🛠️ Run & Setup | Kurulum ve Çalıştırma

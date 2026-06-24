@@ -1,4 +1,6 @@
+import hashlib
 import json
+import re
 from datetime import datetime
 
 from sqlalchemy.orm import Session
@@ -11,6 +13,7 @@ from services.job_sources import get_phase_2a_adapters
 
 ALLOWED_JOB_STATUSES = {"new", "saved", "rejected", "applied", "archived"}
 DEFAULT_SOURCE = "manual_mock"
+MANUAL_IMPORT_SOURCE = "manual_import"
 
 
 def create_alert_profile(db: Session, payload: dict) -> dict:
@@ -155,6 +158,7 @@ def list_monitored_jobs(
     alert_profile_id: int | None = None,
     status: str | None = None,
     source: str | None = None,
+    min_match_score: int | None = None,
 ) -> list[dict]:
     query = db.query(MonitoredJob)
     if alert_profile_id is not None:
@@ -164,6 +168,8 @@ def list_monitored_jobs(
         query = query.filter(MonitoredJob.status == status)
     if source:
         query = query.filter(MonitoredJob.source == source)
+    if min_match_score is not None:
+        query = query.filter(MonitoredJob.match_score >= _score_value(min_match_score))
     jobs = query.order_by(MonitoredJob.discovered_at.desc(), MonitoredJob.match_score.desc()).all()
     return [serialize_monitored_job(job) for job in jobs]
 
@@ -179,6 +185,90 @@ def update_job_status(db: Session, job_id: int, status: str) -> dict | None:
     if not job:
         return None
     job.status = status
+    job.updated_at = _utc_now()
+    db.commit()
+    db.refresh(job)
+    return serialize_monitored_job(job)
+
+
+def create_manual_job(db: Session, job_payload: dict) -> dict:
+    # Manual import stores user-provided job data only.
+    # URLs are saved as text; this service does not fetch job board pages or scrape content.
+    title = _required_text(job_payload.get("title"), "title")
+    company = _required_text(job_payload.get("company"), "company")
+    description = _required_text(job_payload.get("description"), "description")
+    alert_profile_id = _optional_int(job_payload.get("alert_profile_id"))
+    alert_profile = None
+    if alert_profile_id is not None:
+        alert_model = _get_alert_model(db, alert_profile_id)
+        if not alert_model:
+            raise LookupError("Alert profile not found.")
+        alert_profile = serialize_alert_profile(alert_model)
+
+    source = _safe_source_label(job_payload.get("source")) or MANUAL_IMPORT_SOURCE
+    normalized_job = {
+        "source": source,
+        "source_job_id": _optional_text(job_payload.get("source_job_id")),
+        "title": title,
+        "company": company,
+        "location": _optional_text(job_payload.get("location")),
+        "work_model": _optional_text(job_payload.get("work_model")),
+        "seniority": _optional_text(job_payload.get("seniority")),
+        "job_type": _optional_text(job_payload.get("job_type")),
+        "description": description,
+        "url": _optional_text(job_payload.get("url")),
+        "posted_at": _optional_text(job_payload.get("posted_at")),
+    }
+    if not normalized_job["source_job_id"]:
+        normalized_job["source_job_id"] = _manual_source_job_id(normalized_job)
+
+    existing = _find_existing_job_by_source(db, normalized_job["source"], normalized_job["source_job_id"])
+    duplicate = existing is not None
+    if existing and alert_profile is None and existing.alert_profile_id:
+        existing_alert = _get_alert_model(db, existing.alert_profile_id)
+        alert_profile = serialize_alert_profile(existing_alert) if existing_alert else None
+        alert_profile_id = existing.alert_profile_id if existing_alert else None
+    score = _score_for_manual_job(normalized_job, alert_profile)
+
+    if existing:
+        _update_existing_job(existing, normalized_job, score, existing.run_id, alert_profile_id=alert_profile_id)
+        db.commit()
+        db.refresh(existing)
+        result = serialize_monitored_job(existing)
+        result["duplicate"] = True
+        return result
+
+    monitored_job = _build_monitored_job(
+        alert_profile_id=alert_profile_id,
+        run_id=None,
+        job=normalized_job,
+        score=score,
+    )
+    db.add(monitored_job)
+    db.commit()
+    db.refresh(monitored_job)
+    result = serialize_monitored_job(monitored_job)
+    result["duplicate"] = duplicate
+    return result
+
+
+def rescore_job(db: Session, job_id: int, alert_profile_id: int) -> dict | None:
+    job = db.query(MonitoredJob).filter(MonitoredJob.id == job_id).first()
+    if not job:
+        return None
+
+    alert_model = _get_alert_model(db, alert_profile_id)
+    if not alert_model:
+        raise LookupError("Alert profile not found.")
+
+    alert_profile = serialize_alert_profile(alert_model)
+    job_payload = serialize_monitored_job(job)
+    score = score_job_against_profile(job_payload, alert_profile)
+    job.alert_profile_id = alert_profile_id
+    job.match_score = score["match_score"]
+    job.match_summary = score["match_summary"]
+    job.matched_keywords = _json_list(score["matched_keywords"])
+    job.missing_keywords = _json_list(score["missing_keywords"])
     job.updated_at = _utc_now()
     db.commit()
     db.refresh(job)
@@ -274,7 +364,18 @@ def _find_existing_job(db: Session, alert_profile_id: int, source: str, source_j
     )
 
 
-def _build_monitored_job(alert_profile_id: int, run_id: int, job: dict, score: dict) -> MonitoredJob:
+def _find_existing_job_by_source(db: Session, source: str, source_job_id: str) -> MonitoredJob | None:
+    return (
+        db.query(MonitoredJob)
+        .filter(
+            MonitoredJob.source == source,
+            MonitoredJob.source_job_id == source_job_id,
+        )
+        .first()
+    )
+
+
+def _build_monitored_job(alert_profile_id: int | None, run_id: int | None, job: dict, score: dict) -> MonitoredJob:
     now = _utc_now()
     return MonitoredJob(
         alert_profile_id=alert_profile_id,
@@ -301,7 +402,15 @@ def _build_monitored_job(alert_profile_id: int, run_id: int, job: dict, score: d
     )
 
 
-def _update_existing_job(existing: MonitoredJob, job: dict, score: dict, run_id: int) -> None:
+def _update_existing_job(
+    existing: MonitoredJob,
+    job: dict,
+    score: dict,
+    run_id: int | None,
+    alert_profile_id: int | None = None,
+) -> None:
+    if alert_profile_id is not None:
+        existing.alert_profile_id = alert_profile_id
     existing.run_id = run_id
     existing.title = job["title"]
     existing.company = job.get("company")
@@ -346,6 +455,35 @@ def _valid_sources(value) -> list[str]:
     return [DEFAULT_SOURCE]
 
 
+def _score_for_manual_job(job: dict, alert_profile: dict | None) -> dict:
+    if alert_profile:
+        return score_job_against_profile(job, alert_profile)
+    return {
+        "match_score": 0,
+        "match_summary": "No alert profile selected for scoring.",
+        "matched_keywords": [],
+        "missing_keywords": [],
+    }
+
+
+def _manual_source_job_id(job: dict) -> str:
+    source_text = "|".join([
+        _normalize_for_dedupe(job.get("title")),
+        _normalize_for_dedupe(job.get("company")),
+        _normalize_for_dedupe(job.get("url")),
+        _normalize_for_dedupe(job.get("description"))[:500],
+    ])
+    digest = hashlib.sha256(source_text.encode("utf-8")).hexdigest()[:24]
+    return f"{MANUAL_IMPORT_SOURCE}:{digest}"
+
+
+def _safe_source_label(value) -> str:
+    text = _optional_text(value) or MANUAL_IMPORT_SOURCE
+    text = re.sub(r"\s+", "_", text.strip().lower())
+    text = re.sub(r"[^a-z0-9_.:-]", "_", text)
+    return text[:100] or MANUAL_IMPORT_SOURCE
+
+
 def _validate_status(status: str) -> None:
     if status not in ALLOWED_JOB_STATUSES:
         allowed = ", ".join(sorted(ALLOWED_JOB_STATUSES))
@@ -368,6 +506,16 @@ def _score_value(value) -> int:
         return max(0, min(100, int(value)))
     except (TypeError, ValueError):
         raise ValueError("min_match_score must be an integer between 0 and 100.")
+
+
+def _optional_int(value) -> int | None:
+    if value in (None, ""):
+        return None
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("alert_profile_id must be an integer.")
+    return parsed if parsed > 0 else None
 
 
 def _json_list(value) -> str:

@@ -55,8 +55,8 @@ class MonitoredJob(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    alert_profile_id = Column(Integer, ForeignKey("job_alert_profiles.id"), nullable=False, index=True)
-    run_id = Column(Integer, ForeignKey("job_search_runs.id"), nullable=False, index=True)
+    alert_profile_id = Column(Integer, ForeignKey("job_alert_profiles.id"), nullable=True, index=True)
+    run_id = Column(Integer, ForeignKey("job_search_runs.id"), nullable=True, index=True)
     source = Column(String(100), nullable=False)
     source_job_id = Column(String(255), nullable=False)
     title = Column(String(255), nullable=False)

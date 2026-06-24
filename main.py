@@ -17,9 +17,10 @@ from routers import (
     ats_cv_builder,
     job_monitoring
 )
-from database import Base, engine
+from database import Base, engine, ensure_job_monitoring_schema
 
 Base.metadata.create_all(bind=engine)
+ensure_job_monitoring_schema()
 
 app = FastAPI(
     title="Job Application Assistant API",
