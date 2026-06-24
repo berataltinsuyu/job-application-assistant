@@ -1,9 +1,16 @@
 import json
+import hashlib
 import re
 import requests
 import streamlit as st
 from datetime import datetime
 from fpdf import FPDF
+
+from services.ats_cv_postprocessing import (
+    extract_contact_fields_from_cv_text,
+    extract_proper_nouns_from_cv_text,
+)
+from services.file_parser_service import extract_text_from_docx, extract_text_from_pdf
 
 API_BASE_URL = "http://127.0.0.1:8000"
 
@@ -32,6 +39,7 @@ TRANSLATIONS = {
         "nav_app_email": "📧 Başvuru E-postası",
         "nav_interview_prep": "🤝 Mülakat Hazırlığı",
         "nav_personalized_interview": "🎯 Kişiselleştirilmiş Mülakat",
+        "nav_job_monitoring": "🛰️ İş İlanı Takip Agentı",
         "nav_history": "📜 Geçmiş",
         
         # Validation & Warnings
@@ -170,6 +178,41 @@ TRANSLATIONS = {
         "provider_label": "İş Arama Sağlayıcısı:",
         "missing_key_warning": "Gerçek iş ilanı araması için geçerli bir API anahtarı gereklidir. Lütfen .env dosyasına API anahtarlarınızı ekleyin.",
 
+        # Job Monitoring Agent
+        "job_monitoring_desc": "Düşük frekanslı iş ilanı alarmları oluşturun, güvenli mock takip çalıştırın, ilanları profilinize göre puanlayın ve kaydedilen/reddedilen/başvurulan fırsatları takip edin. Gerçek ilan kaynağı adaptörleri sonraki fazlarda eklenecektir.",
+        "jm_alert_form": "Alarm Profili",
+        "jm_alert_name": "Alarm adı",
+        "jm_keywords": "Anahtar kelimeler",
+        "jm_keywords_help": "Virgülle ayırabilirsiniz.",
+        "jm_location": "Konum",
+        "jm_seniority": "Kıdem",
+        "jm_job_type": "İş tipi",
+        "jm_work_model": "Çalışma modeli",
+        "jm_sources": "Kaynaklar",
+        "jm_excluded_keywords": "Hariç tutulacak anahtar kelimeler",
+        "jm_min_score": "Minimum eşleşme skoru",
+        "jm_active": "Aktif",
+        "jm_create_alert": "Alarm oluştur",
+        "jm_existing_alerts": "Mevcut Alarm Profilleri",
+        "jm_run_now": "Şimdi çalıştır",
+        "jm_deactivate": "Pasifleştir",
+        "jm_job_results": "İlan Sonuçları",
+        "jm_run_history": "Çalıştırma Geçmişi",
+        "jm_status_filter": "Durum filtresi",
+        "jm_all_statuses": "Tüm durumlar",
+        "jm_save": "Kaydet",
+        "jm_reject": "Reddet",
+        "jm_mark_applied": "Başvuruldu olarak işaretle",
+        "jm_archive": "Arşivle",
+        "jm_placeholder": "ATS CV Builder entegrasyonu Phase 2E’de eklenecektir.",
+        "jm_alert_created": "Alarm profili oluşturuldu.",
+        "jm_alert_deactivated": "Alarm profili pasifleştirildi.",
+        "jm_run_complete": "Mock takip çalışması tamamlandı.",
+        "jm_status_updated": "İlan durumu güncellendi.",
+        "jm_no_alerts": "Henüz alarm profili yok.",
+        "jm_no_jobs": "Henüz izlenen ilan yok. Bir alarm oluşturup mock takip çalıştırın.",
+        "jm_no_runs": "Henüz çalıştırma geçmişi yok.",
+
         # ATS CV Builder
         "ats_cv_builder": "ATS CV Oluşturucu",
         "choose_cv_template": "CV Şablonu Seç",
@@ -182,6 +225,7 @@ TRANSLATIONS = {
         "generated_ats_cv_preview": "Oluşturulan ATS CV Önizlemesi",
         "ats_score_before": "Önceki ATS Skoru",
         "ats_score_after": "Sonraki ATS Skoru",
+        "score_improvement": "İyileşme",
         "used_keywords": "Doğrudan Kullanılan Anahtar Kelimeler",
         "transferable_keywords": "Aktarılabilir Anahtar Kelimeler",
         "risky_keywords_not_added": "Doğrudan Eklenmeyen Riskli Anahtar Kelimeler",
@@ -189,6 +233,39 @@ TRANSLATIONS = {
         "target_role": "Hedef Pozisyon",
         "alignment_confidence": "Uyum Güveni",
         "adaptation_notes": "Uyarlama Notları",
+        "ats_score_explanation": "ATS Skoru Açıklaması",
+        "before_reason": "Önceki Skor Nedeni",
+        "after_reason": "Sonraki Skor Nedeni",
+        "improvement_reasons": "İyileştirme Nedenleri",
+        "remaining_gaps": "Kalan Eksikler",
+        "ats_score_disclaimer": "Bu skor tahmini bir ATS uygunluk skorudur, resmi bir ATS sonucu değildir.",
+        "ats_cv_generic_note": "Bu oluşturucu, yüklenen CV’yi iş ilanına göre uyarlar. İletişim bilgileri ve özel isimler yüklenen CV’den kilitlenir ve oluşturma öncesinde düzenlenebilir.",
+        "locked_contact_fields": "Kilitli İletişim Bilgileri",
+        "locked_contact_warning": "Ad, e-posta veya telefon alanlarından biri boş. CV’den çıkarılamadıysa oluşturma öncesinde elle doldurabilirsiniz.",
+        "locked_proper_nouns": "Kilitli Özel İsimler",
+        "locked_full_name": "Ad Soyad",
+        "locked_email": "E-posta",
+        "locked_phone": "Telefon",
+        "locked_location": "Konum",
+        "locked_linkedin": "LinkedIn",
+        "locked_github": "GitHub",
+        "locked_portfolio": "Portföy",
+        "optimize_one_page": "Tek sayfaya optimize et",
+        "export_style": "Dışa Aktarım Stili",
+        "export_style_standard": "Standart",
+        "export_style_balanced": "Dengeli Tek Sayfa",
+        "balanced_one_page_help": "Dengeli Tek Sayfa, önemli bilgileri koruyarak CV’yi ATS uyumlu şekilde tek sayfaya sığdırmaya çalışır.",
+        "export_sections": "Dışa Aktarılacak Bölümler",
+        "critical_section_warning": "Kritik bölümleri devre dışı bırakmak CV'nin etkisini azaltabilir.",
+        "key_section_warning": "Deneyim, Eğitim veya Yetenekler bölümlerini devre dışı bırakmak ATS uygunluğunu azaltabilir.",
+        "contact": "Contact",
+        "summary_section": "Summary",
+        "skills_section": "Skills",
+        "experience_section": "Experience",
+        "projects_section": "Projects",
+        "education_section": "Education",
+        "certifications_section": "Certifications",
+        "languages_section": "Languages",
         
         # History
         "history_desc": "Geçmiş başvuru değerlendirmelerinizi, analizleri ve taslakları inceleyin, filtreleyin veya silin.",
@@ -223,6 +300,7 @@ TRANSLATIONS = {
         "nav_app_email": "📧 Application Email",
         "nav_interview_prep": "🤝 Interview Prep",
         "nav_personalized_interview": "🎯 Personalized Interview",
+        "nav_job_monitoring": "🛰️ Job Monitoring Agent",
         "nav_history": "📜 History",
         
         # Validation & Warnings
@@ -361,6 +439,41 @@ TRANSLATIONS = {
         "provider_label": "Job Search Provider:",
         "missing_key_warning": "Real job search requires a valid API key. Please configure your API keys in your .env file.",
 
+        # Job Monitoring Agent
+        "job_monitoring_desc": "Create low-frequency job alerts, run safe mock monitoring, score jobs against your profile, and track saved/rejected/applied opportunities. Real job board adapters will be added in later phases.",
+        "jm_alert_form": "Alert Profile",
+        "jm_alert_name": "Alert name",
+        "jm_keywords": "Keywords",
+        "jm_keywords_help": "Comma-separated values are supported.",
+        "jm_location": "Location",
+        "jm_seniority": "Seniority",
+        "jm_job_type": "Job type",
+        "jm_work_model": "Work model",
+        "jm_sources": "Sources",
+        "jm_excluded_keywords": "Excluded keywords",
+        "jm_min_score": "Minimum match score",
+        "jm_active": "Active",
+        "jm_create_alert": "Create alert",
+        "jm_existing_alerts": "Existing Alert Profiles",
+        "jm_run_now": "Run now",
+        "jm_deactivate": "Deactivate",
+        "jm_job_results": "Job Results",
+        "jm_run_history": "Run History",
+        "jm_status_filter": "Status filter",
+        "jm_all_statuses": "All statuses",
+        "jm_save": "Save",
+        "jm_reject": "Reject",
+        "jm_mark_applied": "Mark applied",
+        "jm_archive": "Archive",
+        "jm_placeholder": "ATS CV Builder integration will be added in Phase 2E.",
+        "jm_alert_created": "Alert profile created.",
+        "jm_alert_deactivated": "Alert profile deactivated.",
+        "jm_run_complete": "Mock monitoring run completed.",
+        "jm_status_updated": "Job status updated.",
+        "jm_no_alerts": "No alert profiles yet.",
+        "jm_no_jobs": "No monitored jobs yet. Create an alert and run mock monitoring.",
+        "jm_no_runs": "No run history yet.",
+
         # ATS CV Builder
         "ats_cv_builder": "ATS CV Builder",
         "choose_cv_template": "Choose CV Template",
@@ -373,6 +486,7 @@ TRANSLATIONS = {
         "generated_ats_cv_preview": "Generated ATS CV Preview",
         "ats_score_before": "ATS Score Before",
         "ats_score_after": "ATS Score After",
+        "score_improvement": "Improvement",
         "used_keywords": "Directly Used Keywords",
         "transferable_keywords": "Transferable Keywords",
         "risky_keywords_not_added": "Risky Keywords Not Added",
@@ -380,6 +494,39 @@ TRANSLATIONS = {
         "target_role": "Target Role",
         "alignment_confidence": "Alignment Confidence",
         "adaptation_notes": "Adaptation Notes",
+        "ats_score_explanation": "ATS Score Explanation",
+        "before_reason": "Before Reason",
+        "after_reason": "After Reason",
+        "improvement_reasons": "Improvement Reasons",
+        "remaining_gaps": "Remaining Gaps",
+        "ats_score_disclaimer": "This is an estimated ATS relevance score, not an official ATS result.",
+        "ats_cv_generic_note": "This builder adapts the uploaded CV to the job description. Contact fields and proper nouns are locked from the uploaded CV and can be edited before generation.",
+        "locked_contact_fields": "Locked Contact Fields",
+        "locked_contact_warning": "Full name, email, or phone is empty. If extraction missed it, you can fill it manually before generation.",
+        "locked_proper_nouns": "Locked Proper Nouns",
+        "locked_full_name": "Full Name",
+        "locked_email": "Email",
+        "locked_phone": "Phone",
+        "locked_location": "Location",
+        "locked_linkedin": "LinkedIn",
+        "locked_github": "GitHub",
+        "locked_portfolio": "Portfolio",
+        "optimize_one_page": "Optimize for one page",
+        "export_style": "Export Style",
+        "export_style_standard": "Standard",
+        "export_style_balanced": "Balanced One Page",
+        "balanced_one_page_help": "Balanced One Page keeps the CV ATS-friendly while trying to fit content onto one page without removing key information.",
+        "export_sections": "Export Sections",
+        "critical_section_warning": "Disabling critical sections may reduce the CV's effectiveness.",
+        "key_section_warning": "Disabling Experience, Education, or Skills may reduce ATS relevance.",
+        "contact": "Contact",
+        "summary_section": "Summary",
+        "skills_section": "Skills",
+        "experience_section": "Experience",
+        "projects_section": "Projects",
+        "education_section": "Education",
+        "certifications_section": "Certifications",
+        "languages_section": "Languages",
         
         # History
         "history_desc": "Browse, filter, review, and delete records of past evaluations and drafts.",
@@ -398,6 +545,23 @@ if "global_job_text" not in st.session_state:
     st.session_state.global_job_text = ""
 if "ui_lang" not in st.session_state:
     st.session_state.ui_lang = "en"
+
+ATS_LOCKED_CONTACT_DEFAULTS = {
+    "locked_full_name": "",
+    "locked_email": "",
+    "locked_phone": "",
+    "locked_location": "",
+    "locked_linkedin": "",
+    "locked_github": "",
+    "locked_portfolio": "",
+}
+
+ATS_LOCKED_PROPER_NOUNS = {
+    "schools": [],
+    "companies": [],
+    "projects": [],
+    "certifications": [],
+}
 
 # --- Sidebar UI Language selector ---
 ui_lang_choice = st.sidebar.radio(
@@ -454,6 +618,7 @@ menu_map = {
     "🤝 Interview Prep": "nav_interview_prep",
     "🎯 Personalized Interview": "nav_personalized_interview",
     "💼 Job Recommendations": "nav_job_recommendations",
+    "🛰️ Job Monitoring Agent": "nav_job_monitoring",
     "📜 History": "nav_history"
 }
 
@@ -482,6 +647,65 @@ def get_cv_files():
         }
     return None
 
+
+def extract_uploaded_cv_text(uploaded_cv) -> str:
+    if uploaded_cv is None:
+        return ""
+
+    file_bytes = uploaded_cv.getvalue()
+    if not file_bytes:
+        return ""
+
+    try:
+        if uploaded_cv.type == "application/pdf" or uploaded_cv.name.lower().endswith(".pdf"):
+            return extract_text_from_pdf(file_bytes).strip()
+        if (
+            uploaded_cv.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            or uploaded_cv.name.lower().endswith(".docx")
+        ):
+            return extract_text_from_docx(file_bytes).strip()
+    except Exception:
+        return ""
+
+    return ""
+
+
+def sync_ats_locked_fields_from_uploaded_cv(uploaded_cv) -> None:
+    contact_keys = {
+        "locked_full_name": "full_name",
+        "locked_email": "email",
+        "locked_phone": "phone",
+        "locked_location": "location",
+        "locked_linkedin": "linkedin",
+        "locked_github": "github",
+        "locked_portfolio": "portfolio",
+    }
+
+    if uploaded_cv is None:
+        if st.session_state.get("ats_cv_locked_source_fingerprint"):
+            for locked_key in contact_keys:
+                st.session_state[f"ats_cv_{locked_key}"] = ""
+            st.session_state["ats_cv_locked_proper_nouns"] = ATS_LOCKED_PROPER_NOUNS.copy()
+            st.session_state["ats_cv_locked_proper_nouns_json"] = json.dumps(ATS_LOCKED_PROPER_NOUNS, ensure_ascii=False, indent=2)
+            st.session_state["ats_cv_locked_source_fingerprint"] = ""
+        return
+
+    file_bytes = uploaded_cv.getvalue()
+    fingerprint = f"{uploaded_cv.name}:{len(file_bytes)}:{hashlib.sha256(file_bytes).hexdigest()}"
+    if st.session_state.get("ats_cv_locked_source_fingerprint") == fingerprint:
+        return
+
+    cv_text = extract_uploaded_cv_text(uploaded_cv)
+    extracted_contact = extract_contact_fields_from_cv_text(cv_text) if cv_text else {}
+    extracted_proper_nouns = extract_proper_nouns_from_cv_text(cv_text) if cv_text else ATS_LOCKED_PROPER_NOUNS.copy()
+
+    for locked_key, contact_key in contact_keys.items():
+        st.session_state[f"ats_cv_{locked_key}"] = extracted_contact.get(contact_key, "")
+    st.session_state["ats_cv_locked_proper_nouns"] = extracted_proper_nouns
+    st.session_state["ats_cv_locked_proper_nouns_json"] = json.dumps(extracted_proper_nouns, ensure_ascii=False, indent=2)
+    st.session_state["ats_cv_locked_source_fingerprint"] = fingerprint
+
+
 def validate_inputs(require_cv=True, require_job=True):
     if require_cv and global_cv is None:
         st.warning(t("please_upload_cv"))
@@ -490,6 +714,38 @@ def validate_inputs(require_cv=True, require_job=True):
         st.warning(t("please_enter_job_desc"))
         return False
     return True
+
+
+def parse_comma_values(value: str) -> list[str]:
+    return [item.strip() for item in str(value or "").replace("\n", ",").split(",") if item.strip()]
+
+
+def api_json(method: str, path: str, **kwargs):
+    url = f"{API_BASE_URL}{path}"
+    try:
+        response = requests.request(method, url, timeout=20, **kwargs)
+    except Exception as exc:
+        st.error(f"{t('status_error')} {str(exc)}")
+        return None
+
+    if response.status_code >= 400:
+        try:
+            detail = response.json().get("detail", response.text)
+        except Exception:
+            detail = response.text
+        st.error(f"{t('status_error')} {detail}")
+        return None
+
+    try:
+        return response.json()
+    except Exception:
+        return None
+
+
+def compact_datetime(value: str) -> str:
+    if not value:
+        return "N/A"
+    return str(value).replace("T", " ")[:16]
 
 # --- PDF Generation and Formatting utilities ---
 class ReportPDF(FPDF):
@@ -753,7 +1009,15 @@ def render_ats_cv_preview(ats_cv: dict):
     else:
         st.write("-")
 
-def fetch_ats_cv_export(endpoint: str, ats_cv: dict, template_id: str, language: str) -> bytes | None:
+def fetch_ats_cv_export(
+    endpoint: str,
+    ats_cv: dict,
+    template_id: str,
+    language: str,
+    one_page: bool = False,
+    enabled_sections: list[str] | None = None,
+    export_style: str = "standard",
+) -> bytes | None:
     try:
         response = requests.post(
             f"{API_BASE_URL}/ats-cv/{endpoint}",
@@ -761,6 +1025,9 @@ def fetch_ats_cv_export(endpoint: str, ats_cv: dict, template_id: str, language:
                 "ats_cv_json": json.dumps(ats_cv, ensure_ascii=False),
                 "template_id": template_id,
                 "language": language,
+                "one_page": str(one_page).lower(),
+                "enabled_sections": json.dumps(enabled_sections) if enabled_sections is not None else "",
+                "export_style": export_style,
             }
         )
         if response.status_code == 200:
@@ -990,6 +1257,7 @@ elif selected_page_key == "🎯 ATS Score":
 elif selected_page_key == "📄 ATS CV Builder":
     st.header(t("ats_cv_builder"))
     st.write(t("ats_cv_builder_next_phase"))
+    st.info(t("ats_cv_generic_note"))
 
     try:
         response = requests.get(f"{API_BASE_URL}/ats-cv/templates")
@@ -1033,18 +1301,61 @@ elif selected_page_key == "📄 ATS CV Builder":
             key="ats_cv_output_language"
         )
 
+        sync_ats_locked_fields_from_uploaded_cv(global_cv)
+
+        st.subheader(t("locked_contact_fields"))
+        locked_contact_values = {}
+        locked_contact_rows = [
+            ("locked_full_name", "locked_email"),
+            ("locked_phone", "locked_location"),
+            ("locked_linkedin", "locked_github"),
+            ("locked_portfolio", None),
+        ]
+        for left_key, right_key in locked_contact_rows:
+            left_col, right_col = st.columns(2)
+            st.session_state.setdefault(f"ats_cv_{left_key}", ATS_LOCKED_CONTACT_DEFAULTS[left_key])
+            with left_col:
+                locked_contact_values[left_key] = st.text_input(
+                    t(left_key),
+                    key=f"ats_cv_{left_key}",
+                )
+            if right_key:
+                st.session_state.setdefault(f"ats_cv_{right_key}", ATS_LOCKED_CONTACT_DEFAULTS[right_key])
+                with right_col:
+                    locked_contact_values[right_key] = st.text_input(
+                        t(right_key),
+                        key=f"ats_cv_{right_key}",
+                    )
+
+        if not all(locked_contact_values.get(key, "").strip() for key in ["locked_full_name", "locked_email", "locked_phone"]):
+            st.warning(t("locked_contact_warning"))
+
+        st.session_state.setdefault(
+            "ats_cv_locked_proper_nouns_json",
+            json.dumps(st.session_state.get("ats_cv_locked_proper_nouns", ATS_LOCKED_PROPER_NOUNS), ensure_ascii=False, indent=2),
+        )
+        with st.expander(t("locked_proper_nouns"), expanded=False):
+            locked_proper_nouns_json = st.text_area(
+                t("locked_proper_nouns"),
+                key="ats_cv_locked_proper_nouns_json",
+                height=160,
+            )
+
         if st.button(t("generate_ats_cv")):
             if validate_inputs(require_cv=True, require_job=True):
                 with st.spinner(t("spinner_tailored")):
                     try:
+                        ats_cv_generate_data = {
+                            "job_description": st.session_state.global_job_text,
+                            "template_id": selected_template.get("id"),
+                            "language": ats_cv_language,
+                            "locked_proper_nouns_json": locked_proper_nouns_json,
+                        }
+                        ats_cv_generate_data.update(locked_contact_values)
                         response = requests.post(
                             f"{API_BASE_URL}/ats-cv/generate",
                             files=get_cv_files(),
-                            data={
-                                "job_description": st.session_state.global_job_text,
-                                "template_id": selected_template.get("id"),
-                                "language": ats_cv_language,
-                            }
+                            data=ats_cv_generate_data
                         )
 
                         if response.status_code == 200:
@@ -1074,44 +1385,119 @@ elif selected_page_key == "📄 ATS CV Builder":
             if not validation.get("is_valid", False):
                 st.warning(", ".join(validation.get("errors", [])))
 
-            col_before, col_after, col_role = st.columns(3)
+            before_score = metadata.get("ats_score_before", 0)
+            after_score = metadata.get("ats_score_after", 0)
+            try:
+                improvement_score = int(after_score) - int(before_score)
+            except Exception:
+                improvement_score = 0
+
+            col_before, col_after, col_improvement = st.columns(3)
             with col_before:
-                st.metric(t("ats_score_before"), metadata.get("ats_score_before", 0))
+                st.metric(t("ats_score_before"), before_score)
             with col_after:
-                st.metric(t("ats_score_after"), metadata.get("ats_score_after", 0))
+                st.metric(t("ats_score_after"), after_score)
+            with col_improvement:
+                st.metric(t("score_improvement"), improvement_score)
+
+            contact = ats_cv.get("contact", {})
+            col_role, col_title, col_confidence = st.columns(3)
             with col_role:
-                st.metric(t("target_role"), metadata.get("target_role") or "-")
+                st.write(f"**{t('target_role')}**")
+                st.write(metadata.get("target_role") or "-")
+            with col_title:
+                st.write("**Target Title**" if st.session_state.ui_lang == "en" else "**Hedef CV Başlığı**")
+                st.write(contact.get("target_title") or "-")
+            with col_confidence:
+                st.write(f"**{t('alignment_confidence')}**")
+                st.write(metadata.get("alignment_confidence") or "-")
 
-            st.subheader(t("used_keywords"))
-            st.write(", ".join(metadata.get("job_keywords_used", [])) or "-")
+            with st.expander(t("used_keywords"), expanded=False):
+                st.write(", ".join(metadata.get("job_keywords_used", [])) or "-")
 
-            st.subheader(t("transferable_keywords"))
-            write_non_empty_list(metadata.get("transferable_keywords_used", []))
+            with st.expander(t("transferable_keywords"), expanded=False):
+                write_non_empty_list(metadata.get("transferable_keywords_used", []))
 
-            st.subheader(t("missing_keywords"))
-            write_non_empty_list(metadata.get("missing_keywords", []))
+            with st.expander(t("missing_keywords"), expanded=False):
+                write_non_empty_list(metadata.get("missing_keywords", []))
 
-            st.subheader(t("risky_keywords_not_added"))
-            write_non_empty_list(metadata.get("risky_keywords_not_added", []))
+            with st.expander(t("risky_keywords_not_added"), expanded=False):
+                write_non_empty_list(metadata.get("risky_keywords_not_added", []))
 
             st.subheader(t("optimization_summary"))
             st.write(metadata.get("optimization_summary", ""))
 
-            st.subheader(t("alignment_confidence"))
-            st.write(metadata.get("alignment_confidence") or "-")
+            st.subheader(t("ats_score_explanation"))
+            st.caption(t("ats_score_disclaimer"))
+            score_explanation = metadata.get("ats_score_explanation", {}) if isinstance(metadata.get("ats_score_explanation"), dict) else {}
+            st.write(f"**{t('before_reason')}:** {score_explanation.get('before_reason') or '-'}")
+            st.write(f"**{t('after_reason')}:** {score_explanation.get('after_reason') or '-'}")
+            with st.expander(t("improvement_reasons"), expanded=False):
+                write_non_empty_list(score_explanation.get("improvement_reasons", []))
+            with st.expander(t("remaining_gaps"), expanded=False):
+                write_non_empty_list(score_explanation.get("remaining_gaps", []))
 
-            st.subheader(t("adaptation_notes"))
-            write_non_empty_list(metadata.get("adaptation_notes", []))
+            with st.expander(t("adaptation_notes"), expanded=False):
+                write_non_empty_list(metadata.get("adaptation_notes", []))
 
             st.markdown("---")
             st.header(t("generated_ats_cv_preview"))
             render_ats_cv_preview(ats_cv)
 
             st.markdown("---")
+            st.subheader(t("export_sections"))
+            export_style_label_map = {
+                t("export_style_standard"): "standard",
+                t("export_style_balanced"): "balanced_one_page",
+            }
+            selected_export_style_label = st.selectbox(
+                t("export_style"),
+                list(export_style_label_map.keys()),
+                key="ats_cv_export_style"
+            )
+            selected_export_style = export_style_label_map[selected_export_style_label]
+            one_page_export = selected_export_style == "balanced_one_page"
+            if one_page_export:
+                st.caption(t("balanced_one_page_help"))
+
+            section_options = [
+                ("contact", t("contact")),
+                ("summary", t("summary_section")),
+                ("skills", t("skills_section")),
+                ("experience", t("experience_section")),
+                ("projects", t("projects_section")),
+                ("education", t("education_section")),
+                ("certifications", t("certifications_section")),
+                ("languages", t("languages_section")),
+            ]
+            enabled_export_sections = []
+            section_cols = st.columns(4)
+            for index, (section_key, label) in enumerate(section_options):
+                with section_cols[index % 4]:
+                    if st.checkbox(label, value=True, key=f"ats_cv_export_section_{section_key}"):
+                        enabled_export_sections.append(section_key)
+
+            if "contact" not in enabled_export_sections:
+                st.warning(t("critical_section_warning"))
+            if any(section not in enabled_export_sections for section in ["experience", "education", "skills"]):
+                st.warning(t("key_section_warning"))
+            if not enabled_export_sections:
+                st.warning("Select at least one export section." if st.session_state.ui_lang == "en" else "En az bir dışa aktarma bölümü seçin.")
+
             col_docx, col_pdf, col_txt = st.columns(3)
-            docx_bytes = fetch_ats_cv_export("export-docx", ats_cv, export_template_id, export_language)
-            pdf_bytes = fetch_ats_cv_export("export-pdf", ats_cv, export_template_id, export_language)
-            txt_bytes = fetch_ats_cv_export("export-txt", ats_cv, export_template_id, export_language)
+            can_export = bool(enabled_export_sections)
+            docx_bytes = fetch_ats_cv_export(
+                "export-docx", ats_cv, export_template_id, export_language,
+                one_page_export, enabled_export_sections, selected_export_style
+            ) if can_export else None
+            pdf_bytes = fetch_ats_cv_export(
+                "export-pdf", ats_cv, export_template_id, export_language,
+                one_page_export, enabled_export_sections, selected_export_style
+            ) if can_export else None
+            txt_bytes = fetch_ats_cv_export(
+                "export-txt", ats_cv, export_template_id, export_language,
+                one_page_export, enabled_export_sections, selected_export_style
+            ) if can_export else None
 
             with col_docx:
                 if docx_bytes:
@@ -1668,6 +2054,170 @@ elif selected_page_key == "💼 Job Recommendations":
                             st.error(f"{t('status_error')} {err_detail}")
                 except Exception as e:
                     st.error(f"{t('status_error')} {str(e)}")
+
+
+elif selected_page_key == "🛰️ Job Monitoring Agent":
+    st.header(t("nav_job_monitoring"))
+    st.write(t("job_monitoring_desc"))
+
+    st.subheader(t("jm_alert_form"))
+    with st.form("job_monitoring_alert_form"):
+        alert_name = st.text_input(t("jm_alert_name"), placeholder="Backend roles, data analyst roles, operations roles...")
+        keywords_text = st.text_area(t("jm_keywords"), help=t("jm_keywords_help"), placeholder="Python, SQL, API, operations")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            location = st.text_input(t("jm_location"), placeholder="Remote, Istanbul, Berlin...")
+            seniority = st.text_input(t("jm_seniority"), placeholder="Junior, Intern, Entry level...")
+            min_match_score = st.slider(t("jm_min_score"), 0, 100, 40)
+        with col_b:
+            job_type = st.text_input(t("jm_job_type"), placeholder="Full-time, Internship, Contract...")
+            work_model = st.text_input(t("jm_work_model"), placeholder="Remote, Hybrid, On-site...")
+            is_active = st.checkbox(t("jm_active"), value=True)
+
+        sources = st.multiselect(
+            t("jm_sources"),
+            ["manual_mock"],
+            default=["manual_mock"],
+            help="Phase 2A supports only manual_mock.",
+        )
+        excluded_keywords_text = st.text_input(t("jm_excluded_keywords"), placeholder="senior, unpaid, commission-only")
+        create_alert = st.form_submit_button(t("jm_create_alert"))
+
+    if create_alert:
+        payload = {
+            "name": alert_name,
+            "keywords": parse_comma_values(keywords_text),
+            "location": location,
+            "seniority": seniority,
+            "job_type": job_type,
+            "work_model": work_model,
+            "sources": sources or ["manual_mock"],
+            "excluded_keywords": parse_comma_values(excluded_keywords_text),
+            "min_match_score": min_match_score,
+            "is_active": is_active,
+        }
+        result = api_json("POST", "/job-monitoring/alerts", json=payload)
+        if result:
+            st.success(t("jm_alert_created"))
+            st.rerun()
+
+    st.markdown("---")
+    st.subheader(t("jm_existing_alerts"))
+    alerts = api_json("GET", "/job-monitoring/alerts") or []
+    if not alerts:
+        st.info(t("jm_no_alerts"))
+    else:
+        for alert in alerts:
+            status_label = "active" if alert.get("is_active") else "inactive"
+            with st.expander(f"#{alert.get('id')} - {alert.get('name')} ({status_label})", expanded=False):
+                st.write(f"**{t('jm_keywords')}:** {', '.join(alert.get('keywords', [])) or 'N/A'}")
+                st.write(f"**{t('jm_location')}:** {alert.get('location') or 'N/A'}")
+                st.write(f"**{t('jm_seniority')}:** {alert.get('seniority') or 'N/A'}")
+                st.write(f"**{t('jm_job_type')}:** {alert.get('job_type') or 'N/A'}")
+                st.write(f"**{t('jm_work_model')}:** {alert.get('work_model') or 'N/A'}")
+                st.write(f"**{t('jm_sources')}:** {', '.join(alert.get('sources', []))}")
+                st.write(f"**{t('jm_min_score')}:** {alert.get('min_match_score')}")
+                st.write(f"**Created / Updated:** {compact_datetime(alert.get('created_at'))} / {compact_datetime(alert.get('updated_at'))}")
+
+                col_run, col_deactivate = st.columns(2)
+                with col_run:
+                    if st.button(t("jm_run_now"), key=f"jm_run_{alert.get('id')}", disabled=not alert.get("is_active")):
+                        result = api_json("POST", f"/job-monitoring/alerts/{alert.get('id')}/run")
+                        if result:
+                            run = result.get("run", {})
+                            st.success(f"{t('jm_run_complete')} New jobs: {run.get('new_jobs_count', 0)}")
+                            st.rerun()
+                with col_deactivate:
+                    if st.button(t("jm_deactivate"), key=f"jm_deactivate_{alert.get('id')}", disabled=not alert.get("is_active")):
+                        result = api_json("DELETE", f"/job-monitoring/alerts/{alert.get('id')}")
+                        if result:
+                            st.success(t("jm_alert_deactivated"))
+                            st.rerun()
+
+    st.markdown("---")
+    st.subheader(t("jm_job_results"))
+    status_options = [t("jm_all_statuses"), "new", "saved", "rejected", "applied", "archived"]
+    status_filter = st.selectbox(t("jm_status_filter"), status_options)
+    jobs_path = "/job-monitoring/jobs"
+    if status_filter != t("jm_all_statuses"):
+        jobs_path += f"?status={status_filter}"
+    jobs = api_json("GET", jobs_path) or []
+
+    if not jobs:
+        st.info(t("jm_no_jobs"))
+    else:
+        for job in jobs:
+            title = job.get("title") or "Untitled"
+            company = job.get("company") or "N/A"
+            score = job.get("match_score", 0)
+            with st.expander(f"{score}% | {title} - {company} [{job.get('status')}]"):
+                col_meta, col_score = st.columns([2, 1])
+                with col_meta:
+                    st.write(f"**{t('jm_location')}:** {job.get('location') or 'N/A'}")
+                    st.write(f"**{t('jm_sources')}:** {job.get('source')}")
+                    st.write(f"**{t('jm_work_model')}:** {job.get('work_model') or 'N/A'}")
+                    st.write(f"**{t('jm_job_type')}:** {job.get('job_type') or 'N/A'}")
+                    if job.get("url"):
+                        st.link_button("Open job", job.get("url"))
+                with col_score:
+                    st.metric("Match", f"{score}%")
+                    st.write(f"**Status:** {job.get('status')}")
+
+                st.write(f"**{t('matched_keywords')}:** {', '.join(job.get('matched_keywords', [])) or 'N/A'}")
+                st.write(f"**{t('missing_keywords')}:** {', '.join(job.get('missing_keywords', [])) or 'N/A'}")
+                st.write(job.get("match_summary") or "")
+                if job.get("description"):
+                    st.caption(job.get("description"))
+
+                status_cols = st.columns(4)
+                status_actions = [
+                    (t("jm_save"), "saved"),
+                    (t("jm_reject"), "rejected"),
+                    (t("jm_mark_applied"), "applied"),
+                    (t("jm_archive"), "archived"),
+                ]
+                for col, (label, next_status) in zip(status_cols, status_actions):
+                    with col:
+                        if st.button(label, key=f"jm_status_{job.get('id')}_{next_status}"):
+                            result = api_json(
+                                "PATCH",
+                                f"/job-monitoring/jobs/{job.get('id')}/status",
+                                json={"status": next_status},
+                            )
+                            if result:
+                                st.success(t("jm_status_updated"))
+                                st.rerun()
+
+                st.info(t("jm_placeholder"))
+                placeholder_cols = st.columns(3)
+                with placeholder_cols[0]:
+                    st.button("Generate tailored CV", key=f"jm_cv_{job.get('id')}", disabled=True)
+                with placeholder_cols[1]:
+                    st.button("Generate cover letter", key=f"jm_cover_{job.get('id')}", disabled=True)
+                with placeholder_cols[2]:
+                    st.button("Generate application email", key=f"jm_email_{job.get('id')}", disabled=True)
+
+    st.markdown("---")
+    st.subheader(t("jm_run_history"))
+    runs = api_json("GET", "/job-monitoring/runs") or []
+    if not runs:
+        st.info(t("jm_no_runs"))
+    else:
+        run_rows = [
+            {
+                "id": run.get("id"),
+                "alert_profile_id": run.get("alert_profile_id"),
+                "started_at": compact_datetime(run.get("started_at")),
+                "finished_at": compact_datetime(run.get("finished_at")),
+                "status": run.get("status"),
+                "source_count": run.get("source_count"),
+                "jobs_found": run.get("jobs_found"),
+                "new_jobs_count": run.get("new_jobs_count"),
+                "error_message": run.get("error_message"),
+            }
+            for run in runs
+        ]
+        st.dataframe(run_rows, use_container_width=True)
 
 
 elif selected_page_key == "📜 History":

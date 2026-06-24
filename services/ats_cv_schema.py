@@ -69,6 +69,7 @@ ATS_CV_SCHEMA = {
     "ats_metadata": {
         "target_role": "",
         "target_company": "",
+        "job_family": "",
         "job_keywords_used": [],
         "transferable_keywords_used": [],
         "missing_keywords": [],
@@ -78,6 +79,12 @@ ATS_CV_SCHEMA = {
         "optimization_summary": "",
         "alignment_confidence": "",
         "adaptation_notes": [],
+        "ats_score_explanation": {
+            "before_reason": "",
+            "after_reason": "",
+            "improvement_reasons": [],
+            "remaining_gaps": [],
+        },
     },
 }
 
@@ -120,6 +127,15 @@ def validate_ats_cv_schema(data: dict) -> tuple[bool, list[str]]:
         adaptation_notes = data["ats_metadata"].get("adaptation_notes")
         if adaptation_notes is not None and not isinstance(adaptation_notes, list):
             errors.append("ats_metadata.adaptation_notes must be a list.")
+
+        ats_score_explanation = data["ats_metadata"].get("ats_score_explanation")
+        if ats_score_explanation is not None and not isinstance(ats_score_explanation, dict):
+            errors.append("ats_metadata.ats_score_explanation must be a dictionary.")
+        elif isinstance(ats_score_explanation, dict):
+            for list_key in ["improvement_reasons", "remaining_gaps"]:
+                value = ats_score_explanation.get(list_key)
+                if value is not None and not isinstance(value, list):
+                    errors.append(f"ats_metadata.ats_score_explanation.{list_key} must be a list.")
 
         for list_key in [
             "job_keywords_used",

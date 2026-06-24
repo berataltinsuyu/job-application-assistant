@@ -377,26 +377,26 @@ def generate_ats_cv_json(
         cleaned_result = clean_json_response(raw_result)
         parsed_result = json.loads(cleaned_result)
         return parsed_result
-    except errors.ServerError:
+    except errors.ServerError as error:
         raise HTTPException(
             status_code=503,
             detail="Gemini modeli şu anda yoğun veya geçici olarak kullanılamıyor. Lütfen biraz sonra tekrar deneyin."
-        )
+        ) from error
     except errors.ClientError as error:
         raise HTTPException(
             status_code=400,
             detail=f"Gemini isteği geçersiz. Model adı, API key veya istek formatı hatalı olabilir. Detay: {str(error)}"
-        )
-    except json.JSONDecodeError:
+        ) from error
+    except json.JSONDecodeError as error:
         raise HTTPException(
             status_code=500,
             detail="Gemini cevap verdi fakat geçerli ATS CV JSON formatında cevap üretmedi."
-        )
+        ) from error
     except Exception as error:
         raise HTTPException(
             status_code=500,
             detail=f"ATS CV oluşturulurken beklenmeyen bir hata oluştu: {str(error)}"
-        )
+        ) from error
 
 
 def build_ats_cv_generation_prompt(
@@ -435,16 +435,20 @@ Language consistency rules:
 5. Do not leave rewritten CV content in the source CV language when the selected output language is different.
 6. The example phrases in this prompt illustrate meaning only. Translate or adapt them into {output_language} before using similar wording.
 
+Contact preservation rules:
+1. Preserve contact.email, contact.phone, contact.linkedin, contact.github, and contact.portfolio exactly as written in the original CV when present.
+2. Do not infer, rewrite, hyphenate, normalize, shorten, translate, or correct contact links.
+3. Do not invent links. If a link is not clearly present in the CV, leave that field empty.
+4. Names, company names, school names, and Turkish characters must be preserved as accurately as possible. Do not strip accents or normalize Unicode characters.
+
 Target title alignment rules:
 1. contact.target_title must be generated from the target job family and ats_metadata.target_role, not copied blindly from the original CV.
 2. contact.target_title must align with ats_metadata.target_role and the job description.
 3. If the original CV title belongs to a different role family, adapt contact.target_title to the target job family.
 4. Keep the title realistic for the candidate's seniority. Do not use senior, lead, principal, manager, head, director, or architect titles unless clearly supported by the CV.
 5. For junior, intern, student, or early-career candidates, use a junior-level target title.
-6. If the job is fraud, risk, payment operations, or fintech operations, use a title such as "Junior Payment Systems & Risk Operations Specialist", "Junior Fraud/Risk Operations Analyst", "Junior Payment Operations Analyst", or "Junior Fintech Operations Analyst".
-7. If the job is backend or software, use a title such as "Junior Backend Developer", "Junior .NET Developer", or "Junior Software Developer".
-8. If the job is business analyst or IT corporate applications, use a title such as "Junior IT Business Analyst", "Junior Corporate Applications Specialist", or "Junior IT Analyst".
-9. If the job is data or reporting, use a title such as "Junior Data Analyst", "Junior Reporting Analyst", or "Junior Business Data Analyst".
+6. Detect the job family from the job description, such as software/backend, frontend, full-stack, AI/ML/LLM, data analytics, business analyst, product/project, fintech/payment, risk/fraud/compliance, cybersecurity, DevOps/cloud, corporate applications, sales operations, or general.
+7. Use a target title that matches the detected job family while remaining truthful for the candidate's actual seniority and background.
 
 Balanced job alignment rules:
 1. Tailor the CV enough to be useful for the job, while keeping every claim honest and defensible in an interview.
@@ -458,61 +462,82 @@ Balanced job alignment rules:
 9. Strengthen bullets using the job description's language when the claim remains truthful and interview-defensible.
 10. Adapt project bullets to emphasize relevance to the target job.
 11. Emphasize relevant tools, databases, reporting, APIs, integrations, testing, troubleshooting, documentation, and process work when supported by the CV.
+12. Use the strongest truthful wording supported by the CV. If direct ownership is not supported, use exposure/support/collaboration/observation wording instead of direct responsibility.
+13. If the candidate directly performed something, you may write it as direct experience. If the candidate observed, supported, collaborated, gained exposure, learned processes, reviewed workflows, or participated indirectly, write it with careful indirect wording.
+14. Do not turn exposure into ownership. Do not turn collaboration into leadership. Do not turn support work into end-to-end responsibility.
+15. Do not weaken every claim unnecessarily. If the CV or user-provided context indicates real involvement, exposure, collaboration, review, observation, or participation in a domain, state that confidently with accurate wording such as participated in, reviewed, supported, collaborated with, gained practical exposure to, or developed understanding of.
+16. The original CV does not need to contain the exact same domain as the job posting. Connect existing experience, projects, tools, and skills to the target job through transferable alignment when the connection is reasonable.
 
-Hard limits:
+Transferable alignment classification:
+For every job description, classify important requirements into:
+1. Directly supported by the CV: use direct wording.
+2. Transferable from the CV: use strong but careful wording such as positioned toward, transferable experience in, foundation in, exposure to, supported, contributed to, applied related technical skills to, relevant background in, or strong basis for.
+3. Missing but learnable: do not claim it as experience; mention it in ats_metadata.missing_keywords when important.
+4. Risky to claim directly: do not add it to the CV; list it in ats_metadata.risky_keywords_not_added.
+
+Truthfulness limits:
 1. Do not invent companies, roles, dates, education, certifications, links, or projects.
 2. Do not claim direct ownership of responsibilities not present in the CV.
 3. Do not claim expert-level skills unless the CV clearly supports that level.
 4. Do not add regulated or high-responsibility domain claims as direct experience unless clearly present.
-5. Do not present interest, exposure, transferable alignment, or general context as direct hands-on ownership.
+5. Do not present interest, exposure, transferable alignment, or general context as direct hands-on ownership, but do use them as legitimate transferable positioning when clearly connected to the CV.
 6. Put important job keywords that cannot be supported or defensibly adapted from the CV into ats_metadata.missing_keywords.
 7. If a field cannot be supported from the CV, leave it empty, use an empty list, or omit the unsupported detail inside that field.
 8. Do not claim direct fraud detection, AML investigation, compliance ownership, audit responsibility, risk parameter management, chargeback fraud investigation, regulatory reporting, or risk strategy ownership unless the original CV clearly supports it.
+9. Do not use ownership verbs such as managed, owned, led, directed, designed, executed independently, was responsible for, handled end-to-end, performed official investigations, owned compliance, managed risk operations, led fraud detection, or designed risk parameters unless the original CV explicitly supports that level of responsibility.
 
 Acceptable adaptation examples:
-- "Supported payment systems application development and operational process analysis."
-- "Performed SQL-based data validation and backend data checks."
-- "Contributed to API testing, issue investigation, and technical documentation."
-- "Gained exposure to payment systems workflows in a banking environment."
-- "Applied analytical problem-solving in technical and operational contexts."
-- "Collaborated with technical teams to understand payment system business requirements."
-- "Developed RESTful APIs supporting business workflows."
-- "Worked on data integrity, validation, and system integration logic."
-- "Supported reliable backend operations through testing and debugging."
-- "Developed strong communication, problem-solving, and customer-oriented operational skills."
-- "Worked in a fast-paced environment requiring process adherence and teamwork."
+- "Applied relevant technical experience to support the target role's workflows."
+- "Contributed to testing, issue investigation, and documentation where supported by the CV."
+- "Gained exposure to adjacent business, operational, or technical processes through documented experience."
+- "Collaborated with cross-functional teams to understand requirements and workflow needs."
+- "Worked on data integrity, validation, integration, or process improvement when supported by actual CV content."
+- "Supported reliable delivery through testing, debugging, documentation, analysis, or coordination when present in the CV."
+- "Developed strong communication, problem-solving, and customer-oriented skills when supported by experience."
 
 Risky phrasing to avoid unless explicitly supported by the CV:
-- "Led fraud detection operations."
-- "Managed AML investigations."
-- "Owned regulatory compliance processes."
-- "Performed risk scoring for financial transactions."
-- "Handled audit and legal compliance reporting."
-- "Designed fraud risk parameters."
-- "Managed chargeback fraud investigations."
-- "Led risk management strategy."
-- "Owned regulatory reporting."
+- "Led" or "owned" a regulated, strategic, production, compliance, investigation, financial, security, or managerial process.
+- "Managed" official investigations, audits, regulatory reporting, production infrastructure, customer accounts, or risk decisions unless directly supported.
+- "Designed" strategy, policy, security controls, risk parameters, architecture, or production systems unless directly supported.
+- "Performed" specialized regulated or high-accountability tasks unless they are clearly present in the original CV.
 
 Preferred wording for partially related experience:
+- gained exposure to
+- developed understanding of
+- observed
+- reviewed
 - supported
 - contributed to
-- gained exposure to
 - assisted with
 - collaborated on
+- collaborated with
 - performed validation for
 - helped analyze
+- reviewed business workflows
+- learned from
+- participated in
+- worked alongside
+- supported documentation for
+- supported analysis of
 - documented
 - tested
 - monitored
 - investigated technical issues
 - supported process understanding
 - contributed to operational reliability
+- gained awareness of
+
+Direct vs indirect wording examples:
+1. If the CV directly shows a task, use direct wording such as "developed", "tested", "analyzed", "documented", "supported", or "coordinated".
+2. If the CV shows adjacent or indirect exposure, use careful wording such as "gained exposure to", "developed understanding of", "supported", "contributed to", "participated in", or "collaborated with".
+3. If the CV does not support a job requirement, do not add it to the CV body. Put it in ats_metadata.missing_keywords or ats_metadata.risky_keywords_not_added.
+4. For any job family, only emphasize technologies, tools, industries, processes, certifications, responsibilities, and projects that actually appear in or are defensibly implied by the uploaded CV.
 
 Role family adaptation:
-1. If the job is software/backend, emphasize development, APIs, databases, backend stack, testing, integrations, and projects.
-2. If the job is business analyst or IT corporate applications, emphasize requirement analysis, documentation, process analysis, stakeholder communication, testing, system integration, and workflow understanding.
-3. If the job is fraud/risk/payment operations, emphasize payment systems exposure, SQL/data analysis, reporting, issue investigation, operational process understanding, documentation, and cross-functional collaboration. Use transferable wording when direct fraud/risk experience is missing.
-4. If the job is data/reporting, emphasize SQL, data validation, reporting, analytics, dashboards, documentation, and process improvement.
+1. For software, frontend, full-stack, AI/ML/LLM, data analytics, business analyst, product/project, fintech/payment, risk/fraud/compliance, cybersecurity, DevOps/cloud, corporate applications, sales operations, or general roles, prioritize supported evidence from the uploaded CV that overlaps with the job description.
+2. If the exact domain is missing but adjacent evidence exists, write transferable positioning without claiming direct ownership.
+3. If the domain is regulated or high-accountability, avoid direct claims unless the CV explicitly supports them.
+4. Do not invent job-family-specific projects, tools, platforms, industries, or responsibilities.
 
 Optimization rules:
 1. Rewrite bullets professionally and concisely.
@@ -538,17 +563,20 @@ ATS scoring:
    - "medium": job requirements partly match through transferable skills.
    - "low": the job requires many direct skills not present in the CV.
 11. Include ats_metadata.adaptation_notes as a short list explaining what was adapted and why.
+12. Include ats_metadata.ats_score_explanation with:
+   - before_reason: concise explanation of why the original CV received ats_score_before.
+   - after_reason: concise explanation of why the optimized CV received ats_score_after.
+   - improvement_reasons: concise list of changes that improved ATS relevance.
+   - remaining_gaps: concise list of relevant gaps that still remain.
+13. Explain scores as estimated relevance scores only. Do not claim they are official ATS results or guaranteed outcomes.
 
-For a fraud/risk/payment operations role, metadata may look like this when supported by the CV:
-- job_keywords_used: ["Payment Systems", "SQL", "Data Analysis", "Reporting", "Documentation"]
-- transferable_keywords_used: ["Risk Operations", "Issue Investigation", "Operational Follow-up", "Process Analysis"]
-- missing_keywords: ["Fraud team experience", "AML investigations", "Compliance license", "Risk parameter management"]
-- risky_keywords_not_added: ["Direct fraud detection ownership", "AML investigation ownership", "Regulatory compliance ownership"]
-- adaptation_notes: [
-  "Payment systems internship experience was reframed toward fintech operations and risk support.",
-  "SQL and API testing experience were emphasized as transferable skills for reporting, validation, and issue investigation.",
-  "Fraud/compliance ownership was not claimed because it was not directly supported by the CV."
-]
+Metadata guidance:
+- job_keywords_used should contain job-description keywords directly supported by the uploaded CV.
+- transferable_keywords_used should contain job-description keywords supported indirectly or through adjacent experience.
+- missing_keywords should contain important requirements not supported by the uploaded CV.
+- risky_keywords_not_added should contain claims that would be misleading or too strong to add.
+- adaptation_notes should briefly explain how the CV was adapted without inventing experience.
+- ats_score_explanation should explain the estimated improvement and remaining gaps using the same evidence-based logic.
 
 Return valid JSON only.
 Do not include explanations, markdown, code fences, comments, or any text outside the JSON object.

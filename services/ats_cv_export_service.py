@@ -1,17 +1,31 @@
+import re
 from io import BytesIO
+from copy import deepcopy
 from pathlib import Path
 from xml.sax.saxutils import escape
 
 from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from docx.shared import Inches, Pt
 from fastapi import HTTPException
+from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
+
+from services.ats_cv_relevance import (
+    rank_certifications_for_job,
+    rank_education_for_job,
+    rank_experience_for_job,
+    rank_projects_for_job,
+    rank_skills_for_job,
+    relevance_keywords,
+)
 
 
 SECTION_TITLES = {
@@ -48,30 +62,57 @@ SECTION_TITLES = {
 PDF_FONT_NAME = "Helvetica"
 PDF_BOLD_FONT_NAME = "Helvetica-Bold"
 
+PRESERVED_CONTACT_FIELDS = [
+    "full_name",
+    "email",
+    "phone",
+    "linkedin",
+    "github",
+    "portfolio",
+]
 
-def render_ats_cv_to_docx(ats_cv: dict, template: dict, language: str) -> bytes:
+PRESERVED_RECORD_FIELDS = {
+    "experience": ["company"],
+    "projects": ["name"],
+    "education": ["school"],
+    "certifications": ["name", "issuer"],
+}
+
+def render_ats_cv_to_docx(
+    ats_cv: dict,
+    template: dict,
+    language: str,
+    one_page: bool = False,
+    enabled_sections: set[str] | None = None,
+    export_style: str = "standard",
+) -> bytes:
     try:
+        export_style = _effective_export_style(export_style, one_page)
+        render_cv = _cv_for_export_style(ats_cv, template, language, export_style)
         document = Document()
-        _configure_docx(document)
-        template_style = _template_style(template)
+        template_style = _template_style(template, export_style, estimate_cv_content_density(render_cv))
+        _configure_docx(document, template_style)
 
-        contact = render_contact(ats_cv, language)
-        if contact["full_name"]:
+        contact = render_contact(render_cv, language)
+        if _section_enabled("contact", enabled_sections) and contact["full_name"]:
             paragraph = document.add_paragraph()
             run = paragraph.add_run(contact["full_name"])
             run.bold = True
-            run.font.size = Pt(18)
+            run.font.size = Pt(template_style["docx_name_size"])
 
-        if contact["target_title"]:
+        if _section_enabled("contact", enabled_sections) and contact["target_title"]:
             paragraph = document.add_paragraph()
             run = paragraph.add_run(contact["target_title"])
             run.bold = True
-            run.font.size = Pt(11)
+            run.font.size = Pt(template_style["docx_title_size"])
 
-        if contact["contact_line"]:
-            document.add_paragraph(contact["contact_line"])
+        if _section_enabled("contact", enabled_sections):
+            for contact_line in contact["contact_lines"]:
+                paragraph = document.add_paragraph()
+                run = paragraph.add_run(contact_line)
+                run.font.size = Pt(template_style["docx_contact_size"])
 
-        for section in _ordered_sections(ats_cv, template, language):
+        for section in _ordered_sections(render_cv, template, language, enabled_sections):
             _add_docx_section(document, section, template_style, language)
 
         output = BytesIO()
@@ -81,37 +122,47 @@ def render_ats_cv_to_docx(ats_cv: dict, template: dict, language: str) -> bytes:
         raise HTTPException(status_code=500, detail=f"DOCX generation failed: {str(exc)}") from exc
 
 
-def render_ats_cv_to_pdf(ats_cv: dict, template: dict, language: str) -> bytes:
+def render_ats_cv_to_pdf(
+    ats_cv: dict,
+    template: dict,
+    language: str,
+    one_page: bool = False,
+    enabled_sections: set[str] | None = None,
+    export_style: str = "standard",
+) -> bytes:
     try:
+        export_style = _effective_export_style(export_style, one_page)
+        render_cv = _cv_for_export_style(ats_cv, template, language, export_style)
         _register_pdf_fonts()
+        template_style = _template_style(template, export_style, estimate_cv_content_density(render_cv))
         output = BytesIO()
         document = SimpleDocTemplate(
             output,
             pagesize=A4,
-            rightMargin=0.65 * inch,
-            leftMargin=0.65 * inch,
-            topMargin=0.65 * inch,
-            bottomMargin=0.65 * inch,
+            rightMargin=template_style["pdf_margin"] * inch,
+            leftMargin=template_style["pdf_margin"] * inch,
+            topMargin=template_style["pdf_margin"] * inch,
+            bottomMargin=template_style["pdf_margin"] * inch,
         )
-        styles = _pdf_styles()
-        template_style = _template_style(template)
+        styles = _pdf_styles(template_style)
         story = []
 
-        contact = render_contact(ats_cv, language)
-        if contact["full_name"]:
+        contact = render_contact(render_cv, language)
+        if _section_enabled("contact", enabled_sections) and contact["full_name"]:
             story.append(Paragraph(escape(contact["full_name"]), styles["Name"]))
-        if contact["target_title"]:
+        if _section_enabled("contact", enabled_sections) and contact["target_title"]:
             story.append(Paragraph(escape(contact["target_title"]), styles["TargetTitle"]))
-        if contact["contact_line"]:
-            story.append(Paragraph(escape(contact["contact_line"]), styles["Contact"]))
+        if _section_enabled("contact", enabled_sections):
+            for contact_line in contact["contact_lines"]:
+                story.append(Paragraph(escape(contact_line), styles["Contact"]))
         if story:
-            story.append(Spacer(1, 0.16 * inch))
+            story.append(Spacer(1, template_style["pdf_contact_after_spacing"]))
 
-        for section in _ordered_sections(ats_cv, template, language):
+        for section in _ordered_sections(render_cv, template, language, enabled_sections):
             story.append(Spacer(1, template_style["pdf_section_spacing"]))
             story.append(Paragraph(escape(_heading_text(section["heading"], language)), styles["SectionHeading"]))
             if template_style["heading_separator"]:
-                story.append(Paragraph("________________________________________", styles["Separator"]))
+                story.append(_pdf_horizontal_line(template_style))
             for item in section["items"]:
                 if item["type"] == "paragraph":
                     story.append(Paragraph(escape(item["text"]), styles["Body"]))
@@ -119,6 +170,8 @@ def render_ats_cv_to_pdf(ats_cv: dict, template: dict, language: str) -> bytes:
                     story.append(Paragraph(escape(item["text"]), styles["ItemHeading"]))
                 elif item["type"] == "bullet":
                     story.append(Paragraph(f"- {escape(item['text'])}", styles["Bullet"]))
+                elif item["type"] == "separator":
+                    story.append(Paragraph(escape(item["text"]), styles["Separator"]))
             story.append(Spacer(1, template_style["pdf_section_after_spacing"]))
 
         document.build(story)
@@ -127,23 +180,33 @@ def render_ats_cv_to_pdf(ats_cv: dict, template: dict, language: str) -> bytes:
         raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(exc)}") from exc
 
 
-def build_plain_text_preview(ats_cv: dict, template: dict, language: str) -> str:
-    contact = render_contact(ats_cv, language)
+def build_plain_text_preview(
+    ats_cv: dict,
+    template: dict,
+    language: str,
+    one_page: bool = False,
+    enabled_sections: set[str] | None = None,
+    export_style: str = "standard",
+) -> str:
+    export_style = _effective_export_style(export_style, one_page)
+    render_cv = _cv_for_export_style(ats_cv, template, language, export_style)
+    contact = render_contact(render_cv, language)
     lines = []
 
-    if contact["full_name"]:
+    if _section_enabled("contact", enabled_sections) and contact["full_name"]:
         lines.append(contact["full_name"])
-    if contact["target_title"]:
+    if _section_enabled("contact", enabled_sections) and contact["target_title"]:
         lines.append(contact["target_title"])
-    if contact["contact_line"]:
-        lines.append(contact["contact_line"])
+    if _section_enabled("contact", enabled_sections):
+        lines.extend(contact["contact_lines"])
 
-    for section in _ordered_sections(ats_cv, template, language):
+    for section in _ordered_sections(render_cv, template, language, enabled_sections):
         if lines:
             lines.append("")
         lines.append(_heading_text(section["heading"], language))
-        if _template_style(template)["heading_separator"]:
-            lines.append("-" * len(_heading_text(section["heading"], language)))
+        template_style = _template_style(template, export_style, estimate_cv_content_density(render_cv))
+        if template_style["heading_separator"] and not template_style.get("separator_as_rule"):
+            lines.append("-" * max(12, len(_heading_text(section["heading"], language))))
         for item in section["items"]:
             if item["type"] == "bullet":
                 lines.append(f"- {item['text']}")
@@ -153,6 +216,96 @@ def build_plain_text_preview(ats_cv: dict, template: dict, language: str) -> str
     return "\n".join(lines).strip()
 
 
+def compact_ats_cv_for_one_page(ats_cv: dict, template: dict, language: str) -> dict:
+    return balance_one_page_content(ats_cv, template, language)
+
+
+def balance_one_page_content(ats_cv: dict, template: dict, language: str) -> dict:
+    compact_cv = deepcopy(ats_cv)
+    density = estimate_cv_content_density(compact_cv)
+    limits = _density_limits(density)
+    metadata = compact_cv.get("ats_metadata", {}) if isinstance(compact_cv, dict) else {}
+    keywords = relevance_keywords("", metadata)
+
+    for summary_key in ["professional_summary", "career_objective", "technical_summary"]:
+        compact_cv[summary_key] = _trim_text(compact_cv.get(summary_key), limits["summary_chars"])
+
+    skills = compact_cv.get("skills", {})
+    if isinstance(skills, dict):
+        ranked_skills = rank_skills_for_job(skills, "", metadata)
+        for group, limit in limits["skills"].items():
+            skills[group] = _prioritize_strings(_clean_list(ranked_skills.get(group, [])), keywords, limit)
+
+    compact_cv["experience"] = rank_experience_for_job(compact_cv.get("experience", []), "", metadata)
+    compact_cv["projects"] = rank_projects_for_job(compact_cv.get("projects", []), "", metadata)
+    compact_cv["education"] = rank_education_for_job(compact_cv.get("education", []), "", metadata)
+    compact_cv["certifications"] = rank_certifications_for_job(compact_cv.get("certifications", []), "", metadata)
+
+    for record in compact_cv.get("experience", []):
+        if isinstance(record, dict):
+            bullets = _clean_list(record.get("bullets", []))
+            record["bullets"] = _prioritize_strings(bullets, keywords, limits["experience_bullets"]) or bullets[:1]
+
+    for record in compact_cv.get("projects", []):
+        if isinstance(record, dict):
+            record["description"] = _trim_text(record.get("description"), limits["project_description_chars"])
+            bullets = _clean_list(record.get("bullets", []))
+            record["bullets"] = _prioritize_strings(bullets, keywords, limits["project_bullets"]) or bullets[:1]
+            record["technologies"] = _prioritize_strings(
+                _clean_list(record.get("technologies", [])),
+                keywords,
+                limits["project_technologies"],
+            )
+
+    for record in compact_cv.get("education", []):
+        if isinstance(record, dict):
+            details = _clean_list(record.get("details", []))
+            record["details"] = _prioritize_strings(details, keywords, limits["education_details"]) or details[:1]
+
+    compact_cv["certifications"] = [
+        certification for certification in compact_cv.get("certifications", [])
+        if isinstance(certification, dict) and any(_clean_text(value) for value in certification.values())
+    ][:limits["certifications"]]
+
+    return compact_cv
+
+
+def estimate_cv_content_density(ats_cv: dict) -> str:
+    text_units = []
+    for key in ["professional_summary", "career_objective", "technical_summary"]:
+        text_units.append(_clean_text(ats_cv.get(key)))
+
+    skills = ats_cv.get("skills", {})
+    if isinstance(skills, dict):
+        for values in skills.values():
+            text_units.extend(_clean_list(values))
+
+    bullet_count = 0
+    record_count = 0
+    for section_key in ["experience", "projects", "education", "certifications", "languages"]:
+        records = ats_cv.get(section_key, [])
+        if not isinstance(records, list):
+            continue
+        for record in records:
+            if not isinstance(record, dict):
+                continue
+            record_count += 1
+            for value in record.values():
+                if isinstance(value, list):
+                    bullet_count += len(value)
+                    text_units.extend(_clean_list(value))
+                else:
+                    text_units.append(_clean_text(value))
+
+    char_count = sum(len(text) for text in text_units if text)
+    density_score = char_count + (bullet_count * 90) + (record_count * 120)
+    if density_score < 4300:
+        return "short"
+    if density_score < 7200:
+        return "medium"
+    return "long"
+
+
 def render_contact(ats_cv: dict, language: str) -> dict:
     contact = ats_cv.get("contact", {}) if isinstance(ats_cv, dict) else {}
     contact_parts = []
@@ -160,12 +313,38 @@ def render_contact(ats_cv: dict, language: str) -> dict:
         value = _clean_text(contact.get(key))
         if value:
             contact_parts.append(value)
+    contact_lines = _contact_lines(contact_parts)
 
     return {
         "full_name": _clean_text(contact.get("full_name")),
         "target_title": _clean_text(contact.get("target_title")),
         "contact_line": " | ".join(contact_parts),
+        "contact_lines": contact_lines,
     }
+
+
+def _contact_lines(contact_parts: list[str]) -> list[str]:
+    """Pack contact values without splitting inside URLs or other protected fields."""
+    if not contact_parts:
+        return []
+
+    max_chars = 88
+    lines = []
+    current_parts = []
+
+    for part in contact_parts:
+        candidate_parts = current_parts + [part]
+        candidate_line = " | ".join(candidate_parts)
+        if current_parts and len(candidate_line) > max_chars:
+            lines.append(" | ".join(current_parts))
+            current_parts = [part]
+        else:
+            current_parts = candidate_parts
+
+    if current_parts:
+        lines.append(" | ".join(current_parts))
+
+    return lines
 
 
 def render_summary(ats_cv: dict, language: str, section_key: str = "professional_summary") -> dict | None:
@@ -193,7 +372,10 @@ def render_skills(ats_cv: dict, language: str, section_key: str = "skills") -> d
     single_group_section = section_key in {"technical_skills", "core_skills"}
 
     for group in skill_groups:
-        values = _clean_list(skills.get(group, []))
+        if section_key == "core_skills" and group == "core_skills":
+            values = _modern_clean_core_skill_values(skills, ats_cv.get("ats_metadata", {}))
+        else:
+            values = _clean_list(skills.get(group, []))
         if values:
             text = ", ".join(values) if single_group_section else f"{_skill_group_title(group, language)}: {', '.join(values)}"
             items.append({
@@ -242,12 +424,21 @@ def render_experience(ats_cv: dict, language: str, section_key: str = "experienc
     }
 
 
-def render_projects(ats_cv: dict, language: str) -> dict | None:
+def render_projects(ats_cv: dict, language: str, template: dict | None = None) -> dict | None:
     records = ats_cv.get("projects", [])
     if not isinstance(records, list):
         return None
 
     items = []
+    template_id = (template or {}).get("id", "")
+    contact = ats_cv.get("contact", {}) if isinstance(ats_cv, dict) else {}
+    contact_links = {
+        _normalize_url_for_compare(contact.get("linkedin")),
+        _normalize_url_for_compare(contact.get("github")),
+        _normalize_url_for_compare(contact.get("portfolio")),
+    }
+    contact_links.discard("")
+    rendered_count = 0
     for record in records:
         if not isinstance(record, dict):
             continue
@@ -266,8 +457,12 @@ def render_projects(ats_cv: dict, language: str) -> dict | None:
             items.append({"type": "paragraph", "text": f"{label}: {', '.join(technologies)}"})
         for bullet in bullets:
             items.append({"type": "bullet", "text": bullet})
-        if link:
-            items.append({"type": "paragraph", "text": link})
+        link_label = _project_link_label(link, contact_links, language)
+        if link_label:
+            items.append({"type": "paragraph", "text": link_label})
+        rendered_count += 1
+        if template_id == "technical_developer" and rendered_count < len(records):
+            items.append({"type": "separator", "text": "-" * 32})
 
     if not items:
         return None
@@ -361,12 +556,20 @@ def render_languages(ats_cv: dict, language: str) -> dict | None:
     }
 
 
-def _ordered_sections(ats_cv: dict, template: dict, language: str) -> list[dict]:
+def _ordered_sections(
+    ats_cv: dict,
+    template: dict,
+    language: str,
+    enabled_sections: set[str] | None = None,
+) -> list[dict]:
     sections = []
     used_keys = set()
 
     for section_key in template.get("section_order", []):
-        section = _render_section_by_key(ats_cv, language, section_key)
+        canonical_section = _canonical_section(section_key)
+        if not _section_enabled(canonical_section, enabled_sections):
+            continue
+        section = _render_section_by_key(ats_cv, language, section_key, template)
         if section and section["key"] not in used_keys:
             sections.append(section)
             used_keys.add(section["key"])
@@ -374,7 +577,23 @@ def _ordered_sections(ats_cv: dict, template: dict, language: str) -> list[dict]
     return sections
 
 
-def _render_section_by_key(ats_cv: dict, language: str, section_key: str) -> dict | None:
+def _canonical_section(section_key: str) -> str:
+    if section_key in {"professional_summary", "career_objective", "technical_summary"}:
+        return "summary"
+    if section_key in {"core_skills", "technical_skills"}:
+        return "skills"
+    if section_key == "internship_experience":
+        return "experience"
+    return section_key
+
+
+def _section_enabled(section_key: str, enabled_sections: set[str] | None) -> bool:
+    if enabled_sections is None:
+        return True
+    return section_key in enabled_sections
+
+
+def _render_section_by_key(ats_cv: dict, language: str, section_key: str, template: dict | None = None) -> dict | None:
     if section_key in {"contact", "title"}:
         return None
     if section_key in {"professional_summary", "career_objective", "technical_summary"}:
@@ -384,7 +603,7 @@ def _render_section_by_key(ats_cv: dict, language: str, section_key: str) -> dic
     if section_key in {"experience", "internship_experience"}:
         return render_experience(ats_cv, language, section_key)
     if section_key == "projects":
-        return render_projects(ats_cv, language)
+        return render_projects(ats_cv, language, template)
     if section_key == "education":
         return render_education(ats_cv, language)
     if section_key == "certifications":
@@ -394,44 +613,78 @@ def _render_section_by_key(ats_cv: dict, language: str, section_key: str) -> dic
     return None
 
 
-def _configure_docx(document: Document) -> None:
+def _configure_docx(document: Document, template_style: dict) -> None:
     section = document.sections[0]
-    section.top_margin = Inches(0.6)
-    section.bottom_margin = Inches(0.6)
-    section.left_margin = Inches(0.7)
-    section.right_margin = Inches(0.7)
+    section.top_margin = Inches(template_style["docx_margin"])
+    section.bottom_margin = Inches(template_style["docx_margin"])
+    section.left_margin = Inches(template_style["docx_margin"])
+    section.right_margin = Inches(template_style["docx_margin"])
 
     normal_style = document.styles["Normal"]
     normal_style.font.name = "Arial"
-    normal_style.font.size = Pt(10.5)
+    normal_style.font.size = Pt(template_style["docx_body_size"])
 
 
 def _add_docx_section(document: Document, section: dict, template_style: dict, language: str) -> None:
     heading = document.add_paragraph()
     heading.paragraph_format.space_before = Pt(template_style["docx_section_space_before"])
-    heading.paragraph_format.space_after = Pt(3)
+    heading.paragraph_format.space_after = Pt(template_style["docx_heading_space_after"])
     run = heading.add_run(_heading_text(section["heading"], language))
     run.bold = True
-    run.font.size = Pt(11)
+    run.font.size = Pt(template_style["docx_heading_size"])
 
     if template_style["heading_separator"]:
-        separator = document.add_paragraph()
-        separator.paragraph_format.space_after = Pt(3)
-        separator.add_run("-" * 48)
+        if template_style.get("separator_as_rule"):
+            _add_docx_horizontal_line(document, template_style)
+        else:
+            separator = document.add_paragraph()
+            separator.paragraph_format.space_after = Pt(template_style["docx_separator_space_after"])
+            run = separator.add_run(template_style["separator_text"])
+            run.font.size = Pt(template_style["docx_separator_size"])
 
     for item in section["items"]:
         if item["type"] == "heading":
             paragraph = document.add_paragraph()
-            paragraph.paragraph_format.space_after = Pt(1)
+            paragraph.paragraph_format.space_after = Pt(template_style["docx_item_space_after"])
             run = paragraph.add_run(item["text"])
             run.bold = True
         elif item["type"] == "bullet":
             paragraph = document.add_paragraph(style="List Bullet")
-            paragraph.paragraph_format.space_after = Pt(1)
+            paragraph.paragraph_format.space_after = Pt(template_style["docx_bullet_space_after"])
+            paragraph.add_run(item["text"])
+        elif item["type"] == "separator":
+            paragraph = document.add_paragraph()
+            paragraph.paragraph_format.space_after = Pt(template_style["docx_item_space_after"])
             paragraph.add_run(item["text"])
         else:
             paragraph = document.add_paragraph(item["text"])
-            paragraph.paragraph_format.space_after = Pt(2)
+            paragraph.paragraph_format.space_after = Pt(template_style["docx_item_space_after"])
+
+
+def _add_docx_horizontal_line(document: Document, template_style: dict) -> None:
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_after = Pt(template_style["docx_separator_space_after"])
+    paragraph.paragraph_format.space_before = Pt(0)
+    p_pr = paragraph._p.get_or_add_pPr()
+    p_bdr = OxmlElement("w:pBdr")
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), "4")
+    bottom.set(qn("w:space"), "1")
+    bottom.set(qn("w:color"), "B7B7B7")
+    p_bdr.append(bottom)
+    p_pr.append(p_bdr)
+
+
+def _pdf_horizontal_line(template_style: dict) -> HRFlowable:
+    return HRFlowable(
+        width="100%",
+        thickness=0.45,
+        lineCap="butt",
+        color=colors.HexColor("#B7B7B7"),
+        spaceBefore=0,
+        spaceAfter=template_style["pdf_separator_space_after"],
+    )
 
 
 def _register_pdf_fonts() -> None:
@@ -465,15 +718,15 @@ def _register_pdf_fonts() -> None:
         PDF_BOLD_FONT_NAME = "ATSCVFont"
 
 
-def _pdf_styles() -> dict:
+def _pdf_styles(template_style: dict) -> dict:
     styles = getSampleStyleSheet()
     return {
         "Name": ParagraphStyle(
             "ATSName",
             parent=styles["Normal"],
             fontName=PDF_BOLD_FONT_NAME,
-            fontSize=17,
-            leading=20,
+            fontSize=template_style["pdf_name_size"],
+            leading=template_style["pdf_name_size"] + 3,
             alignment=TA_CENTER,
             spaceAfter=3,
         ),
@@ -481,8 +734,8 @@ def _pdf_styles() -> dict:
             "ATSTargetTitle",
             parent=styles["Normal"],
             fontName=PDF_BOLD_FONT_NAME,
-            fontSize=10.5,
-            leading=13,
+            fontSize=template_style["pdf_title_size"],
+            leading=template_style["pdf_title_size"] + 2.5,
             alignment=TA_CENTER,
             spaceAfter=3,
         ),
@@ -490,35 +743,36 @@ def _pdf_styles() -> dict:
             "ATSContact",
             parent=styles["Normal"],
             fontName=PDF_FONT_NAME,
-            fontSize=8.5,
-            leading=11,
+            fontSize=template_style["pdf_contact_size"],
+            leading=template_style["pdf_contact_size"] + 2,
             alignment=TA_CENTER,
             spaceAfter=5,
+            splitLongWords=0,
         ),
         "SectionHeading": ParagraphStyle(
             "ATSSectionHeading",
             parent=styles["Normal"],
             fontName=PDF_BOLD_FONT_NAME,
-            fontSize=10.5,
-            leading=13,
+            fontSize=template_style["pdf_heading_size"],
+            leading=template_style["pdf_heading_size"] + 2.5,
             alignment=TA_LEFT,
-            spaceBefore=7,
-            spaceAfter=3,
+            spaceBefore=template_style["pdf_heading_space_before"],
+            spaceAfter=template_style["pdf_heading_space_after"],
         ),
         "Separator": ParagraphStyle(
             "ATSSeparator",
             parent=styles["Normal"],
             fontName=PDF_FONT_NAME,
-            fontSize=7,
-            leading=8,
-            spaceAfter=3,
+            fontSize=template_style["pdf_separator_size"],
+            leading=template_style["pdf_separator_size"] + 1,
+            spaceAfter=template_style["pdf_separator_space_after"],
         ),
         "ItemHeading": ParagraphStyle(
             "ATSItemHeading",
             parent=styles["Normal"],
             fontName=PDF_BOLD_FONT_NAME,
-            fontSize=9.5,
-            leading=12,
+            fontSize=template_style["pdf_item_heading_size"],
+            leading=template_style["pdf_item_heading_size"] + 2.5,
             spaceBefore=2,
             spaceAfter=1,
         ),
@@ -526,19 +780,19 @@ def _pdf_styles() -> dict:
             "ATSBody",
             parent=styles["Normal"],
             fontName=PDF_FONT_NAME,
-            fontSize=9.3,
-            leading=12,
-            spaceAfter=2,
+            fontSize=template_style["pdf_body_size"],
+            leading=template_style["pdf_body_size"] + 2.5,
+            spaceAfter=template_style["pdf_body_space_after"],
         ),
         "Bullet": ParagraphStyle(
             "ATSBullet",
             parent=styles["Normal"],
             fontName=PDF_FONT_NAME,
-            fontSize=9.3,
-            leading=12,
+            fontSize=template_style["pdf_body_size"],
+            leading=template_style["pdf_body_size"] + 2.3,
             leftIndent=12,
             firstLineIndent=-8,
-            spaceAfter=1,
+            spaceAfter=template_style["pdf_bullet_space_after"],
         ),
     }
 
@@ -592,12 +846,214 @@ def _clean_list(values) -> list[str]:
     return [_clean_text(value) for value in values if _clean_text(value)]
 
 
+def _modern_clean_core_skill_values(skills: dict, metadata: dict | None = None) -> list[str]:
+    core_values = _clean_list(skills.get("core_skills", []))
+    all_values = core_values[:]
+    for group in ["technical_skills", "tools", "databases", "cloud", "soft_skills"]:
+        all_values.extend(_clean_list(skills.get(group, [])))
+
+    ranked_values = rank_skills_for_job({"core": _dedupe_preserve_order(all_values)}, "", metadata or {}).get("core", [])
+    return _dedupe_preserve_order(ranked_values + core_values)[:16]
+
+
 def _join_non_empty(values, separator: str = " | ") -> str:
     return separator.join(_clean_text(value) for value in values if _clean_text(value))
 
 
 def _date_range(start_date, end_date) -> str:
     return _join_non_empty([start_date, end_date], separator=" - ")
+
+
+def _project_link_label(link: str, contact_links: set[str], language: str) -> str:
+    cleaned_link = _clean_text(link)
+    if not cleaned_link:
+        return ""
+
+    normalized_link = _normalize_url_for_compare(cleaned_link)
+    if normalized_link in contact_links or _is_github_profile_link(cleaned_link):
+        return ""
+
+    if "github.com/" in normalized_link:
+        label = "GitHub" if _language_key(language) == "English" else "GitHub"
+    else:
+        label = "Project Link" if _language_key(language) == "English" else "Proje Linki"
+    return f"{label}: {cleaned_link}"
+
+
+def _is_github_profile_link(link: str) -> bool:
+    normalized = _normalize_url_for_compare(link)
+    if "github.com/" not in normalized:
+        return False
+    path = normalized.split("github.com/", 1)[1].strip("/")
+    return bool(path) and "/" not in path
+
+
+def _normalize_url_for_compare(value) -> str:
+    text = _clean_text(value).lower().rstrip("/")
+    for prefix in ["https://www.", "http://www.", "https://", "http://", "www."]:
+        if text.startswith(prefix):
+            return text[len(prefix):]
+    return text
+
+
+def _trim_text(value, max_chars: int) -> str:
+    text = _clean_text(value)
+    if len(text) <= max_chars:
+        return text
+
+    trimmed = text[:max_chars].rsplit(" ", 1)[0].strip()
+    return f"{trimmed}."
+
+
+def _prioritize_strings(values: list[str], keywords: list[str], limit: int) -> list[str]:
+    if not values:
+        return []
+    if limit <= 0:
+        return []
+
+    normalized_keywords = _dedupe_preserve_order([
+        keyword.lower().strip()
+        for keyword in keywords
+        if _clean_text(keyword)
+    ])
+
+    def score(value: str) -> int:
+        normalized_value = value.lower()
+        value_tokens = set(re.findall(r"[\w#+.]+", normalized_value))
+        total = 0
+        for keyword in normalized_keywords:
+            if keyword in normalized_value:
+                total += 4
+            keyword_tokens = set(re.findall(r"[\w#+.]+", keyword))
+            if keyword_tokens and value_tokens:
+                total += len(keyword_tokens & value_tokens)
+        return total
+
+    indexed_values = list(enumerate(values))
+    sorted_values = sorted(indexed_values, key=lambda item: (-score(item[1]), item[0]))
+    selected = sorted_values[:limit]
+    return [value for _, value in sorted(selected, key=lambda item: item[0])]
+
+
+def _dedupe_preserve_order(values: list[str]) -> list[str]:
+    seen = set()
+    result = []
+    for value in values:
+        cleaned = _clean_text(value)
+        key = cleaned.lower()
+        if cleaned and key not in seen:
+            seen.add(key)
+            result.append(cleaned)
+    return result
+
+
+def _cv_for_export_style(ats_cv: dict, template: dict, language: str, export_style: str) -> dict:
+    original_cv = deepcopy(ats_cv)
+    if export_style in {"compact", "balanced_one_page"}:
+        render_cv = balance_one_page_content(ats_cv, template, language)
+    else:
+        render_cv = deepcopy(ats_cv)
+
+    return _restore_preserved_export_fields(original_cv, render_cv)
+
+
+def _restore_preserved_export_fields(source_cv: dict, render_cv: dict) -> dict:
+    """Ensure export styling and compaction never rewrite protected identity fields."""
+    result = deepcopy(render_cv)
+    if not isinstance(source_cv, dict):
+        return result
+
+    source_contact = source_cv.get("contact")
+    result_contact = result.get("contact")
+    if isinstance(source_contact, dict) and isinstance(result_contact, dict):
+        for field in PRESERVED_CONTACT_FIELDS:
+            if _clean_text(source_contact.get(field)):
+                result_contact[field] = source_contact.get(field)
+
+    for section_key, fields in PRESERVED_RECORD_FIELDS.items():
+        source_records = source_cv.get(section_key)
+        result_records = result.get(section_key)
+        if not isinstance(source_records, list) or not isinstance(result_records, list):
+            continue
+
+        for index, source_record in enumerate(source_records):
+            if index >= len(result_records):
+                break
+            result_record = result_records[index]
+            if not isinstance(source_record, dict) or not isinstance(result_record, dict):
+                continue
+            for field in fields:
+                if _clean_text(source_record.get(field)):
+                    result_record[field] = source_record.get(field)
+
+    return result
+
+
+def _effective_export_style(export_style: str, one_page: bool) -> str:
+    normalized = str(export_style or "").strip().lower().replace(" ", "_").replace("-", "_")
+    if normalized in {"", "standard", "normal"}:
+        normalized = "balanced_one_page" if one_page else "standard"
+    if normalized in {"one_page", "balanced", "balanced_one_page"}:
+        return "balanced_one_page"
+    if normalized == "compact":
+        return "compact"
+    return "standard"
+
+
+def _density_limits(density: str) -> dict:
+    if density == "short":
+        return {
+            "summary_chars": 760,
+            "experience_bullets": 4,
+            "project_bullets": 3,
+            "project_description_chars": 360,
+            "project_technologies": 12,
+            "education_details": 3,
+            "certifications": 6,
+            "skills": {
+                "technical_skills": 16,
+                "core_skills": 12,
+                "tools": 8,
+                "databases": 8,
+                "cloud": 6,
+                "soft_skills": 6,
+            },
+        }
+    if density == "medium":
+        return {
+            "summary_chars": 620,
+            "experience_bullets": 3,
+            "project_bullets": 2,
+            "project_description_chars": 300,
+            "project_technologies": 10,
+            "education_details": 2,
+            "certifications": 4,
+            "skills": {
+                "technical_skills": 13,
+                "core_skills": 10,
+                "tools": 7,
+                "databases": 6,
+                "cloud": 5,
+                "soft_skills": 5,
+            },
+        }
+    return {
+        "summary_chars": 460,
+        "experience_bullets": 2,
+        "project_bullets": 2,
+        "project_description_chars": 220,
+        "project_technologies": 8,
+        "education_details": 1,
+        "certifications": 3,
+        "skills": {
+            "technical_skills": 10,
+            "core_skills": 8,
+            "tools": 5,
+            "databases": 5,
+            "cloud": 4,
+            "soft_skills": 4,
+        },
+    }
 
 
 def _first_existing_path(paths: list[str]) -> str:
@@ -607,32 +1063,217 @@ def _first_existing_path(paths: list[str]) -> str:
     return ""
 
 
-def _template_style(template: dict) -> dict:
+def _template_style(template: dict, export_style: str = "standard", density: str = "medium") -> dict:
     template_id = template.get("id", "classic_ats")
     styles = {
         "classic_ats": {
+            "docx_margin": 0.58,
+            "docx_name_size": 18,
+            "docx_title_size": 11,
+            "docx_contact_size": 9,
+            "docx_body_size": 10.4,
             "docx_section_space_before": 8,
+            "docx_item_space_after": 1.8,
+            "docx_bullet_space_after": 1,
+            "pdf_margin": 0.58,
+            "pdf_name_size": 17,
+            "pdf_title_size": 11,
+            "pdf_contact_size": 8.7,
+            "pdf_heading_size": 10.6,
+            "pdf_item_heading_size": 9.5,
+            "pdf_body_size": 9.25,
+            "pdf_body_space_after": 1.8,
+            "pdf_bullet_space_after": 1,
+            "pdf_contact_after_spacing": 0.14 * inch,
             "pdf_section_spacing": 0,
-            "pdf_section_after_spacing": 0.10 * inch,
+            "pdf_section_after_spacing": 0.07 * inch,
             "heading_separator": False,
         },
         "modern_clean": {
-            "docx_section_space_before": 12,
-            "pdf_section_spacing": 0.05 * inch,
-            "pdf_section_after_spacing": 0.14 * inch,
+            "docx_margin": 0.54,
+            "docx_name_size": 18,
+            "docx_title_size": 11.5,
+            "docx_contact_size": 8.8,
+            "docx_body_size": 9.6,
+            "docx_section_space_before": 7,
+            "docx_item_space_after": 1.1,
+            "docx_bullet_space_after": 0.55,
+            "docx_heading_size": 10.3,
+            "docx_heading_space_after": 0.4,
+            "docx_separator_size": 7.5,
+            "docx_separator_space_after": 0.5,
+            "pdf_margin": 0.52,
+            "pdf_name_size": 17.8,
+            "pdf_title_size": 11.5,
+            "pdf_contact_size": 8.8,
+            "pdf_heading_size": 10.2,
+            "pdf_item_heading_size": 9.6,
+            "pdf_body_size": 9.0,
+            "pdf_body_space_after": 0.8,
+            "pdf_bullet_space_after": 0.35,
+            "pdf_heading_space_before": 3.2,
+            "pdf_heading_space_after": 0.6,
+            "pdf_separator_size": 5.6,
+            "pdf_separator_space_after": 0.45,
+            "pdf_contact_after_spacing": 0.09 * inch,
+            "pdf_section_spacing": 0,
+            "pdf_section_after_spacing": 0.045 * inch,
             "heading_separator": True,
+            "separator_text": "-" * 54,
+            "separator_as_rule": True,
         },
         "technical_developer": {
+            "docx_margin": 0.56,
+            "docx_name_size": 17,
+            "docx_title_size": 10.5,
+            "docx_contact_size": 8.5,
+            "docx_body_size": 10,
             "docx_section_space_before": 7,
+            "docx_item_space_after": 1.2,
+            "docx_bullet_space_after": 0.7,
+            "pdf_margin": 0.54,
+            "pdf_name_size": 17,
+            "pdf_title_size": 10.8,
+            "pdf_contact_size": 8.2,
+            "pdf_heading_size": 10.4,
+            "pdf_item_heading_size": 9.5,
+            "pdf_body_size": 9.05,
+            "pdf_body_space_after": 1.2,
+            "pdf_bullet_space_after": 0.6,
+            "pdf_contact_after_spacing": 0.10 * inch,
             "pdf_section_spacing": 0,
-            "pdf_section_after_spacing": 0.08 * inch,
+            "pdf_section_after_spacing": 0.06 * inch,
             "heading_separator": False,
         },
         "junior_internship": {
-            "docx_section_space_before": 7,
+            "docx_margin": 0.58,
+            "docx_name_size": 17,
+            "docx_title_size": 10.8,
+            "docx_contact_size": 8.7,
+            "docx_body_size": 10.2,
+            "docx_section_space_before": 9,
+            "docx_item_space_after": 1.6,
+            "docx_bullet_space_after": 0.9,
+            "pdf_margin": 0.58,
+            "pdf_name_size": 17,
+            "pdf_title_size": 10.8,
+            "pdf_contact_size": 8.5,
+            "pdf_heading_size": 10.5,
+            "pdf_item_heading_size": 9.3,
+            "pdf_body_size": 9,
+            "pdf_body_space_after": 1.4,
+            "pdf_bullet_space_after": 0.8,
+            "pdf_contact_after_spacing": 0.12 * inch,
             "pdf_section_spacing": 0,
             "pdf_section_after_spacing": 0.09 * inch,
             "heading_separator": False,
         },
     }
-    return styles.get(template_id, styles["classic_ats"])
+    style = deepcopy(styles.get(template_id, styles["classic_ats"]))
+    style["template_id"] = template_id
+    style.setdefault("docx_contact_size", 9)
+    style.setdefault("docx_heading_size", 11)
+    style.setdefault("docx_heading_space_after", 3)
+    style.setdefault("docx_separator_size", 8)
+    style.setdefault("docx_separator_space_after", 3)
+    style.setdefault("pdf_heading_space_before", 6)
+    style.setdefault("pdf_heading_space_after", 2.5)
+    style.setdefault("pdf_separator_size", 7)
+    style.setdefault("pdf_separator_space_after", 3)
+    style.setdefault("separator_text", "-" * 48)
+    style.setdefault("separator_as_rule", False)
+    if export_style == "compact":
+        _apply_compact_style(style)
+    elif export_style == "balanced_one_page":
+        _apply_balanced_one_page_style(style, density)
+    return style
+
+
+def _apply_compact_style(style: dict) -> None:
+    style["docx_margin"] = max(0.45, style["docx_margin"] - 0.14)
+    style["docx_name_size"] = max(15, style["docx_name_size"] - 1.4)
+    style["docx_title_size"] = max(9.5, style["docx_title_size"] - 0.9)
+    style["docx_body_size"] = max(9, style["docx_body_size"] - 0.8)
+    style["docx_heading_size"] = max(10, style["docx_heading_size"] - 0.4)
+    style["docx_heading_space_after"] = max(1, style["docx_heading_space_after"] - 1.2)
+    style["docx_separator_space_after"] = max(0.5, style["docx_separator_space_after"] - 1.5)
+    style["docx_section_space_before"] = max(4, style["docx_section_space_before"] - 4)
+    style["docx_item_space_after"] = max(0, style["docx_item_space_after"] - 1.2)
+    style["docx_bullet_space_after"] = max(0, style["docx_bullet_space_after"] - 0.8)
+    style["pdf_margin"] = max(0.45, style["pdf_margin"] - 0.12)
+    style["pdf_name_size"] = max(15, style["pdf_name_size"] - 1.2)
+    style["pdf_title_size"] = max(10, style["pdf_title_size"] - 0.8)
+    style["pdf_contact_size"] = max(8, style["pdf_contact_size"] - 0.5)
+    style["pdf_heading_size"] = max(9.5, style["pdf_heading_size"] - 0.8)
+    style["pdf_heading_space_before"] = max(2, style["pdf_heading_space_before"] - 3)
+    style["pdf_heading_space_after"] = max(0.8, style["pdf_heading_space_after"] - 1.2)
+    style["pdf_separator_size"] = max(5.8, style["pdf_separator_size"] - 0.6)
+    style["pdf_separator_space_after"] = max(0, style["pdf_separator_space_after"] - 2)
+    style["pdf_item_heading_size"] = max(8.7, style["pdf_item_heading_size"] - 0.5)
+    style["pdf_body_size"] = max(8.5, style["pdf_body_size"] - 0.6)
+    style["pdf_body_space_after"] = max(0, style["pdf_body_space_after"] - 1)
+    style["pdf_bullet_space_after"] = max(0, style["pdf_bullet_space_after"] - 0.7)
+    style["pdf_contact_after_spacing"] = max(0.06 * inch, style["pdf_contact_after_spacing"] - 0.05 * inch)
+    style["pdf_section_spacing"] = max(0, style["pdf_section_spacing"] - 0.03 * inch)
+    style["pdf_section_after_spacing"] = max(0.03 * inch, style["pdf_section_after_spacing"] - 0.05 * inch)
+
+
+def _apply_balanced_one_page_style(style: dict, density: str) -> None:
+    if density == "short":
+        style["docx_margin"] = max(0.50, style["docx_margin"] - 0.06)
+        style["pdf_margin"] = max(0.50, style["pdf_margin"] - 0.06)
+        style["docx_section_space_before"] += 1
+        style["pdf_section_after_spacing"] += 0.02 * inch
+        style["pdf_body_size"] = min(9.5, style["pdf_body_size"] + 0.15)
+        style["pdf_bullet_space_after"] += 0.2
+        _apply_modern_clean_one_page_micro_adjustments(style, density)
+        return
+
+    if density == "medium":
+        style["docx_margin"] = max(0.50, style["docx_margin"] - 0.08)
+        style["docx_name_size"] = max(15.5, style["docx_name_size"] - 0.5)
+        style["docx_body_size"] = max(9.4, style["docx_body_size"] - 0.35)
+        style["docx_section_space_before"] = max(5, style["docx_section_space_before"] - 2)
+        style["docx_heading_space_after"] = max(1.5, style["docx_heading_space_after"] - 0.5)
+        style["pdf_margin"] = max(0.50, style["pdf_margin"] - 0.08)
+        style["pdf_name_size"] = max(15.5, style["pdf_name_size"] - 0.6)
+        style["pdf_title_size"] = max(10.3, style["pdf_title_size"] - 0.4)
+        style["pdf_heading_size"] = max(9.8, style["pdf_heading_size"] - 0.4)
+        style["pdf_heading_space_before"] = max(3, style["pdf_heading_space_before"] - 1.2)
+        style["pdf_heading_space_after"] = max(1.2, style["pdf_heading_space_after"] - 0.6)
+        style["pdf_body_size"] = max(8.7, style["pdf_body_size"] - 0.3)
+        style["pdf_body_space_after"] = max(0.4, style["pdf_body_space_after"] - 0.4)
+        style["pdf_bullet_space_after"] = max(0.2, style["pdf_bullet_space_after"] - 0.25)
+        style["pdf_section_after_spacing"] = max(0.05 * inch, style["pdf_section_after_spacing"] - 0.03 * inch)
+        _apply_modern_clean_one_page_micro_adjustments(style, density)
+        return
+
+    _apply_compact_style(style)
+    _apply_modern_clean_one_page_micro_adjustments(style, density)
+
+
+def _apply_modern_clean_one_page_micro_adjustments(style: dict, density: str) -> None:
+    if style.get("template_id") != "modern_clean":
+        return
+
+    reduction = 0.16 if density == "short" else 0.32
+    style["docx_margin"] = max(0.46, style["docx_margin"] - 0.03)
+    style["docx_body_size"] = max(9.25, style["docx_body_size"] - reduction)
+    style["docx_section_space_before"] = max(4.2, style["docx_section_space_before"] - 1.2)
+    style["docx_heading_space_after"] = max(0.8, style["docx_heading_space_after"] - 0.8)
+    style["docx_separator_space_after"] = max(0.3, style["docx_separator_space_after"] - 1.8)
+    style["docx_item_space_after"] = max(0.3, style["docx_item_space_after"] - 0.6)
+    style["docx_bullet_space_after"] = max(0.15, style["docx_bullet_space_after"] - 0.45)
+
+    style["pdf_margin"] = max(0.44, style["pdf_margin"] - 0.045)
+    style["pdf_body_size"] = max(8.45, style["pdf_body_size"] - reduction)
+    style["pdf_heading_size"] = max(9.45, style["pdf_heading_size"] - 0.2)
+    style["pdf_heading_space_before"] = max(1.5, style["pdf_heading_space_before"] - 1.6)
+    style["pdf_heading_space_after"] = max(0.6, style["pdf_heading_space_after"] - 0.8)
+    style["pdf_separator_size"] = max(5.6, style["pdf_separator_size"] - 0.8)
+    style["pdf_separator_space_after"] = max(0, style["pdf_separator_space_after"] - 2.4)
+    style["pdf_body_space_after"] = max(0, style["pdf_body_space_after"] - 0.7)
+    style["pdf_bullet_space_after"] = max(0, style["pdf_bullet_space_after"] - 0.45)
+    style["pdf_contact_after_spacing"] = max(0.045 * inch, style["pdf_contact_after_spacing"] - 0.035 * inch)
+    style["pdf_section_spacing"] = max(0, style["pdf_section_spacing"] - 0.025 * inch)
+    style["pdf_section_after_spacing"] = max(0.015 * inch, style["pdf_section_after_spacing"] - 0.045 * inch)

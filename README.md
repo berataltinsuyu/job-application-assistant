@@ -38,8 +38,62 @@ ATS CV Builder now supports:
 - Template-aware section order
 - ATS score before/after estimates
 - Keyword optimization summary
+- Polished template-specific DOCX/PDF rendering
+- Balanced one-page export optimization
+- ATS score explanation
+- Export section controls
 
 DOCX export is recommended when users want to edit the CV after generation.
+The ATS score is an estimated relevance score, not an official ATS result.
+
+---
+
+## Phase 2A - Job Monitoring Agent
+
+Phase 2A adds a generic, ethical foundation for low-frequency job monitoring.
+
+What it does:
+- Creates reusable job alert profiles with keywords, location, seniority, job type, work model, excluded keywords, sources, active/passive state, and a minimum match score.
+- Runs safe mock/manual monitoring through the `manual_mock` source adapter.
+- Scores normalized job records deterministically against each alert profile.
+- Stores monitored jobs, run history, match summaries, matched keywords, missing keywords, and job workflow status.
+- Lets users mark monitored jobs as `new`, `saved`, `rejected`, `applied`, or `archived`.
+
+How to create an alert profile:
+1. Open **Job Monitoring Agent** in the Streamlit sidebar.
+2. Enter an alert name and comma-separated keywords.
+3. Optionally add location, seniority, job type, work model, and excluded keywords.
+4. Keep the source as `manual_mock` for Phase 2A.
+5. Choose a minimum match score, then create the alert.
+
+How to run mock/manual monitoring:
+1. In the existing alert profiles list, click **Run now**.
+2. The backend calls only `ManualMockJobSourceAdapter`.
+3. Matching jobs are stored and shown in the job results section.
+4. Re-running the same alert updates existing jobs by `alert_profile_id + source + source_job_id` instead of creating duplicates.
+
+How match scoring works:
+- The scorer checks alert keywords against the mock job title and description.
+- Location, seniority, job type, and work model add deterministic filter-based score contributions when provided.
+- Excluded keywords reduce the score when found in the title or description.
+- Scores are clamped from 0 to 100.
+- Gemini or other LLMs are not used for Phase 2A job monitoring scores.
+
+Current limitations:
+- No real scraping is implemented yet.
+- Only the `manual_mock` source adapter exists in Phase 2A.
+- ATS CV Builder, cover letter, and application email actions are placeholders until later phases.
+
+Future phases:
+- Add carefully reviewed real source adapters.
+- Connect monitored jobs to tailored CV, cover letter, and application email generation.
+- Add scheduling, notifications, and richer filtering only after safety constraints are defined.
+
+Safety policy:
+- Future source adapters must respect public access, robots.txt, rate limits, and source terms.
+- Do not bypass login, CAPTCHA, Cloudflare, paywalls, or access controls.
+- Do not use proxies, evasion techniques, hidden browser automation, or aggressive polling.
+- Keep monitoring low-frequency and user-controlled.
 
 ---
 
