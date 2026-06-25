@@ -33,7 +33,7 @@ from services.cv_photo_service import prepare_cv_photo_for_export
 
 SECTION_TITLES = {
     "English": {
-        "professional_summary": "Professional Summary",
+        "professional_summary": "Summary",
         "career_objective": "Career Objective",
         "technical_summary": "Technical Summary",
         "skills": "Skills",
@@ -47,7 +47,7 @@ SECTION_TITLES = {
         "languages": "Languages",
     },
     "Turkish": {
-        "professional_summary": "Profesyonel Özet",
+        "professional_summary": "Özet",
         "career_objective": "Kariyer Hedefi",
         "technical_summary": "Teknik Özet",
         "skills": "Yetenekler",
@@ -226,7 +226,10 @@ def compact_ats_cv_for_one_page(ats_cv: dict, template: dict, language: str) -> 
 def balance_one_page_content(ats_cv: dict, template: dict, language: str) -> dict:
     compact_cv = deepcopy(ats_cv)
     density = estimate_cv_content_density(compact_cv)
-    limits = _density_limits(density)
+    if density == "short":
+        return compact_cv
+
+    limits = _density_limits(density, mode="balanced_one_page")
     metadata = compact_cv.get("ats_metadata", {}) if isinstance(compact_cv, dict) else {}
     keywords = relevance_keywords("", metadata)
 
@@ -244,16 +247,20 @@ def balance_one_page_content(ats_cv: dict, template: dict, language: str) -> dic
     compact_cv["education"] = rank_education_for_job(compact_cv.get("education", []), "", metadata)
     compact_cv["certifications"] = rank_certifications_for_job(compact_cv.get("certifications", []), "", metadata)
 
-    for record in compact_cv.get("experience", []):
+    for index, record in enumerate(compact_cv.get("experience", [])):
         if isinstance(record, dict):
             bullets = _clean_list(record.get("bullets", []))
-            record["bullets"] = _prioritize_strings(bullets, keywords, limits["experience_bullets"]) or bullets[:1]
+            minimum = 3 if index == 0 else 2
+            target_limit = max(minimum, limits["experience_bullets_first" if index == 0 else "experience_bullets_secondary"])
+            record["bullets"] = _prioritize_strings_with_minimum(bullets, keywords, target_limit, minimum)
 
-    for record in compact_cv.get("projects", []):
+    for index, record in enumerate(compact_cv.get("projects", [])):
         if isinstance(record, dict):
             record["description"] = _trim_text(record.get("description"), limits["project_description_chars"])
             bullets = _clean_list(record.get("bullets", []))
-            record["bullets"] = _prioritize_strings(bullets, keywords, limits["project_bullets"]) or bullets[:1]
+            minimum = 2 if index == 0 else 1
+            target_limit = max(minimum, limits["project_bullets_first" if index == 0 else "project_bullets_secondary"])
+            record["bullets"] = _prioritize_strings_with_minimum(bullets, keywords, target_limit, minimum)
             record["technologies"] = _prioritize_strings(
                 _clean_list(record.get("technologies", [])),
                 keywords,
@@ -269,6 +276,8 @@ def balance_one_page_content(ats_cv: dict, template: dict, language: str) -> dic
         certification for certification in compact_cv.get("certifications", [])
         if isinstance(certification, dict) and any(_clean_text(value) for value in certification.values())
     ][:limits["certifications"]]
+
+    compact_cv["languages"] = compact_cv.get("languages", [])
 
     return compact_cv
 
@@ -1315,6 +1324,17 @@ def _prioritize_strings(values: list[str], keywords: list[str], limit: int) -> l
     return [value for _, value in sorted(selected, key=lambda item: item[0])]
 
 
+def _prioritize_strings_with_minimum(values: list[str], keywords: list[str], limit: int, minimum: int) -> list[str]:
+    cleaned_values = _clean_list(values)
+    if not cleaned_values:
+        return []
+    effective_limit = min(len(cleaned_values), max(minimum, limit))
+    selected = _prioritize_strings(cleaned_values, keywords, effective_limit)
+    if len(selected) >= min(minimum, len(cleaned_values)):
+        return selected
+    return cleaned_values[:min(minimum, len(cleaned_values))]
+
+
 def _dedupe_preserve_order(values: list[str]) -> list[str]:
     seen = set()
     result = []
@@ -1382,7 +1402,48 @@ def _effective_export_style(export_style: str, one_page: bool) -> str:
     return "standard"
 
 
-def _density_limits(density: str) -> dict:
+def _density_limits(density: str, mode: str = "compact") -> dict:
+    if mode == "balanced_one_page":
+        if density == "medium":
+            return {
+                "summary_chars": 720,
+                "experience_bullets_first": 4,
+                "experience_bullets_secondary": 3,
+                "project_bullets_first": 3,
+                "project_bullets_secondary": 2,
+                "project_description_chars": 340,
+                "project_technologies": 12,
+                "education_details": 2,
+                "certifications": 5,
+                "skills": {
+                    "technical_skills": 16,
+                    "core_skills": 12,
+                    "tools": 9,
+                    "databases": 8,
+                    "cloud": 6,
+                    "soft_skills": 5,
+                },
+            }
+        return {
+            "summary_chars": 620,
+            "experience_bullets_first": 3,
+            "experience_bullets_secondary": 2,
+            "project_bullets_first": 2,
+            "project_bullets_secondary": 2,
+            "project_description_chars": 280,
+            "project_technologies": 10,
+            "education_details": 1,
+            "certifications": 4,
+            "skills": {
+                "technical_skills": 14,
+                "core_skills": 10,
+                "tools": 8,
+                "databases": 6,
+                "cloud": 5,
+                "soft_skills": 4,
+            },
+        }
+
     if density == "short":
         return {
             "summary_chars": 760,
@@ -1794,36 +1855,84 @@ def _apply_compact_style(style: dict) -> None:
 
 def _apply_balanced_one_page_style(style: dict, density: str) -> None:
     if density == "short":
-        style["docx_margin"] = max(0.50, style["docx_margin"] - 0.06)
-        style["pdf_margin"] = max(0.50, style["pdf_margin"] - 0.06)
-        style["docx_section_space_before"] += 1
-        style["pdf_section_after_spacing"] += 0.02 * inch
-        style["pdf_body_size"] = min(9.5, style["pdf_body_size"] + 0.15)
-        style["pdf_bullet_space_after"] += 0.2
+        style["docx_margin"] = max(0.48, style["docx_margin"] - 0.04)
+        style["pdf_margin"] = max(0.48, style["pdf_margin"] - 0.04)
+        style["docx_section_space_before"] = max(4.5, style["docx_section_space_before"] - 0.8)
+        style["docx_item_space_after"] = max(0.4, style["docx_item_space_after"] - 0.25)
+        style["docx_bullet_space_after"] = max(0, style["docx_bullet_space_after"] - 0.15)
+        style["pdf_heading_space_before"] = max(2, style["pdf_heading_space_before"] - 0.8)
+        style["pdf_body_space_after"] = max(0.25, style["pdf_body_space_after"] - 0.25)
+        style["pdf_bullet_space_after"] = max(0, style["pdf_bullet_space_after"] - 0.1)
         _apply_modern_clean_one_page_micro_adjustments(style, density)
         return
 
     if density == "medium":
-        style["docx_margin"] = max(0.50, style["docx_margin"] - 0.08)
-        style["docx_name_size"] = max(15.5, style["docx_name_size"] - 0.5)
-        style["docx_body_size"] = max(9.4, style["docx_body_size"] - 0.35)
-        style["docx_section_space_before"] = max(5, style["docx_section_space_before"] - 2)
-        style["docx_heading_space_after"] = max(1.5, style["docx_heading_space_after"] - 0.5)
-        style["pdf_margin"] = max(0.50, style["pdf_margin"] - 0.08)
-        style["pdf_name_size"] = max(15.5, style["pdf_name_size"] - 0.6)
-        style["pdf_title_size"] = max(10.3, style["pdf_title_size"] - 0.4)
-        style["pdf_heading_size"] = max(9.8, style["pdf_heading_size"] - 0.4)
-        style["pdf_heading_space_before"] = max(3, style["pdf_heading_space_before"] - 1.2)
-        style["pdf_heading_space_after"] = max(1.2, style["pdf_heading_space_after"] - 0.6)
-        style["pdf_body_size"] = max(8.7, style["pdf_body_size"] - 0.3)
-        style["pdf_body_space_after"] = max(0.4, style["pdf_body_space_after"] - 0.4)
-        style["pdf_bullet_space_after"] = max(0.2, style["pdf_bullet_space_after"] - 0.25)
-        style["pdf_section_after_spacing"] = max(0.05 * inch, style["pdf_section_after_spacing"] - 0.03 * inch)
+        style["docx_margin"] = max(0.46, style["docx_margin"] - 0.09)
+        style["docx_name_size"] = max(15.5, style["docx_name_size"] - 0.45)
+        style["docx_title_size"] = max(9.6, style["docx_title_size"] - 0.25)
+        style["docx_contact_size"] = max(7.4, style["docx_contact_size"] - 0.25)
+        style["docx_body_size"] = max(9.05, style["docx_body_size"] - 0.35)
+        style["docx_section_space_before"] = max(3.8, style["docx_section_space_before"] - 2.5)
+        style["docx_heading_space_after"] = max(0.25, style["docx_heading_space_after"] - 0.6)
+        style["docx_separator_space_after"] = max(0, style["docx_separator_space_after"] - 0.6)
+        style["docx_item_space_before"] = max(0.5, style["docx_item_space_before"] - 0.8)
+        style["docx_item_space_after"] = max(0, style["docx_item_space_after"] - 0.55)
+        style["docx_bullet_space_after"] = max(0, style["docx_bullet_space_after"] - 0.35)
+        style["docx_header_rule_space_after"] = max(2, style["docx_header_rule_space_after"] - 2)
+        style["pdf_margin"] = max(0.45, style["pdf_margin"] - 0.09)
+        style["pdf_name_size"] = max(15.5, style["pdf_name_size"] - 0.7)
+        style["pdf_title_size"] = max(9.8, style["pdf_title_size"] - 0.45)
+        style["pdf_contact_size"] = max(7.2, style["pdf_contact_size"] - 0.35)
+        style["pdf_heading_size"] = max(9.0, style["pdf_heading_size"] - 0.55)
+        style["pdf_heading_space_before"] = max(1.2, style["pdf_heading_space_before"] - 1.7)
+        style["pdf_heading_space_after"] = max(0, style["pdf_heading_space_after"] - 0.7)
+        style["pdf_separator_space_after"] = max(0, style["pdf_separator_space_after"] - 0.4)
+        style["pdf_item_space_before"] = max(0.4, style["pdf_item_space_before"] - 0.7)
+        style["pdf_item_space_after"] = max(0, style["pdf_item_space_after"] - 0.4)
+        style["pdf_body_size"] = max(8.2, style["pdf_body_size"] - 0.35)
+        style["pdf_body_space_after"] = max(0, style["pdf_body_space_after"] - 0.35)
+        style["pdf_bullet_space_after"] = max(0, style["pdf_bullet_space_after"] - 0.2)
+        style["pdf_contact_after_spacing"] = max(0.035 * inch, style["pdf_contact_after_spacing"] - 0.035 * inch)
+        style["pdf_header_rule_after_spacing"] = max(0.02 * inch, style["pdf_header_rule_after_spacing"] - 0.025 * inch)
+        style["pdf_section_after_spacing"] = max(0.01 * inch, style["pdf_section_after_spacing"] - 0.03 * inch)
         _apply_modern_clean_one_page_micro_adjustments(style, density)
         return
 
-    _apply_compact_style(style)
+    _apply_one_page_dense_layout(style)
     _apply_modern_clean_one_page_micro_adjustments(style, density)
+
+
+def _apply_one_page_dense_layout(style: dict) -> None:
+    style["docx_margin"] = max(0.42, style["docx_margin"] - 0.12)
+    style["docx_name_size"] = max(15, style["docx_name_size"] - 0.8)
+    style["docx_title_size"] = max(9.3, style["docx_title_size"] - 0.5)
+    style["docx_contact_size"] = max(7.2, style["docx_contact_size"] - 0.45)
+    style["docx_body_size"] = max(8.75, style["docx_body_size"] - 0.55)
+    style["docx_heading_size"] = max(9.0, style["docx_heading_size"] - 0.55)
+    style["docx_heading_space_after"] = max(0, style["docx_heading_space_after"] - 0.8)
+    style["docx_separator_space_after"] = max(0, style["docx_separator_space_after"] - 0.8)
+    style["docx_section_space_before"] = max(3.2, style["docx_section_space_before"] - 3.0)
+    style["docx_item_space_before"] = max(0.3, style["docx_item_space_before"] - 1.0)
+    style["docx_item_space_after"] = max(0, style["docx_item_space_after"] - 0.75)
+    style["docx_bullet_space_after"] = max(0, style["docx_bullet_space_after"] - 0.5)
+    style["docx_header_rule_space_after"] = max(1.5, style["docx_header_rule_space_after"] - 2.5)
+    style["pdf_margin"] = max(0.42, style["pdf_margin"] - 0.12)
+    style["pdf_name_size"] = max(14.5, style["pdf_name_size"] - 1.0)
+    style["pdf_title_size"] = max(9.4, style["pdf_title_size"] - 0.65)
+    style["pdf_contact_size"] = max(7.0, style["pdf_contact_size"] - 0.5)
+    style["pdf_heading_size"] = max(8.8, style["pdf_heading_size"] - 0.75)
+    style["pdf_heading_space_before"] = max(0.8, style["pdf_heading_space_before"] - 2.1)
+    style["pdf_heading_space_after"] = max(0, style["pdf_heading_space_after"] - 0.9)
+    style["pdf_separator_space_after"] = max(0, style["pdf_separator_space_after"] - 0.55)
+    style["pdf_item_heading_size"] = max(8.0, style["pdf_item_heading_size"] - 0.45)
+    style["pdf_item_space_before"] = max(0, style["pdf_item_space_before"] - 0.9)
+    style["pdf_item_space_after"] = max(0, style["pdf_item_space_after"] - 0.6)
+    style["pdf_body_size"] = max(7.95, style["pdf_body_size"] - 0.55)
+    style["pdf_body_space_after"] = max(0, style["pdf_body_space_after"] - 0.5)
+    style["pdf_bullet_space_after"] = max(0, style["pdf_bullet_space_after"] - 0.35)
+    style["pdf_contact_after_spacing"] = max(0.025 * inch, style["pdf_contact_after_spacing"] - 0.05 * inch)
+    style["pdf_header_rule_after_spacing"] = max(0.015 * inch, style["pdf_header_rule_after_spacing"] - 0.035 * inch)
+    style["pdf_section_after_spacing"] = max(0, style["pdf_section_after_spacing"] - 0.04 * inch)
 
 
 def _apply_modern_clean_one_page_micro_adjustments(style: dict, density: str) -> None:
