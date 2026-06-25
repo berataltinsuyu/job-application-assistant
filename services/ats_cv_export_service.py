@@ -1385,7 +1385,7 @@ def _restore_preserved_export_fields(source_cv: dict, render_cv: dict) -> dict:
             if not isinstance(source_record, dict) or not isinstance(result_record, dict):
                 continue
             for field in fields:
-                if _clean_text(source_record.get(field)):
+                if _clean_text(source_record.get(field)) and not _clean_text(result_record.get(field)):
                     result_record[field] = source_record.get(field)
 
     return result
