@@ -54,11 +54,11 @@ DOCX_TEMPLATE_CATALOG = [
     {
         "template_id": "modern_professional",
         "display_name": "Modern Professional",
-        "description": "Polished one-column CV with strong name hierarchy, clean section rules, and balanced spacing.",
-        "best_for": "Product roles, business analyst roles, corporate IT, new graduate applications",
-        "visual_style": "Professional, centered header, subtle accent rules",
+        "description": "Polished general-purpose ATS-friendly one-column CV with strong name hierarchy, clean section rules, and balanced spacing.",
+        "best_for": "Product roles, business analyst roles, corporate IT, business roles, new graduate applications",
+        "visual_style": "Professional, centered header, subtle blue-gray rules",
         "layout": "One-column",
-        "strengths": "Clear visual hierarchy, polished section separation, ATS-readable content order",
+        "strengths": "Clear visual hierarchy, polished section separation, compact contact treatment, ATS-readable content order",
         "cautions": "More visual than strict plain ATS; review before highly conservative submissions",
         "recommended_for": "Product, business analyst, corporate IT, operations, junior professional roles",
         "not_recommended_for": "Ultra-compact one-page technical submissions with dense content",
@@ -72,7 +72,7 @@ DOCX_TEMPLATE_CATALOG = [
     {
         "template_id": "compact_technical",
         "display_name": "Compact Technical",
-        "description": "One-page-friendly technical CV with tight spacing, strong section rules, and compact skill grouping.",
+        "description": "Compact, technical, ATS-safe CV with tight spacing, strong section rules, and intentional skill grouping.",
         "best_for": "Backend developer, software engineer, data/AI technical roles, ATS-heavy submissions",
         "visual_style": "Compact, technical, rule-led hierarchy",
         "layout": "One-column",
@@ -90,7 +90,7 @@ DOCX_TEMPLATE_CATALOG = [
     {
         "template_id": "visual_photo_optional",
         "display_name": "Visual Photo Optional",
-        "description": "ATS-conscious one-column CV with an optional modest header photo for markets where photo CVs are acceptable.",
+        "description": "ATS-conscious one-column CV with an optional modest header photo for local/Turkish/corporate submissions where photo CVs are acceptable.",
         "best_for": "Turkish/local applications, photo-acceptable corporate submissions, polished visual CVs",
         "visual_style": "Photo-capable header, clean rules, corporate spacing",
         "layout": "One-column with optional header photo",
@@ -292,42 +292,48 @@ def _style_for_template(template_id: str) -> dict:
     if template_id == "modern_professional":
         return {
             "margin": 0.58,
-            "name_size": 24,
-            "title_size": 12,
-            "contact_size": 8.7,
-            "body_size": 9.7,
-            "heading_size": 10.8,
-            "heading_space_before": 9,
-            "heading_space_after": 2.2,
-            "item_space_before": 4.5,
-            "item_space_after": 1.2,
-            "bullet_space_after": 0.7,
+            "name_size": 25.5,
+            "title_size": 11.8,
+            "contact_size": 8.1,
+            "body_size": 9.6,
+            "heading_size": 10.7,
+            "heading_space_before": 8.5,
+            "heading_space_after": 1.8,
+            "item_space_before": 5.2,
+            "item_space_after": 1.1,
+            "bullet_space_after": 0.5,
             "separator": True,
-            "separator_color": "8E6BBE",
+            "separator_color": "AEBAC6",
             "separator_size": "5",
             "align_header": WD_ALIGN_PARAGRAPH.CENTER,
             "modern_style": True,
-            "accent_color": "6F4FA1",
-            "heading_color": "6F4FA1",
+            "accent_color": "274B63",
+            "heading_color": "274B63",
             "bold_labels": True,
             "date_right_align": True,
             "date_tab_inch": 6.55,
+            "header_rule_space_after": 10,
+            "bullet_left_indent": 0.22,
+            "bullet_first_line_indent": -0.13,
+            "contact_max_chars": 104,
+            "shorten_contact_links": True,
+            "item_heading_color": "111827",
         }
     if template_id == "compact_technical":
         return {
-            "margin": 0.50,
-            "name_size": 18.5,
-            "title_size": 10.5,
-            "contact_size": 8,
-            "body_size": 8.8,
-            "heading_size": 10,
-            "heading_space_before": 6,
-            "heading_space_after": 1.2,
-            "item_space_before": 2.5,
-            "item_space_after": 0.4,
-            "bullet_space_after": 0.15,
+            "margin": 0.48,
+            "name_size": 19.5,
+            "title_size": 10.2,
+            "contact_size": 7.55,
+            "body_size": 8.65,
+            "heading_size": 9.7,
+            "heading_space_before": 5.4,
+            "heading_space_after": 0.8,
+            "item_space_before": 2.9,
+            "item_space_after": 0.25,
+            "bullet_space_after": 0.05,
             "separator": True,
-            "separator_color": "222222",
+            "separator_color": "444444",
             "separator_size": "5",
             "align_header": WD_ALIGN_PARAGRAPH.LEFT,
             "modern_style": False,
@@ -336,33 +342,45 @@ def _style_for_template(template_id: str) -> dict:
             "bold_labels": True,
             "date_right_align": True,
             "date_tab_inch": 7.0,
+            "header_rule_space_after": 6,
+            "bullet_left_indent": 0.18,
+            "bullet_first_line_indent": -0.11,
+            "contact_max_chars": 112,
+            "shorten_contact_links": True,
+            "item_heading_color": "111111",
         }
     if template_id == "visual_photo_optional":
         return {
-            "margin": 0.58,
-            "name_size": 22,
-            "title_size": 11.8,
-            "contact_size": 8.6,
-            "body_size": 9.5,
-            "heading_size": 10.4,
-            "heading_space_before": 8,
-            "heading_space_after": 1.6,
-            "item_space_before": 4,
-            "item_space_after": 1.0,
-            "bullet_space_after": 0.55,
+            "margin": 0.55,
+            "name_size": 23.5,
+            "title_size": 11.6,
+            "contact_size": 8.0,
+            "body_size": 9.35,
+            "heading_size": 10.3,
+            "heading_space_before": 7.4,
+            "heading_space_after": 1.2,
+            "item_space_before": 4.5,
+            "item_space_after": 0.8,
+            "bullet_space_after": 0.35,
             "separator": True,
-            "separator_color": "777777",
+            "separator_color": "8A8F98",
             "separator_size": "5",
             "align_header": WD_ALIGN_PARAGRAPH.LEFT,
             "modern_style": True,
-            "accent_color": "1F2933",
-            "heading_color": "1F2933",
+            "accent_color": "24313D",
+            "heading_color": "24313D",
             "bold_labels": True,
             "date_right_align": True,
             "date_tab_inch": 6.55,
             "supports_photo": True,
-            "photo_width": 1.08,
-            "photo_cell_width": 1.25,
+            "photo_width": 0.98,
+            "photo_cell_width": 1.14,
+            "header_rule_space_after": 9,
+            "bullet_left_indent": 0.21,
+            "bullet_first_line_indent": -0.12,
+            "contact_max_chars": 98,
+            "shorten_contact_links": True,
+            "item_heading_color": "111827",
         }
     return {
         "margin": 0.75,
@@ -399,6 +417,12 @@ def _configure_document(document: Document, style: dict) -> None:
     normal_style.font.name = "Arial"
     normal_style.font.size = Pt(float(style["body_size"]))
 
+    bullet_style = document.styles["List Bullet"]
+    bullet_style.font.name = "Arial"
+    bullet_style.font.size = Pt(float(style["body_size"]))
+    bullet_style.paragraph_format.left_indent = Inches(float(style.get("bullet_left_indent", 0.25)))
+    bullet_style.paragraph_format.first_line_indent = Inches(float(style.get("bullet_first_line_indent", -0.14)))
+
 
 def _render_header(
     document: Document,
@@ -411,10 +435,14 @@ def _render_header(
     contact = _dict(structured_cv.get("contact"))
     full_name = _clean(contact.get("full_name"))
     target_title = _clean(contact.get("target_title"))
-    contact_line = _contact_line(contact)
+    contact_lines = _contact_lines(
+        contact,
+        int(style.get("contact_max_chars", 98)),
+        shorten_links=bool(style.get("shorten_contact_links", False)),
+    )
 
     if style.get("supports_photo") and photo_bytes:
-        photo_warning = _render_photo_header(document, style, full_name, target_title, contact_line, photo_bytes, photo_filename)
+        photo_warning = _render_photo_header(document, style, full_name, target_title, contact_lines, photo_bytes, photo_filename)
         if photo_warning:
             warnings.append(photo_warning)
         _add_header_rule(document, style)
@@ -441,12 +469,13 @@ def _render_header(
         run.font.size = Pt(float(style["title_size"]))
         last_p = paragraph
 
-    if contact_line:
+    for index, contact_line in enumerate(contact_lines):
         paragraph = document.add_paragraph()
         paragraph.alignment = style["align_header"]
-        paragraph.paragraph_format.space_after = Pt(4)
+        paragraph.paragraph_format.space_after = Pt(1 if index < len(contact_lines) - 1 else 4)
         run = paragraph.add_run(contact_line)
         run.font.size = Pt(float(style["contact_size"]))
+        run.font.color.rgb = _rgb("333333")
         last_p = paragraph
 
     if last_p and style.get("separator"):
@@ -456,7 +485,7 @@ def _render_header(
             size=style.get("separator_size", "6"),
             space="8"
         )
-        last_p.paragraph_format.space_after = Pt(12)
+        last_p.paragraph_format.space_after = Pt(float(style.get("header_rule_space_after", 10)))
     return warnings
 
 
@@ -465,7 +494,7 @@ def _render_photo_header(
     style: dict,
     full_name: str,
     target_title: str,
-    contact_line: str,
+    contact_lines: list[str],
     photo_bytes: bytes,
     photo_filename: str,
 ) -> str:
@@ -473,12 +502,13 @@ def _render_photo_header(
     table.autofit = False
     photo_cell, text_cell = table.rows[0].cells
     photo_cell.width = Inches(float(style.get("photo_cell_width", 1.25)))
-    text_cell.width = Inches(5.9)
-    photo_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.TOP
+    text_cell.width = Inches(6.15)
+    photo_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     text_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
 
     photo_paragraph = photo_cell.paragraphs[0]
     photo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    photo_paragraph.paragraph_format.space_before = Pt(1)
     try:
         run = photo_paragraph.add_run()
         run.add_picture(BytesIO(photo_bytes), width=Inches(float(style.get("photo_width", 1.08))))
@@ -498,23 +528,25 @@ def _render_photo_header(
         run.font.color.rgb = _rgb(style.get("accent_color"))
     if target_title:
         paragraph = text_cell.add_paragraph()
-        paragraph.paragraph_format.space_after = Pt(2)
+        paragraph.paragraph_format.space_after = Pt(1)
         run = paragraph.add_run(target_title)
         run.bold = True
         run.font.size = Pt(float(style["title_size"]))
-    if contact_line:
+        run.font.color.rgb = _rgb("333333")
+    for index, contact_line in enumerate(contact_lines):
         paragraph = text_cell.add_paragraph()
-        paragraph.paragraph_format.space_after = Pt(2)
+        paragraph.paragraph_format.space_after = Pt(0 if index < len(contact_lines) - 1 else 2)
         run = paragraph.add_run(contact_line)
         run.font.size = Pt(float(style["contact_size"]))
+        run.font.color.rgb = _rgb("333333")
 
     return warning
 
 
 def _add_header_rule(document: Document, style: dict) -> None:
     paragraph = document.add_paragraph()
-    paragraph.paragraph_format.space_before = Pt(3)
-    paragraph.paragraph_format.space_after = Pt(10)
+    paragraph.paragraph_format.space_before = Pt(2)
+    paragraph.paragraph_format.space_after = Pt(float(style.get("header_rule_space_after", 10)))
     _add_bottom_border(
         paragraph,
         color=style.get("separator_color", "CCCCCC"),
@@ -598,6 +630,7 @@ def _add_item_heading(document: Document, text: str, style: dict) -> None:
     run = paragraph.add_run(parts[0])
     run.bold = True
     run.font.size = Pt(float(style["body_size"]))
+    run.font.color.rgb = _rgb(style.get("item_heading_color"))
 
     sep = "  •  " if style.get("modern_style") else "  |  "
 
@@ -640,6 +673,8 @@ def _add_bullet(document: Document, text: str, style: dict) -> None:
         return
     paragraph = document.add_paragraph(style="List Bullet")
     paragraph.paragraph_format.space_after = Pt(float(style["bullet_space_after"]))
+    paragraph.paragraph_format.left_indent = Inches(float(style.get("bullet_left_indent", 0.25)))
+    paragraph.paragraph_format.first_line_indent = Inches(float(style.get("bullet_first_line_indent", -0.14)))
     run = paragraph.add_run(text)
     run.font.size = Pt(float(style["body_size"]))
 
@@ -777,15 +812,47 @@ def _language_items(structured_cv: dict) -> list[dict]:
     return items
 
 
-def _contact_line(contact: dict) -> str:
-    return _join_non_empty([
-        contact.get("email"),
-        contact.get("phone"),
-        contact.get("location"),
-        contact.get("linkedin"),
-        contact.get("github"),
-        contact.get("portfolio"),
-    ], " | ")
+def _contact_lines(contact: dict, max_chars: int, shorten_links: bool = False) -> list[str]:
+    items = [
+        (key, _display_contact_value(key, contact.get(key), shorten_links))
+        for key in ["email", "phone", "location", "linkedin", "github", "portfolio"]
+        if _display_contact_value(key, contact.get(key), shorten_links)
+    ]
+    if not items:
+        return []
+
+    one_line = _join_non_empty([value for _, value in items], " | ")
+    if len(one_line) <= max_chars:
+        return [one_line]
+
+    primary = [value for key, value in items if key not in {"linkedin", "github", "portfolio"}]
+    links = [(key, value) for key, value in items if key in {"linkedin", "github", "portfolio"}]
+    lines = []
+    if primary:
+        lines.append(_join_non_empty(primary, " | "))
+
+    link_values = [value for _, value in links]
+    if len(link_values) <= 2:
+        if link_values:
+            lines.append(_join_non_empty(link_values, " | "))
+        return lines
+
+    social_values = [value for key, value in links if key in {"linkedin", "github"}]
+    portfolio_values = [value for key, value in links if key == "portfolio"]
+    if social_values:
+        lines.append(_join_non_empty(social_values, " | "))
+    lines.extend(portfolio_values)
+    return [line for line in lines if line]
+
+
+def _display_contact_value(key: str, value: Any, shorten_links: bool = False) -> str:
+    cleaned = _clean(value)
+    if shorten_links and key in {"linkedin", "github", "portfolio"}:
+        cleaned = cleaned.rstrip("/")
+        for prefix in ("https://www.", "http://www.", "https://", "http://", "www."):
+            if cleaned.lower().startswith(prefix):
+                return cleaned[len(prefix):]
+    return cleaned
 
 
 def _date_range(record: dict) -> str:

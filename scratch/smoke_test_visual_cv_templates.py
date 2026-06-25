@@ -98,7 +98,22 @@ def sample_photo_bytes() -> bytes:
 
 def docx_text(path: Path) -> str:
     document = Document(str(path))
-    return "\n".join(paragraph.text for paragraph in document.paragraphs)
+    lines = [paragraph.text for paragraph in document.paragraphs]
+    for table in document.tables:
+        for row in table.rows:
+            for cell in row.cells:
+                lines.extend(paragraph.text for paragraph in cell.paragraphs)
+    return "\n".join(lines)
+
+
+def assert_social_contact_line(text: str, template_id: str) -> None:
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    assert_true("linkedin.com/in/taylorapplicant" in text, f"{template_id} dropped or corrupted LinkedIn contact.")
+    assert_true("github.com/taylorapplicant" in text, f"{template_id} dropped or corrupted GitHub contact.")
+    assert_true(
+        any("linkedin.com/in/taylorapplicant" in line and "github.com/taylorapplicant" in line for line in lines),
+        f"{template_id} should keep LinkedIn and GitHub together in the contact block.",
+    )
 
 
 def docx_has_media(path: Path) -> bool:
@@ -136,6 +151,7 @@ def main() -> None:
             assert_true(output_path.stat().st_size > 10_000, f"{template_id} output is unexpectedly small.")
             text = docx_text(output_path)
             assert_true("Taylor Applicant" in text, f"{template_id} missing sample candidate name.")
+            assert_social_contact_line(text, template_id)
             for forbidden in forbidden_reference_terms:
                 assert_true(forbidden not in text, f"{template_id} leaked reference template content: {forbidden}")
 
@@ -181,6 +197,45 @@ def main() -> None:
         route_docx_path = tmp_path / "route_photo_export.docx"
         route_docx_path.write_bytes(route_response.content)
         assert_true(docx_has_media(route_docx_path) is True, "Photo export endpoint should embed media.")
+
+        programmatic_docx_response = client.post(
+            "/ats-cv/export-docx",
+            data={
+                "ats_cv_json": json.dumps(cv, ensure_ascii=False),
+                "template_id": "visual_photo_optional",
+                "language": "English",
+                "one_page": "false",
+                "enabled_sections": "",
+                "export_style": "standard",
+                "docx_render_mode": "programmatic",
+                "include_photo": "true",
+            },
+            files={"cv_photo": ("sample_photo.png", sample_photo_bytes(), "image/png")},
+        )
+        assert_true(
+            programmatic_docx_response.status_code == 200,
+            f"Programmatic photo DOCX endpoint failed: {programmatic_docx_response.status_code} {programmatic_docx_response.text}",
+        )
+        programmatic_docx_path = tmp_path / "programmatic_photo_export.docx"
+        programmatic_docx_path.write_bytes(programmatic_docx_response.content)
+        assert_true(docx_has_media(programmatic_docx_path) is True, "Programmatic DOCX photo export should embed media.")
+
+        pdf_response = client.post(
+            "/ats-cv/export-pdf",
+            data={
+                "ats_cv_json": json.dumps(cv, ensure_ascii=False),
+                "template_id": "visual_photo_optional",
+                "language": "English",
+                "one_page": "false",
+                "enabled_sections": "",
+                "export_style": "standard",
+                "include_photo": "true",
+            },
+            files={"cv_photo": ("sample_photo.png", sample_photo_bytes(), "image/png")},
+        )
+        assert_true(pdf_response.status_code == 200, f"Photo PDF endpoint failed: {pdf_response.status_code} {pdf_response.text}")
+        assert_true(pdf_response.content.startswith(b"%PDF"), "Photo PDF endpoint should return a PDF.")
+        assert_true(len(pdf_response.content) > 3_000, "Photo PDF endpoint returned an unexpectedly small file.")
 
     print("visual cv template smoke: ok")
 

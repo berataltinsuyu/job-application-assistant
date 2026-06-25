@@ -201,8 +201,8 @@ ATS_CV_TEMPLATES = [
         "name": "Modern Professional",
         "display_name": "Modern Professional",
         "description": (
-            "A polished one-column CV template with stronger header hierarchy, "
-            "thin section rules, and professional spacing while preserving ATS-readable order."
+            "A polished general-purpose ATS-friendly one-column CV template with stronger "
+            "header hierarchy, thin section rules, and professional spacing."
         ),
         "style_level": "visual",
         "ats_safety_level": "high",
@@ -216,12 +216,14 @@ ATS_CV_TEMPLATES = [
             "Product roles",
             "Business analyst roles",
             "Corporate IT roles",
+            "Business roles",
             "New graduate applications",
         ],
         "best_for": [
             "product roles",
             "business analyst",
             "corporate IT",
+            "business roles",
             "operations",
             "junior professional",
             "new graduate",
@@ -250,7 +252,7 @@ ATS_CV_TEMPLATES = [
         "name": "Compact Technical",
         "display_name": "Compact Technical",
         "description": (
-            "A compact, one-page-friendly technical CV template with dense but readable "
+            "A compact, technical, ATS-safe CV template with dense but readable "
             "spacing, strong section rules, and clear skills/project emphasis."
         ),
         "style_level": "technical",
@@ -299,7 +301,7 @@ ATS_CV_TEMPLATES = [
         "display_name": "Visual Photo Optional",
         "description": (
             "A polished one-column CV template with optional modest header photo support "
-            "for markets where photo CVs are acceptable."
+            "for local/Turkish/corporate submissions where photo CVs are acceptable."
         ),
         "style_level": "visual",
         "ats_safety_level": "medium",

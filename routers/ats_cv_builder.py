@@ -373,8 +373,23 @@ async def export_ats_cv_docx(
                 except Exception:
                     pass
     else:
+        include_photo_bool = _parse_optional_bool(include_photo, "include_photo")
+        photo_bytes = None
+        photo_filename = ""
+        if include_photo_bool and cv_photo and template.get("supports_photo"):
+            photo_filename = cv_photo.filename or ""
+            if not _supported_photo_filename(photo_filename):
+                raise HTTPException(status_code=400, detail="cv_photo must be PNG, JPG, or JPEG.")
+            photo_bytes = await cv_photo.read()
         docx_bytes = render_ats_cv_to_docx(
-            ats_cv, template, language, parsed_one_page, parsed_sections, parsed_export_style
+            ats_cv,
+            template,
+            language,
+            parsed_one_page,
+            parsed_sections,
+            parsed_export_style,
+            photo_bytes=photo_bytes,
+            photo_filename=photo_filename,
         )
 
     return Response(
@@ -394,12 +409,29 @@ async def export_ats_cv_pdf(
     one_page: str = Form("false"),
     enabled_sections: str = Form(""),
     export_style: str = Form("standard"),
+    include_photo: str = Form("false"),
+    cv_photo: UploadFile | None = File(None),
 ):
     ats_cv, template, parsed_one_page, parsed_sections, parsed_export_style = _parse_export_payload(
         ats_cv_json, template_id, language, one_page, enabled_sections, export_style
     )
+    include_photo_bool = _parse_optional_bool(include_photo, "include_photo")
+    photo_bytes = None
+    photo_filename = ""
+    if include_photo_bool and cv_photo and template.get("supports_photo"):
+        photo_filename = cv_photo.filename or ""
+        if not _supported_photo_filename(photo_filename):
+            raise HTTPException(status_code=400, detail="cv_photo must be PNG, JPG, or JPEG.")
+        photo_bytes = await cv_photo.read()
     pdf_bytes = render_ats_cv_to_pdf(
-        ats_cv, template, language, parsed_one_page, parsed_sections, parsed_export_style
+        ats_cv,
+        template,
+        language,
+        parsed_one_page,
+        parsed_sections,
+        parsed_export_style,
+        photo_bytes=photo_bytes,
+        photo_filename=photo_filename,
     )
 
     return Response(

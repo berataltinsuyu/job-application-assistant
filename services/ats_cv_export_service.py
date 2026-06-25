@@ -5,6 +5,8 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 from docx import Document
+from docx.enum.table import WD_CELL_VERTICAL_ALIGNMENT
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Inches, Pt, RGBColor
@@ -16,7 +18,7 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer
+from reportlab.platypus import HRFlowable, Image as RLImage, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from services.ats_cv_relevance import (
     rank_certifications_for_job,
@@ -85,6 +87,8 @@ def render_ats_cv_to_docx(
     one_page: bool = False,
     enabled_sections: set[str] | None = None,
     export_style: str = "standard",
+    photo_bytes: bytes | None = None,
+    photo_filename: str = "",
 ) -> bytes:
     try:
         export_style = _effective_export_style(export_style, one_page)
@@ -93,26 +97,14 @@ def render_ats_cv_to_docx(
         template_style = _template_style(template, export_style, estimate_cv_content_density(render_cv))
         _configure_docx(document, template_style)
 
-        contact = render_contact(render_cv, language)
-        if _section_enabled("contact", enabled_sections) and contact["full_name"]:
-            paragraph = document.add_paragraph()
-            run = paragraph.add_run(contact["full_name"])
-            run.bold = True
-            run.font.size = Pt(template_style["docx_name_size"])
-            run.font.color.rgb = _docx_rgb(template_style.get("accent_color", "111111"))
-
-        if _section_enabled("contact", enabled_sections) and contact["target_title"]:
-            paragraph = document.add_paragraph()
-            run = paragraph.add_run(contact["target_title"])
-            run.bold = True
-            run.font.size = Pt(template_style["docx_title_size"])
-            run.font.color.rgb = _docx_rgb(template_style.get("title_color", "111111"))
-
+        contact = render_contact(
+            render_cv,
+            language,
+            int(template_style.get("contact_max_chars", 104)),
+            shorten_links=bool(template_style.get("shorten_contact_links", False)),
+        )
         if _section_enabled("contact", enabled_sections):
-            for contact_line in contact["contact_lines"]:
-                paragraph = document.add_paragraph()
-                run = paragraph.add_run(contact_line)
-                run.font.size = Pt(template_style["docx_contact_size"])
+            _add_docx_header(document, contact, template_style, photo_bytes, photo_filename)
 
         for section in _ordered_sections(render_cv, template, language, enabled_sections):
             _add_docx_section(document, section, template_style, language)
@@ -131,6 +123,8 @@ def render_ats_cv_to_pdf(
     one_page: bool = False,
     enabled_sections: set[str] | None = None,
     export_style: str = "standard",
+    photo_bytes: bytes | None = None,
+    photo_filename: str = "",
 ) -> bytes:
     try:
         export_style = _effective_export_style(export_style, one_page)
@@ -149,16 +143,14 @@ def render_ats_cv_to_pdf(
         styles = _pdf_styles(template_style)
         story = []
 
-        contact = render_contact(render_cv, language)
-        if _section_enabled("contact", enabled_sections) and contact["full_name"]:
-            story.append(Paragraph(escape(contact["full_name"]), styles["Name"]))
-        if _section_enabled("contact", enabled_sections) and contact["target_title"]:
-            story.append(Paragraph(escape(contact["target_title"]), styles["TargetTitle"]))
+        contact = render_contact(
+            render_cv,
+            language,
+            int(template_style.get("contact_max_chars", 104)),
+            shorten_links=bool(template_style.get("shorten_contact_links", False)),
+        )
         if _section_enabled("contact", enabled_sections):
-            for contact_line in contact["contact_lines"]:
-                story.append(Paragraph(escape(contact_line), styles["Contact"]))
-        if story:
-            story.append(Spacer(1, template_style["pdf_contact_after_spacing"]))
+            story.extend(_pdf_header(contact, styles, template_style, photo_bytes, photo_filename))
 
         for section in _ordered_sections(render_cv, template, language, enabled_sections):
             story.append(Spacer(1, template_style["pdf_section_spacing"]))
@@ -192,7 +184,13 @@ def build_plain_text_preview(
 ) -> str:
     export_style = _effective_export_style(export_style, one_page)
     render_cv = _cv_for_export_style(ats_cv, template, language, export_style)
-    contact = render_contact(render_cv, language)
+    template_style = _template_style(template, export_style, estimate_cv_content_density(render_cv))
+    contact = render_contact(
+        render_cv,
+        language,
+        int(template_style.get("contact_max_chars", 104)),
+        shorten_links=False,
+    )
     lines = []
 
     if _section_enabled("contact", enabled_sections) and contact["full_name"]:
@@ -206,7 +204,6 @@ def build_plain_text_preview(
         if lines:
             lines.append("")
         lines.append(_heading_text(section["heading"], language))
-        template_style = _template_style(template, export_style, estimate_cv_content_density(render_cv))
         if template_style["heading_separator"] and not template_style.get("separator_as_rule"):
             lines.append("-" * max(12, len(_heading_text(section["heading"], language))))
         for item in section["items"]:
@@ -308,10 +305,10 @@ def estimate_cv_content_density(ats_cv: dict) -> str:
     return "long"
 
 
-def render_contact(ats_cv: dict, language: str) -> dict:
+def render_contact(ats_cv: dict, language: str, max_chars: int = 104, shorten_links: bool = True) -> dict:
     from services.ats_cv_postprocessing import _clean_character_spacing
     contact = ats_cv.get("contact", {}) if isinstance(ats_cv, dict) else {}
-    contact_parts = []
+    contact_items = []
     
     full_name = _clean_character_spacing(contact.get("full_name", ""))
     target_title = _clean_character_spacing(contact.get("target_title", ""))
@@ -330,41 +327,52 @@ def render_contact(ats_cv: dict, language: str) -> dict:
             if norm in seen_links:
                 continue
             seen_links.add(norm)
-            
-        contact_parts.append(val)
+        display_value = _display_contact_value(key, val) if shorten_links else val
+        if display_value:
+            contact_items.append((key, display_value))
         
-    contact_lines = _contact_lines(contact_parts)
+    contact_lines = _contact_lines(contact_items, max_chars)
 
     return {
         "full_name": full_name,
         "target_title": target_title,
-        "contact_line": " | ".join(contact_parts),
+        "contact_line": " | ".join(value for _, value in contact_items),
         "contact_lines": contact_lines,
     }
 
 
-def _contact_lines(contact_parts: list[str]) -> list[str]:
-    """Pack contact values without splitting inside URLs or other protected fields."""
-    if not contact_parts:
+def _contact_lines(contact_items: list[tuple[str, str]], max_chars: int = 104) -> list[str]:
+    """Pack contact values without splitting URLs; keep LinkedIn/GitHub together when wrapping."""
+    if not contact_items:
         return []
 
-    max_chars = 88
+    one_line = " | ".join(value for _, value in contact_items)
+    if len(one_line) <= max_chars:
+        return [one_line]
+
+    primary = [value for key, value in contact_items if key not in {"linkedin", "github", "portfolio"}]
+    links = [(key, value) for key, value in contact_items if key in {"linkedin", "github", "portfolio"}]
     lines = []
-    current_parts = []
+    if primary:
+        lines.append(" | ".join(primary))
 
-    for part in contact_parts:
-        candidate_parts = current_parts + [part]
-        candidate_line = " | ".join(candidate_parts)
-        if current_parts and len(candidate_line) > max_chars:
-            lines.append(" | ".join(current_parts))
-            current_parts = [part]
-        else:
-            current_parts = candidate_parts
+    social_values = [value for key, value in links if key in {"linkedin", "github"}]
+    portfolio_values = [value for key, value in links if key == "portfolio"]
+    if social_values:
+        lines.append(" | ".join(social_values))
+    lines.extend(portfolio_values)
 
-    if current_parts:
-        lines.append(" | ".join(current_parts))
+    return [line for line in lines if line]
 
-    return lines
+
+def _display_contact_value(key: str, value: str) -> str:
+    cleaned = _clean_text(value)
+    if key in {"linkedin", "github", "portfolio"}:
+        cleaned = cleaned.rstrip("/")
+        for prefix in ("https://www.", "http://www.", "https://", "http://", "www."):
+            if cleaned.lower().startswith(prefix):
+                return cleaned[len(prefix):]
+    return cleaned
 
 
 def render_summary(ats_cv: dict, language: str, section_key: str = "professional_summary") -> dict | None:
@@ -658,6 +666,117 @@ def _configure_docx(document: Document, template_style: dict) -> None:
     normal_style.font.name = "Arial"
     normal_style.font.size = Pt(template_style["docx_body_size"])
 
+    bullet_style = document.styles["List Bullet"]
+    bullet_style.font.name = "Arial"
+    bullet_style.font.size = Pt(template_style["docx_body_size"])
+    bullet_style.paragraph_format.left_indent = Inches(float(template_style.get("docx_bullet_left_indent", 0.24)))
+    bullet_style.paragraph_format.first_line_indent = Inches(float(template_style.get("docx_bullet_first_line_indent", -0.13)))
+
+
+def _add_docx_header(
+    document: Document,
+    contact: dict,
+    template_style: dict,
+    photo_bytes: bytes | None = None,
+    photo_filename: str = "",
+) -> None:
+    if template_style.get("supports_photo") and photo_bytes:
+        if _add_docx_photo_header(document, contact, template_style, photo_bytes, photo_filename):
+            _add_docx_header_rule(document, template_style)
+            return
+
+    alignment = _docx_header_alignment(template_style)
+    last_paragraph = None
+    if contact["full_name"]:
+        paragraph = document.add_paragraph()
+        paragraph.alignment = alignment
+        paragraph.paragraph_format.space_after = Pt(1.5)
+        run = paragraph.add_run(contact["full_name"])
+        run.bold = True
+        run.font.size = Pt(template_style["docx_name_size"])
+        run.font.color.rgb = _docx_rgb(template_style.get("accent_color", "111111"))
+        last_paragraph = paragraph
+
+    if contact["target_title"]:
+        paragraph = document.add_paragraph()
+        paragraph.alignment = alignment
+        paragraph.paragraph_format.space_after = Pt(1.0)
+        run = paragraph.add_run(contact["target_title"])
+        run.bold = True
+        run.font.size = Pt(template_style["docx_title_size"])
+        run.font.color.rgb = _docx_rgb(template_style.get("title_color", "111111"))
+        last_paragraph = paragraph
+
+    for index, contact_line in enumerate(contact["contact_lines"]):
+        paragraph = document.add_paragraph()
+        paragraph.alignment = alignment
+        paragraph.paragraph_format.space_after = Pt(0.4 if index < len(contact["contact_lines"]) - 1 else 3.0)
+        run = paragraph.add_run(contact_line)
+        run.font.size = Pt(template_style["docx_contact_size"])
+        run.font.color.rgb = _docx_rgb("333333")
+        last_paragraph = paragraph
+
+    if last_paragraph and template_style.get("header_separator"):
+        _add_docx_header_rule(document, template_style)
+
+
+def _add_docx_photo_header(
+    document: Document,
+    contact: dict,
+    template_style: dict,
+    photo_bytes: bytes,
+    photo_filename: str,
+) -> bool:
+    table = document.add_table(rows=1, cols=2)
+    table.autofit = False
+    photo_cell, text_cell = table.rows[0].cells
+    photo_cell.width = Inches(float(template_style.get("docx_photo_cell_width", 1.08)))
+    text_cell.width = Inches(6.1)
+    photo_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+    text_cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
+
+    photo_paragraph = photo_cell.paragraphs[0]
+    photo_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    photo_paragraph.paragraph_format.space_before = Pt(1)
+    photo_paragraph.paragraph_format.space_after = Pt(1)
+    try:
+        run = photo_paragraph.add_run()
+        run.add_picture(BytesIO(photo_bytes), width=Inches(float(template_style.get("docx_photo_width", 0.92))))
+    except Exception:
+        table._element.getparent().remove(table._element)
+        return False
+
+    text_cell.paragraphs[0].text = ""
+    if contact["full_name"]:
+        paragraph = text_cell.paragraphs[0]
+        paragraph.paragraph_format.space_after = Pt(1.0)
+        run = paragraph.add_run(contact["full_name"])
+        run.bold = True
+        run.font.size = Pt(template_style["docx_name_size"])
+        run.font.color.rgb = _docx_rgb(template_style.get("accent_color", "111111"))
+    if contact["target_title"]:
+        paragraph = text_cell.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(0.8)
+        run = paragraph.add_run(contact["target_title"])
+        run.bold = True
+        run.font.size = Pt(template_style["docx_title_size"])
+        run.font.color.rgb = _docx_rgb(template_style.get("title_color", "111111"))
+    for index, contact_line in enumerate(contact["contact_lines"]):
+        paragraph = text_cell.add_paragraph()
+        paragraph.paragraph_format.space_after = Pt(0.2 if index < len(contact["contact_lines"]) - 1 else 1.8)
+        run = paragraph.add_run(contact_line)
+        run.font.size = Pt(template_style["docx_contact_size"])
+        run.font.color.rgb = _docx_rgb("333333")
+
+    return True
+
+
+def _add_docx_header_rule(document: Document, template_style: dict) -> None:
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_before = Pt(0)
+    paragraph.paragraph_format.space_after = Pt(float(template_style.get("docx_header_rule_space_after", 6)))
+    _add_docx_bottom_border(paragraph, template_style.get("separator_color", "B7B7B7"), "5", "2")
+
 
 def _add_docx_section(document: Document, section: dict, template_style: dict, language: str) -> None:
     heading = document.add_paragraph()
@@ -679,36 +798,102 @@ def _add_docx_section(document: Document, section: dict, template_style: dict, l
 
     for item in section["items"]:
         if item["type"] == "heading":
-            paragraph = document.add_paragraph()
-            paragraph.paragraph_format.space_after = Pt(template_style["docx_item_space_after"])
-            run = paragraph.add_run(item["text"])
-            run.bold = True
+            _add_docx_item_heading(document, item["text"], template_style)
         elif item["type"] == "bullet":
-            paragraph = document.add_paragraph(style="List Bullet")
-            paragraph.paragraph_format.space_after = Pt(template_style["docx_bullet_space_after"])
-            paragraph.add_run(item["text"])
+            _add_docx_bullet(document, item["text"], template_style)
         elif item["type"] == "separator":
             paragraph = document.add_paragraph()
             paragraph.paragraph_format.space_after = Pt(template_style["docx_item_space_after"])
             paragraph.add_run(item["text"])
         else:
-            paragraph = document.add_paragraph(item["text"])
-            paragraph.paragraph_format.space_after = Pt(template_style["docx_item_space_after"])
+            _add_docx_body_paragraph(document, item["text"], template_style)
+
+
+def _add_docx_item_heading(document: Document, text: str, template_style: dict) -> None:
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_before = Pt(float(template_style.get("docx_item_space_before", 1.8)))
+    paragraph.paragraph_format.space_after = Pt(template_style["docx_item_space_after"])
+
+    parts = [part.strip() for part in text.split(" | ") if part.strip()]
+    if not parts:
+        return
+
+    date_part = ""
+    if len(parts) >= 2 and _looks_like_date_range(parts[-1]):
+        date_part = parts[-1]
+        parts = parts[:-1]
+        paragraph.paragraph_format.tab_stops.add_tab_stop(
+            Inches(float(template_style.get("docx_date_tab_inch", 6.45))),
+            WD_TAB_ALIGNMENT.RIGHT,
+        )
+
+    first_run = paragraph.add_run(parts[0])
+    first_run.bold = True
+    first_run.font.size = Pt(template_style["docx_body_size"])
+    first_run.font.color.rgb = _docx_rgb(template_style.get("item_heading_color", "111111"))
+
+    separator = "  •  " if template_style.get("item_separator") == "bullet" else "  |  "
+    for index, part in enumerate(parts[1:]):
+        sep_run = paragraph.add_run(separator)
+        sep_run.font.size = Pt(template_style["docx_body_size"])
+        run = paragraph.add_run(part)
+        run.font.size = Pt(template_style["docx_body_size"])
+        if index == 0:
+            run.italic = True
+
+    if date_part:
+        date_run = paragraph.add_run("\t" + date_part)
+        date_run.font.size = Pt(template_style["docx_body_size"])
+
+
+def _add_docx_body_paragraph(document: Document, text: str, template_style: dict) -> None:
+    paragraph = document.add_paragraph()
+    paragraph.paragraph_format.space_after = Pt(template_style["docx_item_space_after"])
+    if ":" in text:
+        label, rest = text.split(":", 1)
+        if 1 <= len(label.split()) <= 4 and len(label) <= 32:
+            label_run = paragraph.add_run(f"{label}:")
+            label_run.bold = True
+            label_run.font.size = Pt(template_style["docx_body_size"])
+            rest_run = paragraph.add_run(rest)
+            rest_run.font.size = Pt(template_style["docx_body_size"])
+            return
+    run = paragraph.add_run(text)
+    run.font.size = Pt(template_style["docx_body_size"])
+
+
+def _add_docx_bullet(document: Document, text: str, template_style: dict) -> None:
+    paragraph = document.add_paragraph(style="List Bullet")
+    paragraph.paragraph_format.space_after = Pt(template_style["docx_bullet_space_after"])
+    paragraph.paragraph_format.left_indent = Inches(float(template_style.get("docx_bullet_left_indent", 0.24)))
+    paragraph.paragraph_format.first_line_indent = Inches(float(template_style.get("docx_bullet_first_line_indent", -0.13)))
+    run = paragraph.add_run(text)
+    run.font.size = Pt(template_style["docx_body_size"])
 
 
 def _add_docx_horizontal_line(document: Document, template_style: dict) -> None:
     paragraph = document.add_paragraph()
     paragraph.paragraph_format.space_after = Pt(template_style["docx_separator_space_after"])
     paragraph.paragraph_format.space_before = Pt(0)
+    _add_docx_bottom_border(paragraph, template_style.get("separator_color", "B7B7B7"), "4", "1")
+
+
+def _add_docx_bottom_border(paragraph, color: str, size: str, space: str) -> None:
     p_pr = paragraph._p.get_or_add_pPr()
     p_bdr = OxmlElement("w:pBdr")
     bottom = OxmlElement("w:bottom")
     bottom.set(qn("w:val"), "single")
-    bottom.set(qn("w:sz"), "4")
-    bottom.set(qn("w:space"), "1")
-    bottom.set(qn("w:color"), template_style.get("separator_color", "B7B7B7"))
+    bottom.set(qn("w:sz"), str(size))
+    bottom.set(qn("w:space"), str(space))
+    bottom.set(qn("w:color"), str(color))
     p_bdr.append(bottom)
     p_pr.append(p_bdr)
+
+
+def _docx_header_alignment(template_style: dict):
+    if template_style.get("header_alignment") == "center":
+        return WD_ALIGN_PARAGRAPH.CENTER
+    return WD_ALIGN_PARAGRAPH.LEFT
 
 
 def _pdf_horizontal_line(template_style: dict) -> HRFlowable:
@@ -755,6 +940,7 @@ def _register_pdf_fonts() -> None:
 
 def _pdf_styles(template_style: dict) -> dict:
     styles = getSampleStyleSheet()
+    header_alignment = _pdf_header_alignment(template_style)
     return {
         "Name": ParagraphStyle(
             "ATSName",
@@ -762,7 +948,7 @@ def _pdf_styles(template_style: dict) -> dict:
             fontName=PDF_BOLD_FONT_NAME,
             fontSize=template_style["pdf_name_size"],
             leading=template_style["pdf_name_size"] + 3,
-            alignment=TA_CENTER,
+            alignment=header_alignment,
             spaceAfter=3,
             textColor=colors.HexColor(f"#{template_style.get('accent_color', '111111')}"),
         ),
@@ -772,7 +958,7 @@ def _pdf_styles(template_style: dict) -> dict:
             fontName=PDF_BOLD_FONT_NAME,
             fontSize=template_style["pdf_title_size"],
             leading=template_style["pdf_title_size"] + 2.5,
-            alignment=TA_CENTER,
+            alignment=header_alignment,
             spaceAfter=3,
             textColor=colors.HexColor(f"#{template_style.get('title_color', '111111')}"),
         ),
@@ -782,8 +968,38 @@ def _pdf_styles(template_style: dict) -> dict:
             fontName=PDF_FONT_NAME,
             fontSize=template_style["pdf_contact_size"],
             leading=template_style["pdf_contact_size"] + 2,
-            alignment=TA_CENTER,
-            spaceAfter=5,
+            alignment=header_alignment,
+            spaceAfter=2.4,
+            splitLongWords=0,
+        ),
+        "PhotoName": ParagraphStyle(
+            "ATSPhotoName",
+            parent=styles["Normal"],
+            fontName=PDF_BOLD_FONT_NAME,
+            fontSize=template_style["pdf_name_size"],
+            leading=template_style["pdf_name_size"] + 3,
+            alignment=TA_LEFT,
+            spaceAfter=3,
+            textColor=colors.HexColor(f"#{template_style.get('accent_color', '111111')}"),
+        ),
+        "PhotoTargetTitle": ParagraphStyle(
+            "ATSPhotoTargetTitle",
+            parent=styles["Normal"],
+            fontName=PDF_BOLD_FONT_NAME,
+            fontSize=template_style["pdf_title_size"],
+            leading=template_style["pdf_title_size"] + 2.5,
+            alignment=TA_LEFT,
+            spaceAfter=3,
+            textColor=colors.HexColor(f"#{template_style.get('title_color', '111111')}"),
+        ),
+        "PhotoContact": ParagraphStyle(
+            "ATSPhotoContact",
+            parent=styles["Normal"],
+            fontName=PDF_FONT_NAME,
+            fontSize=template_style["pdf_contact_size"],
+            leading=template_style["pdf_contact_size"] + 2,
+            alignment=TA_LEFT,
+            spaceAfter=2,
             splitLongWords=0,
         ),
         "SectionHeading": ParagraphStyle(
@@ -811,8 +1027,9 @@ def _pdf_styles(template_style: dict) -> dict:
             fontName=PDF_BOLD_FONT_NAME,
             fontSize=template_style["pdf_item_heading_size"],
             leading=template_style["pdf_item_heading_size"] + 2.5,
-            spaceBefore=2,
-            spaceAfter=1,
+            spaceBefore=template_style.get("pdf_item_space_before", 2),
+            spaceAfter=template_style.get("pdf_item_space_after", 1),
+            textColor=colors.HexColor(f"#{template_style.get('item_heading_color', '111111')}"),
         ),
         "Body": ParagraphStyle(
             "ATSBody",
@@ -828,11 +1045,93 @@ def _pdf_styles(template_style: dict) -> dict:
             fontName=PDF_FONT_NAME,
             fontSize=template_style["pdf_body_size"],
             leading=template_style["pdf_body_size"] + 2.3,
-            leftIndent=12,
-            firstLineIndent=-8,
+            leftIndent=template_style.get("pdf_bullet_left_indent", 12),
+            firstLineIndent=template_style.get("pdf_bullet_first_line_indent", -8),
             spaceAfter=template_style["pdf_bullet_space_after"],
         ),
     }
+
+
+def _pdf_header(
+    contact: dict,
+    styles: dict,
+    template_style: dict,
+    photo_bytes: bytes | None = None,
+    photo_filename: str = "",
+) -> list:
+    flowables = []
+    if template_style.get("supports_photo") and photo_bytes:
+        photo_header = _pdf_photo_header(contact, styles, template_style, photo_bytes, photo_filename)
+        if photo_header:
+            flowables.extend(photo_header)
+        else:
+            flowables.extend(_pdf_text_header(contact, styles))
+    else:
+        flowables.extend(_pdf_text_header(contact, styles))
+
+    if flowables and template_style.get("header_separator"):
+        flowables.append(_pdf_horizontal_line(template_style))
+        flowables.append(Spacer(1, template_style.get("pdf_header_rule_after_spacing", template_style["pdf_contact_after_spacing"])))
+    elif flowables:
+        flowables.append(Spacer(1, template_style["pdf_contact_after_spacing"]))
+    return flowables
+
+
+def _pdf_text_header(contact: dict, styles: dict) -> list:
+    flowables = []
+    if contact["full_name"]:
+        flowables.append(Paragraph(escape(contact["full_name"]), styles["Name"]))
+    if contact["target_title"]:
+        flowables.append(Paragraph(escape(contact["target_title"]), styles["TargetTitle"]))
+    for contact_line in contact["contact_lines"]:
+        flowables.append(Paragraph(escape(contact_line), styles["Contact"]))
+    return flowables
+
+
+def _pdf_photo_header(
+    contact: dict,
+    styles: dict,
+    template_style: dict,
+    photo_bytes: bytes,
+    photo_filename: str,
+) -> list:
+    try:
+        photo_size = float(template_style.get("pdf_photo_size", 0.82)) * inch
+        photo = RLImage(BytesIO(photo_bytes), width=photo_size, height=photo_size)
+    except Exception:
+        return []
+
+    text_flowables = []
+    if contact["full_name"]:
+        text_flowables.append(Paragraph(escape(contact["full_name"]), styles["PhotoName"]))
+    if contact["target_title"]:
+        text_flowables.append(Paragraph(escape(contact["target_title"]), styles["PhotoTargetTitle"]))
+    for contact_line in contact["contact_lines"]:
+        text_flowables.append(Paragraph(escape(contact_line), styles["PhotoContact"]))
+
+    table = Table(
+        [[photo, text_flowables]],
+        colWidths=[
+            float(template_style.get("pdf_photo_cell_width", 0.98)) * inch,
+            float(template_style.get("pdf_photo_text_width", 6.05)) * inch,
+        ],
+        hAlign="LEFT",
+    )
+    table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 0),
+        ("RIGHTPADDING", (0, 0), (0, 0), 8),
+        ("RIGHTPADDING", (1, 0), (1, 0), 0),
+        ("TOPPADDING", (0, 0), (-1, -1), 0),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+    ]))
+    return [table]
+
+
+def _pdf_header_alignment(template_style: dict) -> int:
+    if template_style.get("header_alignment") == "center":
+        return TA_CENTER
+    return TA_LEFT
 
 
 def _language_key(language: str) -> str:
@@ -900,6 +1199,13 @@ def _join_non_empty(values, separator: str = " | ") -> str:
 
 def _date_range(start_date, end_date) -> str:
     return _join_non_empty([start_date, end_date], separator=" - ")
+
+
+def _looks_like_date_range(value: str) -> bool:
+    text = _clean_text(value).lower()
+    if not text:
+        return False
+    return bool(re.search(r"\b(19|20)\d{2}\b|present|current|devam|günümüz|ocak|şubat|mart|nisan|mayıs|haziran|temmuz|ağustos|eylül|ekim|kasım|aralık|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec", text))
 
 
 def _project_link_label(link: str, contact_links: set[str], language: str) -> str:
@@ -1217,114 +1523,167 @@ def _template_style(template: dict, export_style: str = "standard", density: str
         },
         "modern_professional": {
             "docx_margin": 0.56,
-            "docx_name_size": 23,
-            "docx_title_size": 12,
-            "docx_contact_size": 8.6,
-            "docx_body_size": 9.6,
-            "docx_section_space_before": 8,
-            "docx_item_space_after": 1.0,
-            "docx_bullet_space_after": 0.5,
+            "docx_name_size": 24.5,
+            "docx_title_size": 11.8,
+            "docx_contact_size": 8.1,
+            "docx_body_size": 9.55,
+            "docx_section_space_before": 8.4,
+            "docx_item_space_before": 2.8,
+            "docx_item_space_after": 0.85,
+            "docx_bullet_space_after": 0.35,
             "docx_heading_size": 10.8,
             "docx_heading_space_after": 0.8,
             "docx_separator_size": 7,
             "docx_separator_space_after": 0.7,
+            "docx_header_rule_space_after": 7,
+            "docx_bullet_left_indent": 0.22,
+            "docx_bullet_first_line_indent": -0.13,
+            "docx_date_tab_inch": 6.52,
             "pdf_margin": 0.54,
-            "pdf_name_size": 22,
+            "pdf_name_size": 22.5,
             "pdf_title_size": 11.6,
-            "pdf_contact_size": 8.4,
+            "pdf_contact_size": 8.0,
             "pdf_heading_size": 10.4,
-            "pdf_item_heading_size": 9.4,
-            "pdf_body_size": 8.85,
-            "pdf_body_space_after": 0.7,
-            "pdf_bullet_space_after": 0.25,
-            "pdf_heading_space_before": 3.5,
+            "pdf_item_heading_size": 9.25,
+            "pdf_item_space_before": 2.4,
+            "pdf_item_space_after": 0.8,
+            "pdf_body_size": 8.8,
+            "pdf_body_space_after": 0.55,
+            "pdf_bullet_space_after": 0.18,
+            "pdf_bullet_left_indent": 11,
+            "pdf_bullet_first_line_indent": -7,
+            "pdf_heading_space_before": 3.2,
             "pdf_heading_space_after": 0.7,
             "pdf_separator_size": 5.8,
             "pdf_separator_space_after": 0.45,
             "pdf_contact_after_spacing": 0.08 * inch,
+            "pdf_header_rule_after_spacing": 0.055 * inch,
             "pdf_section_spacing": 0,
             "pdf_section_after_spacing": 0.04 * inch,
             "heading_separator": True,
+            "header_separator": True,
+            "header_alignment": "center",
+            "item_separator": "bullet",
             "separator_text": "-" * 54,
             "separator_as_rule": True,
-            "separator_color": "8E6BBE",
-            "accent_color": "6F4FA1",
+            "separator_color": "AEBAC6",
+            "accent_color": "274B63",
             "title_color": "333333",
-            "heading_color": "6F4FA1",
+            "heading_color": "274B63",
+            "item_heading_color": "111827",
+            "contact_max_chars": 104,
+            "shorten_contact_links": True,
         },
         "compact_technical": {
             "docx_margin": 0.48,
-            "docx_name_size": 18,
+            "docx_name_size": 19,
             "docx_title_size": 10.2,
-            "docx_contact_size": 8,
-            "docx_body_size": 8.8,
+            "docx_contact_size": 7.55,
+            "docx_body_size": 8.65,
             "docx_section_space_before": 5.2,
-            "docx_item_space_after": 0.35,
-            "docx_bullet_space_after": 0.1,
+            "docx_item_space_before": 1.4,
+            "docx_item_space_after": 0.2,
+            "docx_bullet_space_after": 0,
             "docx_heading_size": 9.8,
             "docx_heading_space_after": 0.25,
             "docx_separator_size": 6.5,
             "docx_separator_space_after": 0.25,
+            "docx_header_rule_space_after": 4.5,
+            "docx_bullet_left_indent": 0.18,
+            "docx_bullet_first_line_indent": -0.11,
+            "docx_date_tab_inch": 6.82,
             "pdf_margin": 0.48,
-            "pdf_name_size": 17.5,
+            "pdf_name_size": 18,
             "pdf_title_size": 10.2,
-            "pdf_contact_size": 7.8,
+            "pdf_contact_size": 7.45,
             "pdf_heading_size": 9.6,
-            "pdf_item_heading_size": 8.7,
-            "pdf_body_size": 8.25,
-            "pdf_body_space_after": 0.2,
+            "pdf_item_heading_size": 8.65,
+            "pdf_item_space_before": 1.4,
+            "pdf_item_space_after": 0.15,
+            "pdf_body_size": 8.15,
+            "pdf_body_space_after": 0.12,
             "pdf_bullet_space_after": 0,
+            "pdf_bullet_left_indent": 9,
+            "pdf_bullet_first_line_indent": -6,
             "pdf_heading_space_before": 2.2,
             "pdf_heading_space_after": 0.2,
             "pdf_separator_size": 5.4,
             "pdf_separator_space_after": 0.1,
             "pdf_contact_after_spacing": 0.045 * inch,
+            "pdf_header_rule_after_spacing": 0.035 * inch,
             "pdf_section_spacing": 0,
             "pdf_section_after_spacing": 0.02 * inch,
             "heading_separator": True,
+            "header_separator": True,
+            "header_alignment": "left",
             "separator_text": "-" * 58,
             "separator_as_rule": True,
             "separator_color": "222222",
             "accent_color": "111111",
             "title_color": "111111",
             "heading_color": "111111",
+            "item_heading_color": "111111",
+            "contact_max_chars": 112,
+            "shorten_contact_links": True,
         },
         "visual_photo_optional": {
             "docx_margin": 0.56,
-            "docx_name_size": 22,
-            "docx_title_size": 11.5,
-            "docx_contact_size": 8.5,
-            "docx_body_size": 9.4,
-            "docx_section_space_before": 7.5,
-            "docx_item_space_after": 0.9,
-            "docx_bullet_space_after": 0.45,
+            "docx_name_size": 23,
+            "docx_title_size": 11.4,
+            "docx_contact_size": 8.0,
+            "docx_body_size": 9.3,
+            "docx_section_space_before": 7.3,
+            "docx_item_space_before": 2.3,
+            "docx_item_space_after": 0.7,
+            "docx_bullet_space_after": 0.28,
             "docx_heading_size": 10.4,
             "docx_heading_space_after": 0.6,
             "docx_separator_size": 6.8,
             "docx_separator_space_after": 0.6,
+            "docx_header_rule_space_after": 6,
+            "docx_bullet_left_indent": 0.21,
+            "docx_bullet_first_line_indent": -0.12,
+            "docx_date_tab_inch": 6.48,
+            "docx_photo_width": 0.94,
+            "docx_photo_cell_width": 1.10,
             "pdf_margin": 0.54,
-            "pdf_name_size": 20,
+            "pdf_name_size": 20.5,
             "pdf_title_size": 11.2,
-            "pdf_contact_size": 8.3,
+            "pdf_contact_size": 7.95,
             "pdf_heading_size": 10.1,
             "pdf_item_heading_size": 9.2,
-            "pdf_body_size": 8.75,
-            "pdf_body_space_after": 0.6,
-            "pdf_bullet_space_after": 0.25,
+            "pdf_item_space_before": 2.1,
+            "pdf_item_space_after": 0.6,
+            "pdf_body_size": 8.65,
+            "pdf_body_space_after": 0.45,
+            "pdf_bullet_space_after": 0.15,
+            "pdf_bullet_left_indent": 10,
+            "pdf_bullet_first_line_indent": -7,
             "pdf_heading_space_before": 3.0,
             "pdf_heading_space_after": 0.55,
             "pdf_separator_size": 5.6,
             "pdf_separator_space_after": 0.4,
             "pdf_contact_after_spacing": 0.075 * inch,
+            "pdf_header_rule_after_spacing": 0.05 * inch,
+            "pdf_photo_size": 0.82,
+            "pdf_photo_cell_width": 0.98,
+            "pdf_photo_text_width": 6.05,
             "pdf_section_spacing": 0,
             "pdf_section_after_spacing": 0.035 * inch,
             "heading_separator": True,
+            "header_separator": True,
+            "header_alignment": "left",
+            "item_separator": "bullet",
             "separator_text": "-" * 54,
             "separator_as_rule": True,
-            "separator_color": "777777",
+            "separator_color": "8A8F98",
             "accent_color": "1F2933",
             "title_color": "333333",
             "heading_color": "1F2933",
+            "item_heading_color": "111827",
+            "supports_photo": True,
+            "contact_max_chars": 98,
+            "shorten_contact_links": True,
         },
     }
     style = deepcopy(styles.get(template_id, styles["classic_ats"]))
@@ -1334,12 +1693,29 @@ def _template_style(template: dict, export_style: str = "standard", density: str
     style.setdefault("docx_heading_space_after", 3)
     style.setdefault("docx_separator_size", 8)
     style.setdefault("docx_separator_space_after", 3)
+    style.setdefault("docx_header_rule_space_after", 6)
+    style.setdefault("docx_item_space_before", 1.5)
+    style.setdefault("docx_bullet_left_indent", 0.24)
+    style.setdefault("docx_bullet_first_line_indent", -0.13)
+    style.setdefault("docx_date_tab_inch", 6.45)
     style.setdefault("pdf_heading_space_before", 6)
     style.setdefault("pdf_heading_space_after", 2.5)
     style.setdefault("pdf_separator_size", 7)
     style.setdefault("pdf_separator_space_after", 3)
+    style.setdefault("pdf_header_rule_after_spacing", style.get("pdf_contact_after_spacing", 0.08 * inch))
+    style.setdefault("pdf_item_space_before", 2)
+    style.setdefault("pdf_item_space_after", 1)
+    style.setdefault("pdf_bullet_left_indent", 12)
+    style.setdefault("pdf_bullet_first_line_indent", -8)
     style.setdefault("separator_text", "-" * 48)
     style.setdefault("separator_as_rule", False)
+    style.setdefault("header_separator", False)
+    style.setdefault("header_alignment", "center")
+    style.setdefault("item_separator", "pipe")
+    style.setdefault("item_heading_color", "111111")
+    style.setdefault("contact_max_chars", 104)
+    style.setdefault("shorten_contact_links", False)
+    style.setdefault("supports_photo", False)
     if export_style == "compact":
         _apply_compact_style(style)
     elif export_style == "balanced_one_page":

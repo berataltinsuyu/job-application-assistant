@@ -416,8 +416,8 @@ TRANSLATIONS = {
         "docx_supports_photo": "Fotoğraf desteği",
         "cv_photo_optional": "CV Fotoğrafı (Opsiyonel)",
         "include_photo_cv": "Fotoğrafı CV’ye ekle",
-        "photo_template_warning": "Fotoğraf yalnızca fotoğraf destekli Şablon DOCX çıktılarında kullanılır. Diğer çıktılarda yok sayılır.",
-        "photo_template_ready": "Seçili DOCX şablonu fotoğrafı başlık alanına ekleyebilir.",
+        "photo_template_warning": "Fotoğraf yalnızca visual_photo_optional veya fotoğraf destekli Şablon DOCX çıktılarında kullanılır. Diğer şablonlarda yok sayılır.",
+        "photo_template_ready": "Seçili şablon fotoğrafı başlık alanına ekleyebilir. Fotoğraf opsiyoneldir ve varsayılan olarak kapalıdır.",
         "no_global_cv": "Sol menüden henüz CV yüklenmedi.",
         "no_global_job_desc": "Sol menüye henüz iş ilanı metni girilmedi.",
         "input_status": "Girdi Durumu",
@@ -835,8 +835,8 @@ TRANSLATIONS = {
         "docx_supports_photo": "Photo support",
         "cv_photo_optional": "CV Photo (Optional)",
         "include_photo_cv": "Include photo in CV",
-        "photo_template_warning": "Photo is only used by photo-capable Template DOCX exports. Other outputs ignore it.",
-        "photo_template_ready": "The selected DOCX template can place the photo in the header.",
+        "photo_template_warning": "Photo is only used by visual_photo_optional or photo-capable Template DOCX exports. Other templates ignore it.",
+        "photo_template_ready": "The selected template can place the photo in the header. Photo is optional and off by default.",
         "no_global_cv": "No global CV uploaded in sidebar.",
         "no_global_job_desc": "No global job description in sidebar.",
         "input_status": "Input Status",
@@ -2338,10 +2338,15 @@ elif selected_page_key == "📄 ATS CV Builder":
                 else:
                     st.warning("No DOCX templates available. Using default.")
 
-            photo_supported_for_export = (
+            photo_supported_for_docx = (
                 docx_render_mode == "template"
                 and bool(selected_template_info.get("supports_photo"))
+            ) or (
+                docx_render_mode == "programmatic"
+                and bool(export_template.get("supports_photo"))
             )
+            photo_supported_for_pdf = bool(export_template.get("supports_photo"))
+            photo_supported_for_export = photo_supported_for_docx or photo_supported_for_pdf
             if include_cv_photo and ats_cv_photo is not None:
                 if photo_supported_for_export:
                     st.info(t("photo_template_ready"))
@@ -2355,12 +2360,14 @@ elif selected_page_key == "📄 ATS CV Builder":
                 one_page_export, enabled_export_sections, selected_export_style,
                 docx_render_mode=docx_render_mode,
                 docx_template_id=selected_template_id_for_docx,
-                include_photo=include_cv_photo and photo_supported_for_export,
-                photo_file=ats_cv_photo if include_cv_photo and photo_supported_for_export else None,
+                include_photo=include_cv_photo and photo_supported_for_docx,
+                photo_file=ats_cv_photo if include_cv_photo and photo_supported_for_docx else None,
             ) if can_export else None
             pdf_bytes = fetch_ats_cv_export(
                 "export-pdf", ats_cv, export_template_id, export_language,
-                one_page_export, enabled_export_sections, selected_export_style
+                one_page_export, enabled_export_sections, selected_export_style,
+                include_photo=include_cv_photo and photo_supported_for_pdf,
+                photo_file=ats_cv_photo if include_cv_photo and photo_supported_for_pdf else None,
             ) if can_export else None
             txt_bytes = fetch_ats_cv_export(
                 "export-txt", ats_cv, export_template_id, export_language,
