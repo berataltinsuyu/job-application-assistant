@@ -329,7 +329,7 @@ TRANSLATIONS = {
         "best_for": "En Uygun Kullanım",
         "section_order": "Bölüm Sırası",
         "ats_notes": "ATS Notları",
-        "ats_cv_builder_next_phase": "İş ilanına özel ATS uyumlu CV oluşturun, önizleyin ve DOCX/PDF olarak indirin.",
+        "ats_cv_builder_next_phase": "CV ve iş ilanını kullanarak ATS uyumlu, ilana özel CV oluşturun.",
         "generate_ats_cv": "ATS CV Oluştur",
         "generated_ats_cv_preview": "Oluşturulan ATS CV Önizlemesi",
         "ats_score_before": "Önceki ATS Skoru",
@@ -348,7 +348,7 @@ TRANSLATIONS = {
         "improvement_reasons": "İyileştirme Nedenleri",
         "remaining_gaps": "Kalan Eksikler",
         "ats_score_disclaimer": "Bu skor tahmini bir ATS uygunluk skorudur, resmi bir ATS sonucu değildir.",
-        "ats_cv_generic_note": "Bu oluşturucu, yüklenen CV’yi iş ilanına göre uyarlar. İletişim bilgileri ve özel isimler yüklenen CV’den kilitlenir ve oluşturma öncesinde düzenlenebilir.",
+        "ats_cv_generic_note": "İletişim bilgileri ve özel isimler CV’den korunur; gerekirse oluşturmadan önce düzenleyebilirsiniz.",
         "locked_contact_fields": "Kilitli İletişim Bilgileri",
         "locked_fields_protection": "Kilitli bilgiler ve özel isim koruması",
         "contact_summary_empty": "İletişim özeti henüz çıkarılamadı.",
@@ -365,7 +365,7 @@ TRANSLATIONS = {
         "export_style": "Dışa Aktarım Stili",
         "export_style_standard": "Standart",
         "export_style_balanced": "Tek sayfaya sığdırmayı dene",
-        "balanced_one_page_help": "Önce boşluk ve yazı yoğunluğu optimize edilir; yalnızca gerekirse düşük öncelikli detaylar azaltılır.",
+        "balanced_one_page_help": "Tam içerik için Standart, kompakt çıktı için Tek sayfaya sığdırmayı dene seçeneğini kullanın.",
         "export_sections": "Dışa Aktarılacak Bölümler",
         "main_settings": "Ana Ayarlar",
         "template_guidance": "Şablon önerisi",
@@ -437,9 +437,9 @@ TRANSLATIONS = {
         "docx_supports_photo": "Fotoğraf desteği",
         "cv_photo_optional": "CV Fotoğrafı (Opsiyonel)",
         "include_photo_cv": "Fotoğrafı CV’ye ekle",
-        "photo_template_warning": "Fotoğraf yalnızca visual_photo_optional veya fotoğraf destekli Şablon DOCX çıktılarında kullanılır. Diğer şablonlarda yok sayılır.",
+        "photo_template_warning": "Bu şablon fotoğraf içermez.",
         "photo_template_ready": "Seçili şablon fotoğrafı başlık alanına ekleyebilir. Fotoğraf opsiyoneldir ve varsayılan olarak kapalıdır.",
-        "photo_best_result_note": "Fotoğraf opsiyoneldir. En iyi sonuç için kare veya portre fotoğraf kullanın.",
+        "photo_best_result_note": "Fotoğraf opsiyoneldir. Kare veya portre fotoğraf önerilir.",
         "no_global_cv": "Sol menüden henüz CV yüklenmedi.",
         "no_global_job_desc": "Sol menüye henüz iş ilanı metni girilmedi.",
         "input_status": "Girdi Durumu",
@@ -770,7 +770,7 @@ TRANSLATIONS = {
         "best_for": "Best For",
         "section_order": "Section Order",
         "ats_notes": "ATS Notes",
-        "ats_cv_builder_next_phase": "Generate, preview, and download job-specific ATS-friendly CVs as DOCX/PDF.",
+        "ats_cv_builder_next_phase": "Generate an ATS-friendly tailored CV from your CV and the job description.",
         "generate_ats_cv": "Generate ATS CV",
         "generated_ats_cv_preview": "Generated ATS CV Preview",
         "ats_score_before": "ATS Score Before",
@@ -789,7 +789,7 @@ TRANSLATIONS = {
         "improvement_reasons": "Improvement Reasons",
         "remaining_gaps": "Remaining Gaps",
         "ats_score_disclaimer": "This is an estimated ATS relevance score, not an official ATS result.",
-        "ats_cv_generic_note": "This builder adapts the uploaded CV to the job description. Contact fields and proper nouns are locked from the uploaded CV and can be edited before generation.",
+        "ats_cv_generic_note": "Contact details and proper nouns are preserved from the CV and can be edited before generation.",
         "locked_contact_fields": "Locked Contact Fields",
         "locked_fields_protection": "Locked fields and proper-name protection",
         "contact_summary_empty": "No contact summary extracted yet.",
@@ -806,7 +806,7 @@ TRANSLATIONS = {
         "export_style": "Export Style",
         "export_style_standard": "Standard",
         "export_style_balanced": "Try to fit into one page",
-        "balanced_one_page_help": "Optimizes spacing and density first; reduces lower-priority details only if needed.",
+        "balanced_one_page_help": "Choose Standard for full content, or Try to fit into one page for a compact export.",
         "export_sections": "Export Sections",
         "main_settings": "Main Settings",
         "template_guidance": "Template guidance",
@@ -878,9 +878,9 @@ TRANSLATIONS = {
         "docx_supports_photo": "Photo support",
         "cv_photo_optional": "CV Photo (Optional)",
         "include_photo_cv": "Include photo in CV",
-        "photo_template_warning": "Photo is only used by visual_photo_optional or photo-capable Template DOCX exports. Other templates ignore it.",
+        "photo_template_warning": "This template does not include a photo.",
         "photo_template_ready": "The selected template can place the photo in the header. Photo is optional and off by default.",
-        "photo_best_result_note": "Photo is optional. For best results, use a square or portrait photo.",
+        "photo_best_result_note": "Optional photo. Best with square or portrait images.",
         "no_global_cv": "No global CV uploaded in sidebar.",
         "no_global_job_desc": "No global job description in sidebar.",
         "input_status": "Input Status",
@@ -1859,6 +1859,37 @@ st.markdown("""
     section[data-testid="stSidebar"] div[role="radiogroup"] {
         gap: 2px !important;
     }
+    .ats-builder-compact-title {
+        margin: 0 0 0.25rem 0;
+    }
+    .ats-builder-compact-note {
+        font-size: 0.92rem;
+        color: rgba(250, 250, 250, 0.72);
+        margin: -0.2rem 0 0.35rem 0;
+    }
+    .ats-builder-compact-section {
+        margin: 0.35rem 0 0.15rem 0;
+        font-size: 1rem;
+        font-weight: 650;
+    }
+    .ats-builder-contact-summary {
+        font-size: 0.86rem;
+        color: rgba(250, 250, 250, 0.68);
+        margin: 0.2rem 0 0.1rem 0;
+    }
+    div[data-testid="stSelectbox"]:not(:has([aria-invalid="true"])) div[data-baseweb="select"] > div,
+    div[data-testid="stSelectbox"]:not(:has([aria-invalid="true"])) div[data-baseweb="select"] input,
+    div[data-testid="stSelectbox"]:not(:has([aria-invalid="true"])) [aria-invalid="false"] {
+        border-color: rgba(128, 132, 149, 0.45) !important;
+        box-shadow: none !important;
+    }
+    div[data-testid="stSelectbox"]:not(:has([aria-invalid="true"])) div[data-baseweb="select"] > div:hover {
+        border-color: rgba(160, 166, 184, 0.75) !important;
+    }
+    div[data-testid="stDownloadButton"] button {
+        white-space: nowrap !important;
+        min-width: 8.6rem;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -2117,8 +2148,8 @@ elif selected_page_key == "🔍 CV Tools":
 
 
 elif selected_page_key == "📄 ATS CV Builder":
-    st.header(t("ats_cv_builder"))
-    st.write(t("ats_cv_builder_next_phase"))
+    st.markdown(f"### {t('ats_cv_builder')}")
+    st.caption(t("ats_cv_builder_next_phase"))
     st.info(t("ats_cv_generic_note"))
 
     try:
@@ -2134,12 +2165,20 @@ elif selected_page_key == "📄 ATS CV Builder":
 
     if templates:
         template_by_name = {template["name"]: template for template in templates}
-        st.subheader(t("main_settings"))
-        settings_col1, settings_col2 = st.columns([1.25, 1])
+        template_names = list(template_by_name.keys())
+        default_template_name = next(
+            (template["name"] for template in templates if template.get("id") == "modern_professional"),
+            template_names[0],
+        )
+        default_template_index = template_names.index(default_template_name) if default_template_name in template_names else 0
+        st.markdown(f'<div class="ats-builder-compact-section">{t("main_settings")}</div>', unsafe_allow_html=True)
+        settings_col1, settings_col2 = st.columns([1.18, 1], gap="medium")
         with settings_col1:
             selected_template_name = st.selectbox(
                 t("choose_cv_template"),
-                list(template_by_name.keys())
+                template_names,
+                index=default_template_index,
+                key="ats_cv_template_selector",
             )
             selected_template = template_by_name[selected_template_name]
             st.caption(f"{t('template_guidance')}: {template_short_guidance(selected_template)}")
@@ -2198,27 +2237,22 @@ elif selected_page_key == "📄 ATS CV Builder":
             )
             selected_adaptation_level = dict(adaptation_options).get(selected_adaptation_label, "balanced")
             st.caption(t("adaptation_strong_help"))
-            st.session_state.setdefault("ats_cv_prefer_one_page", False)
-            st.checkbox(
-                t("optimize_one_page"),
-                key="ats_cv_prefer_one_page",
-                help=t("balanced_one_page_help"),
-            )
 
             ats_cv_photo = None
             include_cv_photo = False
             if selected_template.get("supports_photo"):
-                ats_cv_photo = st.file_uploader(
-                    t("cv_photo_optional"),
-                    type=["png", "jpg", "jpeg"],
-                    key="ats_cv_optional_photo",
-                )
                 include_cv_photo = st.checkbox(
                     t("include_photo_cv"),
                     value=False,
                     key="ats_cv_include_optional_photo",
                 )
                 st.caption(t("photo_best_result_note"))
+                if include_cv_photo:
+                    ats_cv_photo = st.file_uploader(
+                        t("cv_photo_optional"),
+                        type=["png", "jpg", "jpeg"],
+                        key="ats_cv_optional_photo",
+                    )
             else:
                 st.caption(t("photo_template_warning"))
 
@@ -2246,7 +2280,10 @@ elif selected_page_key == "📄 ATS CV Builder":
                 st.session_state.setdefault(f"ats_cv_{right_key}", ATS_LOCKED_CONTACT_DEFAULTS[right_key])
                 locked_contact_values[right_key] = st.session_state.get(f"ats_cv_{right_key}", "")
 
-        st.caption(contact_summary_line(locked_contact_values))
+        st.markdown(
+            f'<div class="ats-builder-contact-summary">{t("locked_contact_fields")}: {contact_summary_line(locked_contact_values)}</div>',
+            unsafe_allow_html=True,
+        )
         with st.expander(t("locked_fields_protection"), expanded=False):
             st.markdown(f"**{t('locked_contact_fields')}**")
             for left_key, right_key in locked_contact_rows:
@@ -2380,7 +2417,7 @@ elif selected_page_key == "📄 ATS CV Builder":
                 st.write(metadata.get("alignment_confidence") or "-")
 
             # 2. Compact export section directly after result summary
-            st.subheader(t("export_download"))
+            st.markdown(f'<div class="ats-builder-compact-section">{t("export_download")}</div>', unsafe_allow_html=True)
             export_style_label_map = {
                 t("export_style_standard"): "standard",
                 t("export_style_balanced"): "balanced_one_page",
@@ -2398,23 +2435,22 @@ elif selected_page_key == "📄 ATS CV Builder":
             ]
 
             export_style_labels = list(export_style_label_map.keys())
-            preferred_one_page = bool(st.session_state.get("ats_cv_prefer_one_page", False))
-            selected_export_style_label = st.selectbox(
-                t("export_style"),
-                export_style_labels,
-                index=1 if preferred_one_page else 0,
-                key="ats_cv_export_style"
-            )
+            export_cfg_col1, export_cfg_col2, export_cfg_col3 = st.columns([1.05, 1.2, 1.25], gap="small")
+            with export_cfg_col1:
+                selected_export_style_label = st.selectbox(
+                    t("export_style"),
+                    export_style_labels,
+                    index=0,
+                    key="ats_cv_export_style"
+                )
+                st.caption(t("balanced_one_page_help"))
             selected_export_style = export_style_label_map[selected_export_style_label]
             one_page_export = selected_export_style == "balanced_one_page"
-            if one_page_export:
-                st.caption(t("balanced_one_page_help"))
 
             selected_template_id_for_docx = export_template_id
             selected_template_info = {}
             enabled_export_sections = [section_key for section_key, _ in section_options]
-            docx_render_mode = "programmatic"
-            with st.expander(t("advanced_export_options"), expanded=False):
+            with export_cfg_col2:
                 render_mode_options = [t("docx_render_mode_prog"), t("docx_render_mode_tpl")]
                 selected_render_mode_label = st.radio(
                     t("docx_render_mode_label"),
@@ -2425,6 +2461,7 @@ elif selected_page_key == "📄 ATS CV Builder":
                 )
                 docx_render_mode = "template" if selected_render_mode_label == t("docx_render_mode_tpl") else "programmatic"
 
+            with st.expander(t("advanced_export_options"), expanded=False):
                 if docx_render_mode == "template":
                     st.info(t("docx_template_experimental_note"))
                     try:
@@ -2486,9 +2523,10 @@ elif selected_page_key == "📄 ATS CV Builder":
                     st.caption(t("photo_best_result_note"))
 
             photo_ready = bool(include_cv_photo and ats_cv_photo is not None and photo_supported_for_export)
-            st.caption(f"{t('photo_status')}: {t('photo_included_yes') if photo_ready else t('photo_included_no')}")
+            with export_cfg_col3:
+                st.caption(f"{t('photo_status')}: {t('photo_included_yes') if photo_ready else t('photo_included_no')}")
 
-            col_docx, col_pdf, col_txt = st.columns(3)
+            col_docx, col_pdf, col_txt, _download_spacer = st.columns([1.2, 1.2, 1.2, 2.2], gap="small")
             can_export = bool(enabled_export_sections)
             docx_bytes = fetch_ats_cv_export(
                 "export-docx", ats_cv, export_template_id, export_language,
@@ -2515,7 +2553,8 @@ elif selected_page_key == "📄 ATS CV Builder":
                         label=t("download_docx_cv"),
                         data=docx_bytes,
                         file_name=safe_cv_filename("ats_cv", selected_template_id_for_docx, "docx"),
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                        use_container_width=True,
                     )
             with col_pdf:
                 if pdf_bytes:
@@ -2523,7 +2562,8 @@ elif selected_page_key == "📄 ATS CV Builder":
                         label=t("download_pdf_cv"),
                         data=pdf_bytes,
                         file_name=safe_cv_filename("ats_cv", export_template_id, "pdf"),
-                        mime="application/pdf"
+                        mime="application/pdf",
+                        use_container_width=True,
                     )
             with col_txt:
                 if txt_bytes:
@@ -2531,7 +2571,8 @@ elif selected_page_key == "📄 ATS CV Builder":
                         label=t("download_txt_cv"),
                         data=txt_bytes,
                         file_name=safe_cv_filename("ats_cv", export_template_id, "txt"),
-                        mime="text/plain"
+                        mime="text/plain",
+                        use_container_width=True,
                     )
 
             # 4. Collapsible Preview Section
