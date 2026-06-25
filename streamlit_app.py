@@ -418,6 +418,7 @@ TRANSLATIONS = {
         "include_photo_cv": "Fotoğrafı CV’ye ekle",
         "photo_template_warning": "Fotoğraf yalnızca visual_photo_optional veya fotoğraf destekli Şablon DOCX çıktılarında kullanılır. Diğer şablonlarda yok sayılır.",
         "photo_template_ready": "Seçili şablon fotoğrafı başlık alanına ekleyebilir. Fotoğraf opsiyoneldir ve varsayılan olarak kapalıdır.",
+        "photo_best_result_note": "Fotoğraf opsiyoneldir. En iyi sonuç için kare veya portre fotoğraf kullanın.",
         "no_global_cv": "Sol menüden henüz CV yüklenmedi.",
         "no_global_job_desc": "Sol menüye henüz iş ilanı metni girilmedi.",
         "input_status": "Girdi Durumu",
@@ -837,6 +838,7 @@ TRANSLATIONS = {
         "include_photo_cv": "Include photo in CV",
         "photo_template_warning": "Photo is only used by visual_photo_optional or photo-capable Template DOCX exports. Other templates ignore it.",
         "photo_template_ready": "The selected template can place the photo in the header. Photo is optional and off by default.",
+        "photo_best_result_note": "Photo is optional. For best results, use a square or portrait photo.",
         "no_global_cv": "No global CV uploaded in sidebar.",
         "no_global_job_desc": "No global job description in sidebar.",
         "input_status": "Input Status",
@@ -2215,57 +2217,13 @@ elif selected_page_key == "📄 ATS CV Builder":
                 st.write(f"**{t('alignment_confidence')}**")
                 st.write(metadata.get("alignment_confidence") or "-")
 
-            # 2. Compact expanders
-            render_quality_report(quality_report, t("cv_quality_check"), "quality_score")
-            render_quality_report(structure_report, t("structure_validation"), "structure_score")
-
-            with st.expander(t("used_keywords"), expanded=False):
-                st.write(", ".join(metadata.get("job_keywords_used", [])) or "-")
-
-            with st.expander(t("transferable_keywords"), expanded=False):
-                write_non_empty_list(metadata.get("transferable_keywords_used", []))
-
-            with st.expander(t("missing_keywords"), expanded=False):
-                write_non_empty_list(metadata.get("missing_keywords", []))
-
-            with st.expander(t("risky_keywords_not_added"), expanded=False):
-                write_non_empty_list(metadata.get("risky_keywords_not_added", []))
-
-            with st.expander(t("optimization_summary"), expanded=False):
-                st.write(metadata.get("optimization_summary", ""))
-
-            score_explanation = metadata.get("ats_score_explanation", {}) if isinstance(metadata.get("ats_score_explanation"), dict) else {}
-            with st.expander(t("ats_score_explanation"), expanded=False):
-                st.caption(t("ats_score_disclaimer"))
-                st.write(f"**{t('before_reason')}:** {translate_score_reason(score_explanation.get('before_reason') or '-')}")
-                st.write(f"**{t('after_reason')}:** {translate_score_reason(score_explanation.get('after_reason') or '-')}")
-
-            with st.expander(t("improvement_reasons"), expanded=False):
-                write_non_empty_list(score_explanation.get("improvement_reasons", []))
-
-            with st.expander(t("remaining_gaps"), expanded=False):
-                write_non_empty_list(score_explanation.get("remaining_gaps", []))
-
-            with st.expander(t("adaptation_notes"), expanded=False):
-                write_non_empty_list(metadata.get("adaptation_notes", []))
-
-            # 3. Export Section
+            # 2. Export Section
             st.markdown("---")
             st.header(t("export_cv") if "export_cv" in TRANSLATIONS[st.session_state.ui_lang] else "Export")
-            st.subheader(t("export_sections"))
             export_style_label_map = {
                 t("export_style_standard"): "standard",
                 t("export_style_balanced"): "balanced_one_page",
             }
-            selected_export_style_label = st.selectbox(
-                t("export_style"),
-                list(export_style_label_map.keys()),
-                key="ats_cv_export_style"
-            )
-            selected_export_style = export_style_label_map[selected_export_style_label]
-            one_page_export = selected_export_style == "balanced_one_page"
-            if one_page_export:
-                st.caption(t("balanced_one_page_help"))
 
             section_options = [
                 ("contact", t("contact")),
@@ -2277,43 +2235,28 @@ elif selected_page_key == "📄 ATS CV Builder":
                 ("certifications", t("certifications_section")),
                 ("languages", t("languages_section")),
             ]
-            enabled_export_sections = []
-            section_cols = st.columns(4)
-            for index, (section_key, label) in enumerate(section_options):
-                with section_cols[index % 4]:
-                    if st.checkbox(label, value=True, key=f"ats_cv_export_section_{section_key}"):
-                        enabled_export_sections.append(section_key)
 
-            if "contact" not in enabled_export_sections:
-                st.warning(t("critical_section_warning"))
-            if any(section not in enabled_export_sections for section in ["experience", "education", "skills"]):
-                st.warning(t("key_section_warning"))
-            if not enabled_export_sections:
-                st.warning("Select at least one export section." if st.session_state.ui_lang == "en" else "En az bir dışa aktarma bölümü seçin.")
-
-            photo_col1, photo_col2 = st.columns([2, 1])
-            with photo_col1:
-                ats_cv_photo = st.file_uploader(
-                    t("cv_photo_optional"),
-                    type=["png", "jpg", "jpeg"],
-                    key="ats_cv_optional_photo",
+            export_col1, export_col2 = st.columns([1, 1])
+            with export_col1:
+                selected_export_style_label = st.selectbox(
+                    t("export_style"),
+                    list(export_style_label_map.keys()),
+                    key="ats_cv_export_style"
                 )
-            with photo_col2:
-                include_cv_photo = st.checkbox(
-                    t("include_photo_cv"),
-                    value=False,
-                    key="ats_cv_include_optional_photo",
+                selected_export_style = export_style_label_map[selected_export_style_label]
+                one_page_export = selected_export_style == "balanced_one_page"
+                if one_page_export:
+                    st.caption(t("balanced_one_page_help"))
+            with export_col2:
+                render_mode_options = [t("docx_render_mode_prog"), t("docx_render_mode_tpl")]
+                selected_render_mode_label = st.radio(
+                    t("docx_render_mode_label"),
+                    render_mode_options,
+                    index=0,
+                    horizontal=True,
+                    key="ats_cv_docx_render_mode"
                 )
-
-            # DOCX Render Mode selector
-            render_mode_options = [t("docx_render_mode_prog"), t("docx_render_mode_tpl")]
-            selected_render_mode_label = st.radio(
-                t("docx_render_mode_label"),
-                render_mode_options,
-                index=0,
-                key="ats_cv_docx_render_mode"
-            )
-            docx_render_mode = "template" if selected_render_mode_label == t("docx_render_mode_tpl") else "programmatic"
+                docx_render_mode = "template" if selected_render_mode_label == t("docx_render_mode_tpl") else "programmatic"
 
             selected_template_id_for_docx = export_template_id
             selected_template_info = {}
@@ -2347,11 +2290,43 @@ elif selected_page_key == "📄 ATS CV Builder":
             )
             photo_supported_for_pdf = bool(export_template.get("supports_photo"))
             photo_supported_for_export = photo_supported_for_docx or photo_supported_for_pdf
-            if include_cv_photo and ats_cv_photo is not None:
-                if photo_supported_for_export:
+
+            ats_cv_photo = None
+            include_cv_photo = False
+            if photo_supported_for_export:
+                photo_col1, photo_col2 = st.columns([2, 1])
+                with photo_col1:
+                    ats_cv_photo = st.file_uploader(
+                        t("cv_photo_optional"),
+                        type=["png", "jpg", "jpeg"],
+                        key="ats_cv_optional_photo",
+                    )
+                    st.caption(t("photo_best_result_note"))
+                with photo_col2:
+                    include_cv_photo = st.checkbox(
+                        t("include_photo_cv"),
+                        value=False,
+                        key="ats_cv_include_optional_photo",
+                    )
+                if include_cv_photo and ats_cv_photo is not None:
                     st.info(t("photo_template_ready"))
-                else:
-                    st.warning(t("photo_template_warning"))
+            elif export_template.get("supports_photo") is False:
+                st.caption(t("photo_template_warning"))
+
+            with st.expander(t("export_sections"), expanded=False):
+                enabled_export_sections = []
+                section_cols = st.columns(4)
+                for index, (section_key, label) in enumerate(section_options):
+                    with section_cols[index % 4]:
+                        if st.checkbox(label, value=True, key=f"ats_cv_export_section_{section_key}"):
+                            enabled_export_sections.append(section_key)
+
+                if "contact" not in enabled_export_sections:
+                    st.warning(t("critical_section_warning"))
+                if any(section not in enabled_export_sections for section in ["experience", "education", "skills"]):
+                    st.warning(t("key_section_warning"))
+                if not enabled_export_sections:
+                    st.warning("Select at least one export section." if st.session_state.ui_lang == "en" else "En az bir dışa aktarma bölümü seçin.")
 
             col_docx, col_pdf, col_txt = st.columns(3)
             can_export = bool(enabled_export_sections)
@@ -2404,6 +2379,40 @@ elif selected_page_key == "📄 ATS CV Builder":
             preview_title = "Oluşturulan CV Önizlemesi" if st.session_state.ui_lang == "tr" else "Generated CV Preview"
             with st.expander(preview_title, expanded=False):
                 render_ats_cv_preview(ats_cv)
+
+            # 5. Detailed reports
+            render_quality_report(quality_report, t("cv_quality_check"), "quality_score")
+            render_quality_report(structure_report, t("structure_validation"), "structure_score")
+
+            with st.expander(t("used_keywords"), expanded=False):
+                st.write(", ".join(metadata.get("job_keywords_used", [])) or "-")
+
+            with st.expander(t("transferable_keywords"), expanded=False):
+                write_non_empty_list(metadata.get("transferable_keywords_used", []))
+
+            with st.expander(t("missing_keywords"), expanded=False):
+                write_non_empty_list(metadata.get("missing_keywords", []))
+
+            with st.expander(t("risky_keywords_not_added"), expanded=False):
+                write_non_empty_list(metadata.get("risky_keywords_not_added", []))
+
+            with st.expander(t("optimization_summary"), expanded=False):
+                st.write(metadata.get("optimization_summary", ""))
+
+            score_explanation = metadata.get("ats_score_explanation", {}) if isinstance(metadata.get("ats_score_explanation"), dict) else {}
+            with st.expander(t("ats_score_explanation"), expanded=False):
+                st.caption(t("ats_score_disclaimer"))
+                st.write(f"**{t('before_reason')}:** {translate_score_reason(score_explanation.get('before_reason') or '-')}")
+                st.write(f"**{t('after_reason')}:** {translate_score_reason(score_explanation.get('after_reason') or '-')}")
+
+            with st.expander(t("improvement_reasons"), expanded=False):
+                write_non_empty_list(score_explanation.get("improvement_reasons", []))
+
+            with st.expander(t("remaining_gaps"), expanded=False):
+                write_non_empty_list(score_explanation.get("remaining_gaps", []))
+
+            with st.expander(t("adaptation_notes"), expanded=False):
+                write_non_empty_list(metadata.get("adaptation_notes", []))
 
 
 elif selected_page_key == "✉️ Application Materials":

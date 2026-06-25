@@ -28,6 +28,7 @@ from services.ats_cv_relevance import (
     rank_skills_for_job,
     relevance_keywords,
 )
+from services.cv_photo_service import prepare_cv_photo_for_export
 
 
 SECTION_TITLES = {
@@ -102,6 +103,7 @@ def render_ats_cv_to_docx(
             language,
             int(template_style.get("contact_max_chars", 104)),
             shorten_links=bool(template_style.get("shorten_contact_links", False)),
+            separator=template_style.get("contact_separator", " | "),
         )
         if _section_enabled("contact", enabled_sections):
             _add_docx_header(document, contact, template_style, photo_bytes, photo_filename)
@@ -148,6 +150,7 @@ def render_ats_cv_to_pdf(
             language,
             int(template_style.get("contact_max_chars", 104)),
             shorten_links=bool(template_style.get("shorten_contact_links", False)),
+            separator=template_style.get("contact_separator", " | "),
         )
         if _section_enabled("contact", enabled_sections):
             story.extend(_pdf_header(contact, styles, template_style, photo_bytes, photo_filename))
@@ -161,7 +164,7 @@ def render_ats_cv_to_pdf(
                 if item["type"] == "paragraph":
                     story.append(Paragraph(escape(item["text"]), styles["Body"]))
                 elif item["type"] == "heading":
-                    story.append(Paragraph(escape(item["text"]), styles["ItemHeading"]))
+                    story.append(Paragraph(_pdf_item_heading_markup(item["text"], template_style), styles["ItemHeading"]))
                 elif item["type"] == "bullet":
                     story.append(Paragraph(f"- {escape(item['text'])}", styles["Bullet"]))
                 elif item["type"] == "separator":
@@ -190,6 +193,7 @@ def build_plain_text_preview(
         language,
         int(template_style.get("contact_max_chars", 104)),
         shorten_links=False,
+        separator=" | ",
     )
     lines = []
 
@@ -305,7 +309,13 @@ def estimate_cv_content_density(ats_cv: dict) -> str:
     return "long"
 
 
-def render_contact(ats_cv: dict, language: str, max_chars: int = 104, shorten_links: bool = True) -> dict:
+def render_contact(
+    ats_cv: dict,
+    language: str,
+    max_chars: int = 104,
+    shorten_links: bool = True,
+    separator: str = " | ",
+) -> dict:
     from services.ats_cv_postprocessing import _clean_character_spacing
     contact = ats_cv.get("contact", {}) if isinstance(ats_cv, dict) else {}
     contact_items = []
@@ -331,22 +341,22 @@ def render_contact(ats_cv: dict, language: str, max_chars: int = 104, shorten_li
         if display_value:
             contact_items.append((key, display_value))
         
-    contact_lines = _contact_lines(contact_items, max_chars)
+    contact_lines = _contact_lines(contact_items, max_chars, separator)
 
     return {
         "full_name": full_name,
         "target_title": target_title,
-        "contact_line": " | ".join(value for _, value in contact_items),
+        "contact_line": separator.join(value for _, value in contact_items),
         "contact_lines": contact_lines,
     }
 
 
-def _contact_lines(contact_items: list[tuple[str, str]], max_chars: int = 104) -> list[str]:
+def _contact_lines(contact_items: list[tuple[str, str]], max_chars: int = 104, separator: str = " | ") -> list[str]:
     """Pack contact values without splitting URLs; keep LinkedIn/GitHub together when wrapping."""
     if not contact_items:
         return []
 
-    one_line = " | ".join(value for _, value in contact_items)
+    one_line = separator.join(value for _, value in contact_items)
     if len(one_line) <= max_chars:
         return [one_line]
 
@@ -354,12 +364,12 @@ def _contact_lines(contact_items: list[tuple[str, str]], max_chars: int = 104) -
     links = [(key, value) for key, value in contact_items if key in {"linkedin", "github", "portfolio"}]
     lines = []
     if primary:
-        lines.append(" | ".join(primary))
+        lines.append(separator.join(primary))
 
     social_values = [value for key, value in links if key in {"linkedin", "github"}]
     portfolio_values = [value for key, value in links if key == "portfolio"]
     if social_values:
-        lines.append(" | ".join(social_values))
+        lines.append(separator.join(social_values))
     lines.extend(portfolio_values)
 
     return [line for line in lines if line]
@@ -703,6 +713,7 @@ def _add_docx_header(
         paragraph.paragraph_format.space_after = Pt(1.0)
         run = paragraph.add_run(contact["target_title"])
         run.bold = True
+        run.italic = bool(template_style.get("italic_title", False))
         run.font.size = Pt(template_style["docx_title_size"])
         run.font.color.rgb = _docx_rgb(template_style.get("title_color", "111111"))
         last_paragraph = paragraph
@@ -740,6 +751,7 @@ def _add_docx_photo_header(
     photo_paragraph.paragraph_format.space_before = Pt(1)
     photo_paragraph.paragraph_format.space_after = Pt(1)
     try:
+        photo_bytes = prepare_cv_photo_for_export(photo_bytes)
         run = photo_paragraph.add_run()
         run.add_picture(BytesIO(photo_bytes), width=Inches(float(template_style.get("docx_photo_width", 0.92))))
     except Exception:
@@ -759,6 +771,7 @@ def _add_docx_photo_header(
         paragraph.paragraph_format.space_after = Pt(0.8)
         run = paragraph.add_run(contact["target_title"])
         run.bold = True
+        run.italic = bool(template_style.get("italic_title", False))
         run.font.size = Pt(template_style["docx_title_size"])
         run.font.color.rgb = _docx_rgb(template_style.get("title_color", "111111"))
     for index, contact_line in enumerate(contact["contact_lines"]):
@@ -1096,6 +1109,7 @@ def _pdf_photo_header(
     photo_filename: str,
 ) -> list:
     try:
+        photo_bytes = prepare_cv_photo_for_export(photo_bytes)
         photo_size = float(template_style.get("pdf_photo_size", 0.82)) * inch
         photo = RLImage(BytesIO(photo_bytes), width=photo_size, height=photo_size)
     except Exception:
@@ -1126,6 +1140,28 @@ def _pdf_photo_header(
         ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
     ]))
     return [table]
+
+
+def _pdf_item_heading_markup(text: str, template_style: dict) -> str:
+    parts = [part.strip() for part in str(text or "").split(" | ") if part.strip()]
+    if not parts:
+        return ""
+    if template_style.get("item_separator") != "bullet":
+        return escape(text)
+
+    date_part = ""
+    if len(parts) >= 2 and _looks_like_date_range(parts[-1]):
+        date_part = parts[-1]
+        parts = parts[:-1]
+
+    separator = " &bull; "
+    markup_parts = [f"<b>{escape(parts[0])}</b>"]
+    for index, part in enumerate(parts[1:]):
+        escaped_part = escape(part)
+        markup_parts.append(f"<i>{escaped_part}</i>" if index == 0 else escaped_part)
+    if date_part:
+        markup_parts.append(escape(date_part))
+    return separator.join(markup_parts)
 
 
 def _pdf_header_alignment(template_style: dict) -> int:
@@ -1628,15 +1664,15 @@ def _template_style(template: dict, export_style: str = "standard", density: str
         },
         "visual_photo_optional": {
             "docx_margin": 0.56,
-            "docx_name_size": 23,
+            "docx_name_size": 23.5,
             "docx_title_size": 11.4,
             "docx_contact_size": 8.0,
             "docx_body_size": 9.3,
-            "docx_section_space_before": 7.3,
+            "docx_section_space_before": 7.8,
             "docx_item_space_before": 2.3,
             "docx_item_space_after": 0.7,
             "docx_bullet_space_after": 0.28,
-            "docx_heading_size": 10.4,
+            "docx_heading_size": 10.55,
             "docx_heading_space_after": 0.6,
             "docx_separator_size": 6.8,
             "docx_separator_space_after": 0.6,
@@ -1644,13 +1680,13 @@ def _template_style(template: dict, export_style: str = "standard", density: str
             "docx_bullet_left_indent": 0.21,
             "docx_bullet_first_line_indent": -0.12,
             "docx_date_tab_inch": 6.48,
-            "docx_photo_width": 0.94,
-            "docx_photo_cell_width": 1.10,
+            "docx_photo_width": 1.04,
+            "docx_photo_cell_width": 1.22,
             "pdf_margin": 0.54,
-            "pdf_name_size": 20.5,
+            "pdf_name_size": 21.0,
             "pdf_title_size": 11.2,
             "pdf_contact_size": 7.95,
-            "pdf_heading_size": 10.1,
+            "pdf_heading_size": 10.25,
             "pdf_item_heading_size": 9.2,
             "pdf_item_space_before": 2.1,
             "pdf_item_space_after": 0.6,
@@ -1665,8 +1701,8 @@ def _template_style(template: dict, export_style: str = "standard", density: str
             "pdf_separator_space_after": 0.4,
             "pdf_contact_after_spacing": 0.075 * inch,
             "pdf_header_rule_after_spacing": 0.05 * inch,
-            "pdf_photo_size": 0.82,
-            "pdf_photo_cell_width": 0.98,
+            "pdf_photo_size": 0.92,
+            "pdf_photo_cell_width": 1.06,
             "pdf_photo_text_width": 6.05,
             "pdf_section_spacing": 0,
             "pdf_section_after_spacing": 0.035 * inch,
@@ -1684,6 +1720,8 @@ def _template_style(template: dict, export_style: str = "standard", density: str
             "supports_photo": True,
             "contact_max_chars": 98,
             "shorten_contact_links": True,
+            "contact_separator": "  •  ",
+            "italic_title": True,
         },
     }
     style = deepcopy(styles.get(template_id, styles["classic_ats"]))
@@ -1715,6 +1753,8 @@ def _template_style(template: dict, export_style: str = "standard", density: str
     style.setdefault("item_heading_color", "111111")
     style.setdefault("contact_max_chars", 104)
     style.setdefault("shorten_contact_links", False)
+    style.setdefault("contact_separator", " | ")
+    style.setdefault("italic_title", False)
     style.setdefault("supports_photo", False)
     if export_style == "compact":
         _apply_compact_style(style)

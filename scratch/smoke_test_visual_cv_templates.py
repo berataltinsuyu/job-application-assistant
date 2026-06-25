@@ -17,6 +17,8 @@ if str(ROOT) not in sys.path:
 from services.ats_cv_templates import get_ats_cv_templates  # noqa: E402
 from services.ats_cv_schema import get_empty_ats_cv_schema  # noqa: E402
 from services.docx_template_service import get_docx_template_catalog, render_cv_with_docx_template  # noqa: E402
+from services.llm_service import build_ats_cv_generation_prompt  # noqa: E402
+from routers.ats_cv_builder import _neutralize_unsupported_student_wording  # noqa: E402
 from main import app  # noqa: E402
 
 
@@ -89,8 +91,8 @@ def sample_cv() -> dict:
     return cv
 
 
-def sample_photo_bytes() -> bytes:
-    image = Image.new("RGB", (120, 120), color=(64, 92, 128))
+def sample_photo_bytes(width: int = 120, height: int = 120) -> bytes:
+    image = Image.new("RGB", (width, height), color=(64, 92, 128))
     output = BytesIO()
     image.save(output, format="PNG")
     return output.getvalue()
@@ -119,6 +121,14 @@ def assert_social_contact_line(text: str, template_id: str) -> None:
 def docx_has_media(path: Path) -> bool:
     with zipfile.ZipFile(path) as archive:
         return any(name.startswith("word/media/") for name in archive.namelist())
+
+
+def first_docx_media_size(path: Path) -> tuple[int, int]:
+    with zipfile.ZipFile(path) as archive:
+        media_names = [name for name in archive.namelist() if name.startswith("word/media/")]
+        assert_true(bool(media_names), f"No media found in {path}")
+        with Image.open(BytesIO(archive.read(media_names[0]))) as image:
+            return image.size
 
 
 def main() -> None:
@@ -176,6 +186,31 @@ def main() -> None:
         )
         assert_true(with_photo_result["success"] is True, f"Photo template with photo failed: {with_photo_result}")
         assert_true(docx_has_media(with_photo_path) is True, "Photo template with photo should embed media.")
+        assert_true(first_docx_media_size(with_photo_path) == (512, 512), "Square photo should be embedded as prepared square PNG.")
+
+        portrait_photo_path = tmp_path / "visual_photo_optional_portrait_photo.docx"
+        portrait_result = render_cv_with_docx_template(
+            structured_cv=cv,
+            template_id="visual_photo_optional",
+            output_path=str(portrait_photo_path),
+            metadata={"smoke_test": True},
+            photo_bytes=sample_photo_bytes(120, 220),
+            photo_filename="portrait_sample.png",
+        )
+        assert_true(portrait_result["success"] is True, f"Portrait photo render failed: {portrait_result}")
+        assert_true(first_docx_media_size(portrait_photo_path) == (512, 512), "Portrait photo should be center-cropped without distortion.")
+
+        landscape_photo_path = tmp_path / "visual_photo_optional_landscape_photo.docx"
+        landscape_result = render_cv_with_docx_template(
+            structured_cv=cv,
+            template_id="visual_photo_optional",
+            output_path=str(landscape_photo_path),
+            metadata={"smoke_test": True},
+            photo_bytes=sample_photo_bytes(220, 120),
+            photo_filename="landscape_sample.png",
+        )
+        assert_true(landscape_result["success"] is True, f"Landscape photo render failed: {landscape_result}")
+        assert_true(first_docx_media_size(landscape_photo_path) == (512, 512), "Landscape photo should be center-cropped without distortion.")
 
         client = TestClient(app)
         route_response = client.post(
@@ -191,7 +226,7 @@ def main() -> None:
                 "docx_template_id": "visual_photo_optional",
                 "include_photo": "true",
             },
-            files={"cv_photo": ("sample_photo.png", sample_photo_bytes(), "image/png")},
+            files={"cv_photo": ("sample_photo.png", sample_photo_bytes(120, 220), "image/png")},
         )
         assert_true(route_response.status_code == 200, f"Photo export endpoint failed: {route_response.status_code} {route_response.text}")
         route_docx_path = tmp_path / "route_photo_export.docx"
@@ -210,7 +245,7 @@ def main() -> None:
                 "docx_render_mode": "programmatic",
                 "include_photo": "true",
             },
-            files={"cv_photo": ("sample_photo.png", sample_photo_bytes(), "image/png")},
+            files={"cv_photo": ("sample_photo.png", sample_photo_bytes(220, 120), "image/png")},
         )
         assert_true(
             programmatic_docx_response.status_code == 200,
@@ -231,11 +266,27 @@ def main() -> None:
                 "export_style": "standard",
                 "include_photo": "true",
             },
-            files={"cv_photo": ("sample_photo.png", sample_photo_bytes(), "image/png")},
+            files={"cv_photo": ("sample_photo.png", sample_photo_bytes(220, 120), "image/png")},
         )
         assert_true(pdf_response.status_code == 200, f"Photo PDF endpoint failed: {pdf_response.status_code} {pdf_response.text}")
         assert_true(pdf_response.content.startswith(b"%PDF"), "Photo PDF endpoint should return a PDF.")
         assert_true(len(pdf_response.content) > 3_000, "Photo PDF endpoint returned an unexpectedly small file.")
+
+        prompt = build_ats_cv_generation_prompt(
+            cv_text="BS Computer Engineering, Example University, 2021-2025.",
+            job_description="Backend developer role.",
+            template=next(template for template in get_ats_cv_templates() if template["id"] == "modern_professional"),
+            language="English",
+            adaptation_level="balanced",
+        )
+        assert_true("Do not infer or add \"student\"" in prompt, "ATS CV prompt should prevent unsupported student wording.")
+
+        guarded = _neutralize_unsupported_student_wording(
+            {"professional_summary": "Computer Engineering student with API experience."},
+            "BS Computer Engineering, Example University, 2021-2025.",
+            "Backend developer role.",
+        )
+        assert_true("student" not in guarded["professional_summary"].lower(), "Student wording guard should neutralize unsupported student claims.")
 
     print("visual cv template smoke: ok")
 

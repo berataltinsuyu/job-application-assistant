@@ -10,6 +10,8 @@ from docx.shared import Inches, Pt, RGBColor
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
+from services.cv_photo_service import prepare_cv_photo_for_export
+
 
 DOCX_TEMPLATE_DIR = Path("templates/docx")
 GENERATED_TEMPLATE_DIR = DOCX_TEMPLATE_DIR / "generated"
@@ -90,12 +92,12 @@ DOCX_TEMPLATE_CATALOG = [
     {
         "template_id": "visual_photo_optional",
         "display_name": "Visual Photo Optional",
-        "description": "ATS-conscious one-column CV with an optional modest header photo for local/Turkish/corporate submissions where photo CVs are acceptable.",
+        "description": "ATS-conscious one-column CV with optional modest header photo support; best with square or portrait photos.",
         "best_for": "Turkish/local applications, photo-acceptable corporate submissions, polished visual CVs",
-        "visual_style": "Photo-capable header, clean rules, corporate spacing",
+        "visual_style": "Photo-capable header, dot-separated contact line, clean rules, corporate spacing",
         "layout": "One-column with optional header photo",
         "strengths": "Works with or without photo, keeps main content one-column, restrained visual presentation",
-        "cautions": "Only include a photo where it is expected or acceptable for the target market",
+        "cautions": "Only include a photo where it is expected or acceptable for the target market; photo CVs are not recommended for every market.",
         "recommended_for": "Turkey/local applications, corporate roles where photo CVs are common",
         "not_recommended_for": "Photo-blind ATS processes, US/UK applications where photos are discouraged",
         "ats_safety_level": "medium",
@@ -352,18 +354,18 @@ def _style_for_template(template_id: str) -> dict:
     if template_id == "visual_photo_optional":
         return {
             "margin": 0.55,
-            "name_size": 23.5,
-            "title_size": 11.6,
+            "name_size": 24.0,
+            "title_size": 11.7,
             "contact_size": 8.0,
             "body_size": 9.35,
-            "heading_size": 10.3,
-            "heading_space_before": 7.4,
+            "heading_size": 10.45,
+            "heading_space_before": 7.8,
             "heading_space_after": 1.2,
             "item_space_before": 4.5,
             "item_space_after": 0.8,
             "bullet_space_after": 0.35,
             "separator": True,
-            "separator_color": "8A8F98",
+            "separator_color": "7F8790",
             "separator_size": "5",
             "align_header": WD_ALIGN_PARAGRAPH.LEFT,
             "modern_style": True,
@@ -373,14 +375,17 @@ def _style_for_template(template_id: str) -> dict:
             "date_right_align": True,
             "date_tab_inch": 6.55,
             "supports_photo": True,
-            "photo_width": 0.98,
-            "photo_cell_width": 1.14,
+            "photo_width": 1.06,
+            "photo_cell_width": 1.26,
             "header_rule_space_after": 9,
             "bullet_left_indent": 0.21,
             "bullet_first_line_indent": -0.12,
             "contact_max_chars": 98,
             "shorten_contact_links": True,
             "item_heading_color": "111827",
+            "contact_separator": "  •  ",
+            "item_separator": "  •  ",
+            "italic_title": True,
         }
     return {
         "margin": 0.75,
@@ -439,14 +444,21 @@ def _render_header(
         contact,
         int(style.get("contact_max_chars", 98)),
         shorten_links=bool(style.get("shorten_contact_links", False)),
+        separator=style.get("contact_separator", " | "),
     )
 
     if style.get("supports_photo") and photo_bytes:
-        photo_warning = _render_photo_header(document, style, full_name, target_title, contact_lines, photo_bytes, photo_filename)
-        if photo_warning:
-            warnings.append(photo_warning)
-        _add_header_rule(document, style)
-        return warnings
+        try:
+            photo_bytes = prepare_cv_photo_for_export(photo_bytes)
+        except Exception:
+            photo_bytes = b""
+        if photo_bytes:
+            photo_warning = _render_photo_header(document, style, full_name, target_title, contact_lines, photo_bytes, photo_filename)
+            if photo_warning:
+                warnings.append(photo_warning)
+            _add_header_rule(document, style)
+            return warnings
+        warnings.append("Photo could not be rendered; generated CV without the photo.")
 
     last_p = None
 
@@ -466,6 +478,7 @@ def _render_header(
         paragraph.paragraph_format.space_after = Pt(2)
         run = paragraph.add_run(target_title)
         run.bold = True
+        run.italic = bool(style.get("italic_title", False))
         run.font.size = Pt(float(style["title_size"]))
         last_p = paragraph
 
@@ -531,6 +544,7 @@ def _render_photo_header(
         paragraph.paragraph_format.space_after = Pt(1)
         run = paragraph.add_run(target_title)
         run.bold = True
+        run.italic = bool(style.get("italic_title", False))
         run.font.size = Pt(float(style["title_size"]))
         run.font.color.rgb = _rgb("333333")
     for index, contact_line in enumerate(contact_lines):
@@ -632,7 +646,7 @@ def _add_item_heading(document: Document, text: str, style: dict) -> None:
     run.font.size = Pt(float(style["body_size"]))
     run.font.color.rgb = _rgb(style.get("item_heading_color"))
 
-    sep = "  •  " if style.get("modern_style") else "  |  "
+    sep = style.get("item_separator") or ("  •  " if style.get("modern_style") else "  |  ")
 
     for i, part in enumerate(parts[1:]):
         sep_run = paragraph.add_run(sep)
@@ -812,7 +826,7 @@ def _language_items(structured_cv: dict) -> list[dict]:
     return items
 
 
-def _contact_lines(contact: dict, max_chars: int, shorten_links: bool = False) -> list[str]:
+def _contact_lines(contact: dict, max_chars: int, shorten_links: bool = False, separator: str = " | ") -> list[str]:
     items = [
         (key, _display_contact_value(key, contact.get(key), shorten_links))
         for key in ["email", "phone", "location", "linkedin", "github", "portfolio"]
@@ -821,7 +835,7 @@ def _contact_lines(contact: dict, max_chars: int, shorten_links: bool = False) -
     if not items:
         return []
 
-    one_line = _join_non_empty([value for _, value in items], " | ")
+    one_line = _join_non_empty([value for _, value in items], separator)
     if len(one_line) <= max_chars:
         return [one_line]
 
@@ -829,18 +843,18 @@ def _contact_lines(contact: dict, max_chars: int, shorten_links: bool = False) -
     links = [(key, value) for key, value in items if key in {"linkedin", "github", "portfolio"}]
     lines = []
     if primary:
-        lines.append(_join_non_empty(primary, " | "))
+        lines.append(_join_non_empty(primary, separator))
 
     link_values = [value for _, value in links]
     if len(link_values) <= 2:
         if link_values:
-            lines.append(_join_non_empty(link_values, " | "))
+            lines.append(_join_non_empty(link_values, separator))
         return lines
 
     social_values = [value for key, value in links if key in {"linkedin", "github"}]
     portfolio_values = [value for key, value in links if key == "portfolio"]
     if social_values:
-        lines.append(_join_non_empty(social_values, " | "))
+        lines.append(_join_non_empty(social_values, separator))
     lines.extend(portfolio_values)
     return [line for line in lines if line]
 

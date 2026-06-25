@@ -301,7 +301,8 @@ ATS_CV_TEMPLATES = [
         "display_name": "Visual Photo Optional",
         "description": (
             "A polished one-column CV template with optional modest header photo support "
-            "for local/Turkish/corporate submissions where photo CVs are acceptable."
+            "for local/Turkish/corporate submissions where photo CVs are acceptable. "
+            "Works best with square or portrait photos."
         ),
         "style_level": "visual",
         "ats_safety_level": "medium",
@@ -337,6 +338,7 @@ ATS_CV_TEMPLATES = [
             "Photo support is optional and disabled by default.",
             "Main content remains one-column and text-based.",
             "Use the photo only where the target market or employer accepts photo CVs.",
+            "Square or portrait photos render best; uploaded images are cropped without stretching.",
             "For strict ATS or photo-blind processes, export without photo.",
         ],
     },

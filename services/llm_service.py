@@ -461,9 +461,15 @@ Target title alignment rules:
 2. contact.target_title must align with ats_metadata.target_role and the job description.
 3. If the original CV title belongs to a different role family, adapt contact.target_title to the target job family.
 4. Keep the title realistic for the candidate's seniority. Do not use senior, lead, principal, manager, head, director, or architect titles unless clearly supported by the CV.
-5. For junior, intern, student, or early-career candidates, use a junior-level target title.
+5. For junior, intern, explicitly student, or early-career candidates, use a junior-level target title.
 6. Detect the job family from the job description, such as software/backend, frontend, full-stack, AI/ML/LLM, data analytics, business analyst, product/project, fintech/payment, risk/fraud/compliance, cybersecurity, DevOps/cloud, corporate applications, sales operations, or general.
 7. Use a target title that matches the detected job family while remaining truthful for the candidate's actual seniority and background.
+
+Student/new graduate wording rules:
+1. Do not infer or add "student", "Computer Engineering student", "currently studying", "öğrenci", or "halen okumakta" from education dates alone.
+2. Use student wording only when the uploaded CV, user input, or job/candidate context explicitly says the candidate is a student or requests student positioning.
+3. If student status is not explicit, use neutral truthful wording such as "Computer Engineering background", "Computer Engineering graduate" only when graduation is supported, "with a Computer Engineering background", "Bilgisayar Mühendisliği altyapısına sahip", or "Bilgisayar Mühendisliği geçmişi olan".
+4. Use "new graduate" / "yeni mezun" only when the CV or user-provided context supports it.
 
 Balanced job alignment rules:
 1. Tailor the CV enough to be useful for the job, while keeping every claim honest and defensible in an interview.
@@ -852,7 +858,7 @@ Ensure the output is a valid JSON. Do not include any explanations, markdown, or
   "experience_bullets": [
     "Developed strong communication and problem-solving skills in a fast-paced customer-facing environment."
   ],
-  "education_section": "Computer Engineering student...",
+  "education_section": "Computer Engineering background...",
   "warnings": [
     "This draft is based only on the uploaded CV. Review before use."
   ]

@@ -224,6 +224,7 @@ async def generate_ats_cv(
         ats_cv = _restore_locked_proper_nouns(ats_cv, locked_proper_nouns)
         ats_cv = rank_ats_cv_for_job(ats_cv, job_description)
         ats_cv = clean_structured_cv_before_export(ats_cv)
+        ats_cv = _neutralize_unsupported_student_wording(ats_cv, cv_text, job_description)
         ats_cv = _apply_locked_contact_fields(ats_cv, locked_contact_values)
         ats_cv = _restore_locked_proper_nouns(ats_cv, locked_proper_nouns)
         _log_generate_checkpoint(request_id, "after postprocessing")
@@ -538,6 +539,55 @@ def _parse_optional_bool(value: str, field_name: str) -> bool:
 def _supported_photo_filename(filename: str) -> bool:
     lowered = str(filename or "").strip().lower()
     return lowered.endswith((".png", ".jpg", ".jpeg"))
+
+
+def _neutralize_unsupported_student_wording(ats_cv: dict, cv_text: str, job_description: str) -> dict:
+    if _student_positioning_supported(f"{cv_text}\n{job_description}"):
+        return ats_cv
+
+    replacements = [
+        (r"\bComputer Engineering student\b", "candidate with a Computer Engineering background"),
+        (r"\bcomputer engineering student\b", "candidate with a computer engineering background"),
+        (r"\bCurrently studying Computer Engineering\b", "With a Computer Engineering background"),
+        (r"\bcurrently studying Computer Engineering\b", "with a Computer Engineering background"),
+        (r"\bcurrently studying computer engineering\b", "with a computer engineering background"),
+        (r"\bBilgisayar Mühendisliği öğrencisi\b", "Bilgisayar Mühendisliği altyapısına sahip aday"),
+        (r"\bbilgisayar mühendisliği öğrencisi\b", "Bilgisayar mühendisliği altyapısına sahip aday"),
+        (r"\bhalen Bilgisayar Mühendisliği okumakta\b", "Bilgisayar Mühendisliği altyapısına sahip"),
+        (r"\bhalen bilgisayar mühendisliği okumakta\b", "Bilgisayar mühendisliği altyapısına sahip"),
+    ]
+
+    def neutralize(value):
+        if isinstance(value, dict):
+            return {key: neutralize(nested) for key, nested in value.items()}
+        if isinstance(value, list):
+            return [neutralize(item) for item in value]
+        if not isinstance(value, str):
+            return value
+
+        result = value
+        for pattern, replacement in replacements:
+            result = re.sub(pattern, replacement, result)
+        return result
+
+    return neutralize(ats_cv)
+
+
+def _student_positioning_supported(text: str) -> bool:
+    normalized = str(text or "").lower()
+    supported_markers = [
+        "student",
+        "currently studying",
+        "currently enrolled",
+        "undergraduate",
+        "new grad",
+        "new graduate",
+        "öğrenci",
+        "halen okuyor",
+        "halen okumakta",
+        "yeni mezun",
+    ]
+    return any(marker in normalized for marker in supported_markers)
 
 
 def _parse_export_style(value: str, one_page: bool) -> str:
