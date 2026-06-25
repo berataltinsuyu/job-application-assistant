@@ -24,8 +24,9 @@ from services.ats_cv_postprocessing import (
     restore_preserved_entity_fields_from_source,
     clean_structured_cv_before_export,
 )
+from services.ats_cv_adaptation import standardize_cv_adaptation_quality
 from services.ats_cv_relevance import rank_ats_cv_for_job
-from services.ats_cv_schema import get_empty_ats_cv_schema, validate_ats_cv_schema
+from services.ats_cv_schema import get_empty_ats_cv_schema, normalize_structured_cv_schema_fields, validate_ats_cv_schema
 from services.ats_cv_templates import (
     get_ats_cv_template,
     get_ats_cv_templates,
@@ -216,6 +217,7 @@ async def generate_ats_cv(
         )
 
         ats_cv = ensure_ats_metadata_fields(ats_cv)
+        ats_cv = normalize_structured_cv_schema_fields(ats_cv)
         ats_cv = align_target_title(ats_cv, language)
         ats_cv = ensure_ats_score_explanation(ats_cv, language)
         ats_cv = restore_contact_fields_from_source(ats_cv, source_contact)
@@ -223,6 +225,13 @@ async def generate_ats_cv(
         ats_cv = _apply_locked_contact_fields(ats_cv, locked_contact_values)
         ats_cv = _restore_locked_proper_nouns(ats_cv, locked_proper_nouns)
         ats_cv = rank_ats_cv_for_job(ats_cv, job_description)
+        ats_cv = standardize_cv_adaptation_quality(
+            ats_cv,
+            job_description=job_description,
+            adaptation_level=adaptation_level,
+            source_cv_text=cv_text,
+            language=language,
+        )
         ats_cv = clean_structured_cv_before_export(ats_cv)
         ats_cv = _neutralize_unsupported_student_wording(ats_cv, cv_text, job_description)
         ats_cv = _apply_locked_contact_fields(ats_cv, locked_contact_values)
@@ -495,6 +504,7 @@ def _parse_export_payload(
 
     ats_cv = parsed_json.get("ats_cv") if isinstance(parsed_json.get("ats_cv"), dict) else parsed_json
     ats_cv = ensure_ats_metadata_fields(ats_cv)
+    ats_cv = normalize_structured_cv_schema_fields(ats_cv)
     ats_cv = align_target_title(ats_cv, language)
     ats_cv = ensure_ats_score_explanation(ats_cv, language)
 
@@ -514,6 +524,7 @@ def _parse_export_payload(
     parsed_export_style = _parse_export_style(export_style, parsed_one_page)
 
     ats_cv = clean_structured_cv_before_export(ats_cv)
+    ats_cv = normalize_structured_cv_schema_fields(ats_cv)
 
     return ats_cv, template, parsed_one_page, parsed_sections, parsed_export_style
 

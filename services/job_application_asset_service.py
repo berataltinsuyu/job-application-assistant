@@ -22,6 +22,7 @@ from services.ats_cv_postprocessing import (
     _clean_character_spacing,
     clean_structured_cv_before_export,
 )
+from services.ats_cv_adaptation import standardize_cv_adaptation_quality
 from services.ats_cv_relevance import rank_ats_cv_for_job
 from services.ats_cv_export_service import (
     build_plain_text_preview,
@@ -295,6 +296,13 @@ async def generate_job_tailored_cv(
     ats_cv = _restore_locked_proper_nouns(ats_cv, locked_nouns)
 
     ats_cv = rank_ats_cv_for_job(ats_cv, job.description or "")
+    ats_cv = standardize_cv_adaptation_quality(
+        ats_cv,
+        job_description=job_description,
+        adaptation_level=adaptation_level,
+        source_cv_text=cv_text,
+        language=language,
+    )
 
     ats_cv = clean_structured_cv_before_export(ats_cv)
 
