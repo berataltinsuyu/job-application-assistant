@@ -350,6 +350,8 @@ TRANSLATIONS = {
         "ats_score_disclaimer": "Bu skor tahmini bir ATS uygunluk skorudur, resmi bir ATS sonucu değildir.",
         "ats_cv_generic_note": "Bu oluşturucu, yüklenen CV’yi iş ilanına göre uyarlar. İletişim bilgileri ve özel isimler yüklenen CV’den kilitlenir ve oluşturma öncesinde düzenlenebilir.",
         "locked_contact_fields": "Kilitli İletişim Bilgileri",
+        "locked_fields_protection": "Kilitli bilgiler ve özel isim koruması",
+        "contact_summary_empty": "İletişim özeti henüz çıkarılamadı.",
         "locked_contact_warning": "Ad, e-posta veya telefon alanlarından biri boş. CV’den çıkarılamadıysa oluşturma öncesinde elle doldurabilirsiniz.",
         "locked_proper_nouns": "Kilitli Özel İsimler",
         "locked_full_name": "Ad Soyad",
@@ -365,11 +367,29 @@ TRANSLATIONS = {
         "export_style_balanced": "Tek sayfaya sığdırmayı dene",
         "balanced_one_page_help": "Önce boşluk ve yazı yoğunluğu optimize edilir; yalnızca gerekirse düşük öncelikli detaylar azaltılır.",
         "export_sections": "Dışa Aktarılacak Bölümler",
+        "main_settings": "Ana Ayarlar",
+        "template_guidance": "Şablon önerisi",
+        "export_download": "Dışa Aktar / İndir",
+        "advanced_export_options": "Gelişmiş dışa aktarma seçenekleri",
+        "photo_status": "Fotoğraf durumu",
+        "photo_included_yes": "Fotoğraf eklenecek: Evet",
+        "photo_included_no": "Fotoğraf eklenecek: Hayır",
+        "quality_and_structure": "Kalite ve Yapı",
+        "keyword_analysis": "Anahtar Kelime Analizi",
+        "ats_explanation_notes": "ATS Açıklaması ve İyileştirme Notları",
+        "adaptation_quality": "Uyarlama Kalitesi",
+        "advanced_technical_details": "Gelişmiş / Teknik Detaylar",
+        "adaptation_quality_missing": "Uyarlama kalite raporu bulunmuyor.",
+        "adaptation_domain": "Alan",
+        "summary_alignment": "Özet",
+        "skills_alignment": "Yetenekler",
+        "experience_alignment": "Deneyim",
+        "project_alignment": "Projeler",
         "adaptation_level": "Uyarlama Seviyesi",
         "adaptation_conservative": "Kaynak CV’ye en yakın",
         "adaptation_balanced": "Dengeli uyarlama",
         "adaptation_strong": "İlana daha güçlü uyarlama",
-        "adaptation_strong_help": "Başlık, özet, yetenek ve madde vurgularını ilana daha belirgin şekilde uyarlar; doğrulanmamış deneyim eklemez.",
+        "adaptation_strong_help": "Güçlü uyarlama başlık, özet, yetenek ve madde vurgularını ilana göre belirginleştirir; doğrulanmamış deneyim eklemez.",
         "cv_quality_check": "CV Kalite Kontrolü",
         "structure_validation": "Yapı Doğrulama",
         "cv_quality_score": "CV Kalite Skoru",
@@ -771,6 +791,8 @@ TRANSLATIONS = {
         "ats_score_disclaimer": "This is an estimated ATS relevance score, not an official ATS result.",
         "ats_cv_generic_note": "This builder adapts the uploaded CV to the job description. Contact fields and proper nouns are locked from the uploaded CV and can be edited before generation.",
         "locked_contact_fields": "Locked Contact Fields",
+        "locked_fields_protection": "Locked fields and proper-name protection",
+        "contact_summary_empty": "No contact summary extracted yet.",
         "locked_contact_warning": "Full name, email, or phone is empty. If extraction missed it, you can fill it manually before generation.",
         "locked_proper_nouns": "Locked Proper Nouns",
         "locked_full_name": "Full Name",
@@ -786,11 +808,29 @@ TRANSLATIONS = {
         "export_style_balanced": "Try to fit into one page",
         "balanced_one_page_help": "Optimizes spacing and density first; reduces lower-priority details only if needed.",
         "export_sections": "Export Sections",
+        "main_settings": "Main Settings",
+        "template_guidance": "Template guidance",
+        "export_download": "Export / Download",
+        "advanced_export_options": "Advanced export options",
+        "photo_status": "Photo status",
+        "photo_included_yes": "Photo included: Yes",
+        "photo_included_no": "Photo included: No",
+        "quality_and_structure": "Quality and Structure",
+        "keyword_analysis": "Keyword Analysis",
+        "ats_explanation_notes": "ATS Explanation and Improvement Notes",
+        "adaptation_quality": "Adaptation Quality",
+        "advanced_technical_details": "Advanced / Technical Details",
+        "adaptation_quality_missing": "Adaptation quality report is not available.",
+        "adaptation_domain": "Domain",
+        "summary_alignment": "Summary",
+        "skills_alignment": "Skills",
+        "experience_alignment": "Experience",
+        "project_alignment": "Projects",
         "adaptation_level": "Adaptation Level",
         "adaptation_conservative": "Closest to source CV",
         "adaptation_balanced": "Balanced tailoring",
         "adaptation_strong": "Stronger job-specific tailoring",
-        "adaptation_strong_help": "More strongly adapts title, summary, skills, and bullet emphasis to the job description without inventing experience.",
+        "adaptation_strong_help": "Strong adapts title, summary, skills, and bullet emphasis to the job without inventing experience.",
         "cv_quality_check": "CV Quality Check",
         "structure_validation": "Structure Validation",
         "cv_quality_score": "CV Quality Score",
@@ -1516,6 +1556,88 @@ def render_quality_report(report: dict, title: str, score_key: str) -> None:
                 st.caption(message)
 
 
+def render_quality_report_inline(report: dict, title: str, score_key: str) -> None:
+    report = report if isinstance(report, dict) else {}
+    if not report or score_key not in report:
+        st.warning(t("quality_metadata_missing"))
+        return
+    score = report.get(score_key)
+    issues = report.get("issues", []) if isinstance(report.get("issues"), list) else []
+    if score is not None:
+        st.metric(title, score)
+    st.write(report.get("summary") or t("looks_clean"))
+    if not issues:
+        st.success(t("looks_clean"))
+        return
+    for issue in issues:
+        severity = issue.get("severity", "info")
+        message = f"**{severity.upper()} / {issue.get('category', 'general')}:** {issue.get('message', '')}"
+        fix = issue.get("suggested_fix")
+        if fix:
+            message += f"\n\n{fix}"
+        if severity == "critical":
+            st.warning(message)
+        elif severity == "warning":
+            st.info(message)
+        else:
+            st.caption(message)
+
+
+def template_short_guidance(template: dict) -> str:
+    template_id = str((template or {}).get("id") or "")
+    language = st.session_state.ui_lang
+    guidance = {
+        "modern_professional": {
+            "en": "Best for general corporate, product, analyst, IT, and new graduate applications.",
+            "tr": "Genel kurumsal, ürün, analist, BT ve yeni mezun başvuruları için uygundur.",
+        },
+        "compact_technical": {
+            "en": "Best for backend, software, data/AI, and ATS-heavy technical applications.",
+            "tr": "Backend, yazılım, veri/AI ve ATS ağırlıklı teknik başvurular için uygundur.",
+        },
+        "visual_photo_optional": {
+            "en": "Best for local/corporate applications where a photo CV is acceptable.",
+            "tr": "Fotoğraflı CV’nin uygun olduğu yerel/kurumsal başvurular için uygundur.",
+        },
+    }
+    if template_id in guidance:
+        return guidance[template_id].get(language, guidance[template_id]["en"])
+    best_for = (template or {}).get("best_for", [])
+    if isinstance(best_for, list) and best_for:
+        prefix = "Best for" if language == "en" else "En uygun"
+        return f"{prefix}: {', '.join(str(item) for item in best_for[:5])}."
+    return str((template or {}).get("description") or "")[:180]
+
+
+def contact_summary_line(locked_values: dict) -> str:
+    values = [
+        locked_values.get("locked_full_name"),
+        locked_values.get("locked_email"),
+        locked_values.get("locked_phone"),
+        locked_values.get("locked_location"),
+    ]
+    summary = " • ".join(str(value).strip() for value in values if str(value or "").strip())
+    return summary or t("contact_summary_empty")
+
+
+def render_adaptation_quality_report(report: dict) -> None:
+    if not isinstance(report, dict) or not report:
+        st.caption(t("adaptation_quality_missing"))
+        return
+    metric_cols = st.columns(4)
+    metric_cols[0].metric(t("adaptation_level"), report.get("adaptation_level") or "-")
+    metric_cols[1].metric(t("adaptation_domain"), report.get("detected_domain") or "-")
+    metric_cols[2].metric(t("summary_alignment"), report.get("summary_alignment", "-"))
+    metric_cols[3].metric(t("skills_alignment"), report.get("skills_alignment", "-"))
+    st.write(f"**{t('experience_alignment')}:** {report.get('experience_alignment', '-')}")
+    st.write(f"**{t('project_alignment')}:** {report.get('project_alignment', '-')}")
+    warnings = report.get("warnings", []) if isinstance(report.get("warnings"), list) else []
+    if warnings:
+        write_non_empty_list(warnings)
+    else:
+        st.success(t("looks_clean"))
+
+
 def quality_badge(asset: dict) -> str:
     report = get_asset_quality_report(asset)
     if not report:
@@ -2012,71 +2134,99 @@ elif selected_page_key == "📄 ATS CV Builder":
 
     if templates:
         template_by_name = {template["name"]: template for template in templates}
-        selected_template_name = st.selectbox(
-            t("choose_cv_template"),
-            list(template_by_name.keys())
-        )
-        selected_template = template_by_name[selected_template_name]
+        st.subheader(t("main_settings"))
+        settings_col1, settings_col2 = st.columns([1.25, 1])
+        with settings_col1:
+            selected_template_name = st.selectbox(
+                t("choose_cv_template"),
+                list(template_by_name.keys())
+            )
+            selected_template = template_by_name[selected_template_name]
+            st.caption(f"{t('template_guidance')}: {template_short_guidance(selected_template)}")
 
-        expander_title = "Şablon Detayları" if st.session_state.ui_lang == "tr" else "Template Details"
-        with st.expander(expander_title, expanded=False):
-            t_desc = selected_template.get("description", "")
-            t_best_for = selected_template.get("best_for", [])
-            t_ats_notes = selected_template.get("ats_notes", [])
-            if st.session_state.ui_lang == "tr" and selected_template.get("id") in TEMPLATE_TRANSLATIONS:
-                tpl_t = TEMPLATE_TRANSLATIONS[selected_template.get("id")]
-                t_desc = tpl_t.get("description", t_desc)
-                t_best_for = tpl_t.get("best_for", t_best_for)
-                t_ats_notes = tpl_t.get("ats_notes", t_ats_notes)
+            expander_title = "Şablon Detayları" if st.session_state.ui_lang == "tr" else "Template details"
+            with st.expander(expander_title, expanded=False):
+                t_desc = selected_template.get("description", "")
+                t_best_for = selected_template.get("best_for", [])
+                t_ats_notes = selected_template.get("ats_notes", [])
+                if st.session_state.ui_lang == "tr" and selected_template.get("id") in TEMPLATE_TRANSLATIONS:
+                    tpl_t = TEMPLATE_TRANSLATIONS[selected_template.get("id")]
+                    t_desc = tpl_t.get("description", t_desc)
+                    t_best_for = tpl_t.get("best_for", t_best_for)
+                    t_ats_notes = tpl_t.get("ats_notes", t_ats_notes)
 
-            st.markdown(f"**{t('template_description')}**")
-            st.write(t_desc)
-            style_lbl = "Stil" if st.session_state.ui_lang == "tr" else "Style"
-            safety_lbl = "ATS Güvenliği" if st.session_state.ui_lang == "tr" else "ATS Safety"
-            density_lbl = "Yoğunluk" if st.session_state.ui_lang == "tr" else "Density"
-            st.caption(
-                " | ".join(filter(None, [
-                    f"{style_lbl}: {selected_template.get('style_level')}",
-                    f"{safety_lbl}: {selected_template.get('ats_safety_level')}",
-                    f"{density_lbl}: {selected_template.get('visual_density')}",
-                ]))
+                st.markdown(f"**{t('template_description')}**")
+                st.write(t_desc)
+                style_lbl = "Stil" if st.session_state.ui_lang == "tr" else "Style"
+                safety_lbl = "ATS Güvenliği" if st.session_state.ui_lang == "tr" else "ATS Safety"
+                density_lbl = "Yoğunluk" if st.session_state.ui_lang == "tr" else "Density"
+                st.caption(
+                    " | ".join(filter(None, [
+                        f"{style_lbl}: {selected_template.get('style_level')}",
+                        f"{safety_lbl}: {selected_template.get('ats_safety_level')}",
+                        f"{density_lbl}: {selected_template.get('visual_density')}",
+                    ]))
+                )
+
+                st.markdown(f"**{t('best_for')}**")
+                for item in t_best_for:
+                    st.markdown(f"- {item}")
+
+                st.markdown(f"**{t('section_order')}**")
+                for index, section in enumerate(selected_template.get("section_order", []), start=1):
+                    st.markdown(f"{index}. `{section}`")
+
+                st.markdown(f"**{t('ats_notes')}**")
+                for note in t_ats_notes:
+                    st.markdown(f"- {note}")
+
+        with settings_col2:
+            ats_cv_language_options = ["Turkish", "English"]
+            ats_cv_language = st.selectbox(
+                t("cv_output_lang"),
+                ats_cv_language_options,
+                index=ats_cv_language_options.index(global_language) if global_language in ats_cv_language_options else 0,
+                key="ats_cv_output_language"
+            )
+            adaptation_options = adaptation_level_options()
+            selected_adaptation_label = st.selectbox(
+                t("adaptation_level"),
+                [label for label, _ in adaptation_options],
+                index=1,
+                key="ats_cv_adaptation_level_label",
+                help=t("adaptation_strong_help"),
+            )
+            selected_adaptation_level = dict(adaptation_options).get(selected_adaptation_label, "balanced")
+            st.caption(t("adaptation_strong_help"))
+            st.session_state.setdefault("ats_cv_prefer_one_page", False)
+            st.checkbox(
+                t("optimize_one_page"),
+                key="ats_cv_prefer_one_page",
+                help=t("balanced_one_page_help"),
             )
 
-            st.markdown(f"**{t('best_for')}**")
-            for item in t_best_for:
-                st.markdown(f"- {item}")
-
-            st.markdown(f"**{t('section_order')}**")
-            for index, section in enumerate(selected_template.get("section_order", []), start=1):
-                st.markdown(f"{index}. `{section}`")
-
-            st.markdown(f"**{t('ats_notes')}**")
-            for note in t_ats_notes:
-                st.markdown(f"- {note}")
-
-        ats_cv_language_options = ["Turkish", "English"]
-        ats_cv_language = st.selectbox(
-            t("cv_output_lang"),
-            ats_cv_language_options,
-            index=ats_cv_language_options.index(global_language) if global_language in ats_cv_language_options else 0,
-            key="ats_cv_output_language"
-        )
-        adaptation_options = adaptation_level_options()
-        selected_adaptation_label = st.selectbox(
-            t("adaptation_level"),
-            [label for label, _ in adaptation_options],
-            index=1,
-            key="ats_cv_adaptation_level_label",
-            help=t("adaptation_strong_help"),
-        )
-        selected_adaptation_level = dict(adaptation_options).get(selected_adaptation_label, "balanced")
+            ats_cv_photo = None
+            include_cv_photo = False
+            if selected_template.get("supports_photo"):
+                ats_cv_photo = st.file_uploader(
+                    t("cv_photo_optional"),
+                    type=["png", "jpg", "jpeg"],
+                    key="ats_cv_optional_photo",
+                )
+                include_cv_photo = st.checkbox(
+                    t("include_photo_cv"),
+                    value=False,
+                    key="ats_cv_include_optional_photo",
+                )
+                st.caption(t("photo_best_result_note"))
+            else:
+                st.caption(t("photo_template_warning"))
 
         sync_ats_locked_fields_from_uploaded_cv(global_cv)
 
         if global_cv is not None and st.session_state.get("cv_extraction_failed"):
             st.warning("⚠️ " + t("contact_fields_missing"))
 
-        st.subheader(t("locked_contact_fields"))
         locked_contact_values = {}
         locked_contact_rows = [
             ("locked_full_name", "locked_email"),
@@ -2084,21 +2234,44 @@ elif selected_page_key == "📄 ATS CV Builder":
             ("locked_linkedin", "locked_github"),
             ("locked_portfolio", None),
         ]
+
+        st.session_state.setdefault(
+            "ats_cv_locked_proper_nouns_json",
+            json.dumps(st.session_state.get("ats_cv_locked_proper_nouns", ATS_LOCKED_PROPER_NOUNS), ensure_ascii=False, indent=2),
+        )
         for left_key, right_key in locked_contact_rows:
-            left_col, right_col = st.columns(2)
             st.session_state.setdefault(f"ats_cv_{left_key}", ATS_LOCKED_CONTACT_DEFAULTS[left_key])
-            with left_col:
-                locked_contact_values[left_key] = st.text_input(
-                    t(left_key),
-                    key=f"ats_cv_{left_key}",
-                )
+            locked_contact_values[left_key] = st.session_state.get(f"ats_cv_{left_key}", "")
             if right_key:
                 st.session_state.setdefault(f"ats_cv_{right_key}", ATS_LOCKED_CONTACT_DEFAULTS[right_key])
-                with right_col:
-                    locked_contact_values[right_key] = st.text_input(
-                        t(right_key),
-                        key=f"ats_cv_{right_key}",
+                locked_contact_values[right_key] = st.session_state.get(f"ats_cv_{right_key}", "")
+
+        st.caption(contact_summary_line(locked_contact_values))
+        with st.expander(t("locked_fields_protection"), expanded=False):
+            st.markdown(f"**{t('locked_contact_fields')}**")
+            for left_key, right_key in locked_contact_rows:
+                left_col, right_col = st.columns(2)
+                with left_col:
+                    locked_contact_values[left_key] = st.text_input(
+                        t(left_key),
+                        key=f"ats_cv_{left_key}",
                     )
+                if right_key:
+                    with right_col:
+                        locked_contact_values[right_key] = st.text_input(
+                            t(right_key),
+                            key=f"ats_cv_{right_key}",
+                        )
+
+            if not all(locked_contact_values.get(key, "").strip() for key in ["locked_full_name", "locked_email", "locked_phone"]):
+                st.warning(t("locked_contact_warning"))
+
+            st.markdown(f"**{t('locked_proper_nouns')}**")
+            locked_proper_nouns_json = st.text_area(
+                t("locked_proper_nouns"),
+                key="ats_cv_locked_proper_nouns_json",
+                height=160,
+            )
 
         # Update cached_contact so manual edits are not lost when switching pages!
         cached_contact = st.session_state.setdefault("cached_contact", {})
@@ -2114,20 +2287,6 @@ elif selected_page_key == "📄 ATS CV Builder":
         for k, ck in contact_keys.items():
             if k in locked_contact_values:
                 cached_contact[ck] = locked_contact_values[k]
-
-        if not all(locked_contact_values.get(key, "").strip() for key in ["locked_full_name", "locked_email", "locked_phone"]):
-            st.warning(t("locked_contact_warning"))
-
-        st.session_state.setdefault(
-            "ats_cv_locked_proper_nouns_json",
-            json.dumps(st.session_state.get("ats_cv_locked_proper_nouns", ATS_LOCKED_PROPER_NOUNS), ensure_ascii=False, indent=2),
-        )
-        with st.expander(t("locked_proper_nouns"), expanded=False):
-            locked_proper_nouns_json = st.text_area(
-                t("locked_proper_nouns"),
-                key="ats_cv_locked_proper_nouns_json",
-                height=160,
-            )
 
         # Update cached_proper_nouns so manual edits are not lost when switching pages!
         try:
@@ -2220,9 +2379,8 @@ elif selected_page_key == "📄 ATS CV Builder":
                 st.write(f"**{t('alignment_confidence')}**")
                 st.write(metadata.get("alignment_confidence") or "-")
 
-            # 2. Export Section
-            st.markdown("---")
-            st.header(t("export_cv") if "export_cv" in TRANSLATIONS[st.session_state.ui_lang] else "Export")
+            # 2. Compact export section directly after result summary
+            st.subheader(t("export_download"))
             export_style_label_map = {
                 t("export_style_standard"): "standard",
                 t("export_style_balanced"): "balanced_one_page",
@@ -2239,18 +2397,24 @@ elif selected_page_key == "📄 ATS CV Builder":
                 ("languages", t("languages_section")),
             ]
 
-            export_col1, export_col2 = st.columns([1, 1])
-            with export_col1:
-                selected_export_style_label = st.selectbox(
-                    t("export_style"),
-                    list(export_style_label_map.keys()),
-                    key="ats_cv_export_style"
-                )
-                selected_export_style = export_style_label_map[selected_export_style_label]
-                one_page_export = selected_export_style == "balanced_one_page"
-                if one_page_export:
-                    st.caption(t("balanced_one_page_help"))
-            with export_col2:
+            export_style_labels = list(export_style_label_map.keys())
+            preferred_one_page = bool(st.session_state.get("ats_cv_prefer_one_page", False))
+            selected_export_style_label = st.selectbox(
+                t("export_style"),
+                export_style_labels,
+                index=1 if preferred_one_page else 0,
+                key="ats_cv_export_style"
+            )
+            selected_export_style = export_style_label_map[selected_export_style_label]
+            one_page_export = selected_export_style == "balanced_one_page"
+            if one_page_export:
+                st.caption(t("balanced_one_page_help"))
+
+            selected_template_id_for_docx = export_template_id
+            selected_template_info = {}
+            enabled_export_sections = [section_key for section_key, _ in section_options]
+            docx_render_mode = "programmatic"
+            with st.expander(t("advanced_export_options"), expanded=False):
                 render_mode_options = [t("docx_render_mode_prog"), t("docx_render_mode_tpl")]
                 selected_render_mode_label = st.radio(
                     t("docx_render_mode_label"),
@@ -2261,62 +2425,28 @@ elif selected_page_key == "📄 ATS CV Builder":
                 )
                 docx_render_mode = "template" if selected_render_mode_label == t("docx_render_mode_tpl") else "programmatic"
 
-            selected_template_id_for_docx = export_template_id
-            selected_template_info = {}
-            if docx_render_mode == "template":
-                st.info(t("docx_template_experimental_note"))
-                try:
-                    tpl_catalog_res = requests.get(f"{API_BASE_URL}/ats-cv/docx-templates")
-                    if tpl_catalog_res.status_code == 200:
-                        tpl_catalog = tpl_catalog_res.json().get("catalog", [])
-                    else:
+                if docx_render_mode == "template":
+                    st.info(t("docx_template_experimental_note"))
+                    try:
+                        tpl_catalog_res = requests.get(f"{API_BASE_URL}/ats-cv/docx-templates")
+                        if tpl_catalog_res.status_code == 200:
+                            tpl_catalog = tpl_catalog_res.json().get("catalog", [])
+                        else:
+                            tpl_catalog = []
+                    except Exception:
                         tpl_catalog = []
-                except Exception:
-                    tpl_catalog = []
 
-                if tpl_catalog:
-                    tpl_options = {item["display_name"]: item for item in tpl_catalog}
-                    selected_tpl_disp = st.selectbox(t("docx_template_select"), list(tpl_options.keys()), key="ats_cv_docx_template_select")
-                    selected_template_info = tpl_options[selected_tpl_disp]
-                    selected_template_id_for_docx = selected_template_info["template_id"]
-                    st.caption(selected_template_info.get("description", ""))
-                    render_docx_template_guidance_expander(selected_template_info)
-                else:
-                    st.warning("No DOCX templates available. Using default.")
+                    if tpl_catalog:
+                        tpl_options = {item["display_name"]: item for item in tpl_catalog}
+                        selected_tpl_disp = st.selectbox(t("docx_template_select"), list(tpl_options.keys()), key="ats_cv_docx_template_select")
+                        selected_template_info = tpl_options[selected_tpl_disp]
+                        selected_template_id_for_docx = selected_template_info["template_id"]
+                        st.caption(selected_template_info.get("description", ""))
+                        render_docx_template_guidance_expander(selected_template_info)
+                    else:
+                        st.warning("No DOCX templates available. Using default.")
 
-            photo_supported_for_docx = (
-                docx_render_mode == "template"
-                and bool(selected_template_info.get("supports_photo"))
-            ) or (
-                docx_render_mode == "programmatic"
-                and bool(export_template.get("supports_photo"))
-            )
-            photo_supported_for_pdf = bool(export_template.get("supports_photo"))
-            photo_supported_for_export = photo_supported_for_docx or photo_supported_for_pdf
-
-            ats_cv_photo = None
-            include_cv_photo = False
-            if photo_supported_for_export:
-                photo_col1, photo_col2 = st.columns([2, 1])
-                with photo_col1:
-                    ats_cv_photo = st.file_uploader(
-                        t("cv_photo_optional"),
-                        type=["png", "jpg", "jpeg"],
-                        key="ats_cv_optional_photo",
-                    )
-                    st.caption(t("photo_best_result_note"))
-                with photo_col2:
-                    include_cv_photo = st.checkbox(
-                        t("include_photo_cv"),
-                        value=False,
-                        key="ats_cv_include_optional_photo",
-                    )
-                if include_cv_photo and ats_cv_photo is not None:
-                    st.info(t("photo_template_ready"))
-            elif export_template.get("supports_photo") is False:
-                st.caption(t("photo_template_warning"))
-
-            with st.expander(t("export_sections"), expanded=False):
+                st.markdown(f"**{t('export_sections')}**")
                 enabled_export_sections = []
                 section_cols = st.columns(4)
                 for index, (section_key, label) in enumerate(section_options):
@@ -2330,6 +2460,33 @@ elif selected_page_key == "📄 ATS CV Builder":
                     st.warning(t("key_section_warning"))
                 if not enabled_export_sections:
                     st.warning("Select at least one export section." if st.session_state.ui_lang == "en" else "En az bir dışa aktarma bölümü seçin.")
+
+            photo_supported_for_docx = (
+                docx_render_mode == "template"
+                and bool(selected_template_info.get("supports_photo"))
+            ) or (
+                docx_render_mode == "programmatic"
+                and bool(export_template.get("supports_photo"))
+            )
+            photo_supported_for_pdf = bool(export_template.get("supports_photo"))
+            photo_supported_for_export = photo_supported_for_docx or photo_supported_for_pdf
+
+            if photo_supported_for_export and not selected_template.get("supports_photo"):
+                with st.expander(t("cv_photo_optional"), expanded=False):
+                    ats_cv_photo = st.file_uploader(
+                        t("cv_photo_optional"),
+                        type=["png", "jpg", "jpeg"],
+                        key="ats_cv_optional_photo_export",
+                    )
+                    include_cv_photo = st.checkbox(
+                        t("include_photo_cv"),
+                        value=False,
+                        key="ats_cv_include_optional_photo_export",
+                    )
+                    st.caption(t("photo_best_result_note"))
+
+            photo_ready = bool(include_cv_photo and ats_cv_photo is not None and photo_supported_for_export)
+            st.caption(f"{t('photo_status')}: {t('photo_included_yes') if photo_ready else t('photo_included_no')}")
 
             col_docx, col_pdf, col_txt = st.columns(3)
             can_export = bool(enabled_export_sections)
@@ -2378,44 +2535,55 @@ elif selected_page_key == "📄 ATS CV Builder":
                     )
 
             # 4. Collapsible Preview Section
-            st.markdown("---")
             preview_title = "Oluşturulan CV Önizlemesi" if st.session_state.ui_lang == "tr" else "Generated CV Preview"
             with st.expander(preview_title, expanded=False):
                 render_ats_cv_preview(ats_cv)
 
-            # 5. Detailed reports
-            render_quality_report(quality_report, t("cv_quality_check"), "quality_score")
-            render_quality_report(structure_report, t("structure_validation"), "structure_score")
+            # 5. Grouped reports
+            with st.expander(t("quality_and_structure"), expanded=False):
+                q_col, s_col = st.columns(2)
+                with q_col:
+                    render_quality_report_inline(quality_report, t("cv_quality_check"), "quality_score")
+                with s_col:
+                    render_quality_report_inline(structure_report, t("structure_validation"), "structure_score")
 
-            with st.expander(t("used_keywords"), expanded=False):
+            with st.expander(t("keyword_analysis"), expanded=False):
+                st.markdown(f"**{t('used_keywords')}**")
                 st.write(", ".join(metadata.get("job_keywords_used", [])) or "-")
-
-            with st.expander(t("transferable_keywords"), expanded=False):
+                st.markdown(f"**{t('transferable_keywords')}**")
                 write_non_empty_list(metadata.get("transferable_keywords_used", []))
-
-            with st.expander(t("missing_keywords"), expanded=False):
+                st.markdown(f"**{t('missing_keywords')}**")
                 write_non_empty_list(metadata.get("missing_keywords", []))
-
-            with st.expander(t("risky_keywords_not_added"), expanded=False):
+                st.markdown(f"**{t('risky_keywords_not_added')}**")
                 write_non_empty_list(metadata.get("risky_keywords_not_added", []))
 
-            with st.expander(t("optimization_summary"), expanded=False):
-                st.write(metadata.get("optimization_summary", ""))
-
             score_explanation = metadata.get("ats_score_explanation", {}) if isinstance(metadata.get("ats_score_explanation"), dict) else {}
-            with st.expander(t("ats_score_explanation"), expanded=False):
+            with st.expander(t("ats_explanation_notes"), expanded=False):
                 st.caption(t("ats_score_disclaimer"))
+                st.markdown(f"**{t('optimization_summary')}**")
+                st.write(metadata.get("optimization_summary", ""))
                 st.write(f"**{t('before_reason')}:** {translate_score_reason(score_explanation.get('before_reason') or '-')}")
                 st.write(f"**{t('after_reason')}:** {translate_score_reason(score_explanation.get('after_reason') or '-')}")
-
-            with st.expander(t("improvement_reasons"), expanded=False):
+                st.markdown(f"**{t('improvement_reasons')}**")
                 write_non_empty_list(score_explanation.get("improvement_reasons", []))
-
-            with st.expander(t("remaining_gaps"), expanded=False):
+                st.markdown(f"**{t('remaining_gaps')}**")
                 write_non_empty_list(score_explanation.get("remaining_gaps", []))
-
-            with st.expander(t("adaptation_notes"), expanded=False):
+                st.markdown(f"**{t('adaptation_notes')}**")
                 write_non_empty_list(metadata.get("adaptation_notes", []))
+
+            with st.expander(t("adaptation_quality"), expanded=False):
+                render_adaptation_quality_report(metadata.get("adaptation_quality_report", {}))
+
+            with st.expander(t("advanced_technical_details"), expanded=False):
+                st.json({
+                    "template_id": export_template_id,
+                    "language": export_language,
+                    "export_style": selected_export_style,
+                    "docx_render_mode": docx_render_mode,
+                    "one_page": one_page_export,
+                    "enabled_sections": enabled_export_sections,
+                    "validation": validation,
+                })
 
 
 elif selected_page_key == "✉️ Application Materials":
